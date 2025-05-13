@@ -1,0 +1,13 @@
+.circleci/
+.git/
+.reading/
+.dockerignore
+.gitignore
+apis/programs/frontends/
+infra/docker/
+infra/k8s/
+CONTRIBUTORS
+LICENSE
+makefile
+README.md
+!infra/compose/database-data
