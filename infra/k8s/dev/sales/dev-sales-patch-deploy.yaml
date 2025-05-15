@@ -19,3 +19,13 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       hostNetwork: true
 
+      containers:
+        - name: sales-api
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "100Mi"
+            limits:
+              cpu: "250m"
+              memory: "100Mi"
+
