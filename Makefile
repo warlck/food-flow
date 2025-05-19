@@ -54,11 +54,14 @@ version:
 
 
 # ==============================================================================
-# Debugging
-
+# Metrics and Tracing
 
 debug-statsviz:
 	open http://localhost:3010/debug/statsviz
+
+
+metrics:
+	expvarmon -ports="localhost:3010" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
 
 
 
@@ -119,6 +122,7 @@ dev-status-all:
 
 dev-status:
 	watch -n 2 kubectl get pods -o wide --all-namespaces
+
 
 
 
