@@ -45,6 +45,20 @@ sales:
 run:
 	go run ./app/services/sales-api/main.go | go run ./app/tooling/logfmt/main.go
 
+help:
+	go run ./app/services/sales-api/main.go --help
+
+version:
+	go run ./app/services/sales-api/main.go --version
+
+
+
+# ==============================================================================
+# Debugging
+
+
+debug-statsviz:
+	open http://localhost:3010/debug/statsviz
 
 
 
