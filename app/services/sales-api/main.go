@@ -16,6 +16,7 @@ import (
 	"github.com/warlck/food-flow/app/services/sales-api/mux"
 	"github.com/warlck/food-flow/business/web/debug"
 	"github.com/warlck/food-flow/foundation/logger"
+	"github.com/warlck/food-flow/foundation/web"
 )
 
 var build = "develop"
@@ -31,7 +32,7 @@ func main() {
 	}
 
 	traceIDFn := func(ctx context.Context) string {
-		return ""
+		return web.GetTraceID(ctx)
 	}
 
 	log = logger.NewWithEvents(os.Stdout, logger.LevelInfo, "SALES-API", traceIDFn, events)
