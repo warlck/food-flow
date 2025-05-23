@@ -60,6 +60,8 @@ curl-ready:
 curl-test-error:
 	curl -il -X GET http://localhost:3000/testerror
 
+load-test:
+	hey -m GET -c 100 -n 100000 "http://localhost:3000/v1/readiness"
 
 
 
