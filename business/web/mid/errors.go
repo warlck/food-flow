@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/warlck/food-flow/business/web/auth"
 	"github.com/warlck/food-flow/business/web/response"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/web"
@@ -28,6 +29,11 @@ func Errors(log *logger.Logger) web.MidHandler {
 						Error: reqErr.Error(),
 					}
 					status = reqErr.StatusCode()
+				case auth.IsAuthError(err):
+					appErr = &response.ErrorDocument{
+						Error: http.StatusText(http.StatusUnauthorized),
+					}
+					status = http.StatusUnauthorized
 				default:
 					appErr = &response.ErrorDocument{
 						Error: http.StatusText(http.StatusInternalServerError),
