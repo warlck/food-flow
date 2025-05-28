@@ -12,10 +12,18 @@ import (
 	"github.com/warlck/food-flow/foundation/web"
 )
 
-// WebAPI constructs a http.Handler with all application routes bound.
-func WebAPI(log *logger.Logger, auth *auth.Auth, shutdown chan os.Signal) *web.App {
-	mux := web.NewApp(shutdown, mid.Logger(log), mid.Errors(log), mid.Metrics(), mid.Panics())
+// Config contains all the mandatory systems required by handlers.
+type Config struct {
+	Build    string
+	Log      *logger.Logger
+	Auth     *auth.Auth
+	Shutdown chan os.Signal
+}
 
-	checkapi.Routes(mux, auth)
-	return mux
+// WebAPI constructs a http.Handler with all application routes bound.
+func WebAPI(cfg Config) *web.App {
+	app := web.NewApp(cfg.Shutdown, mid.Logger(cfg.Log), mid.Errors(cfg.Log), mid.Metrics(), mid.Panics())
+
+	checkapi.Routes(app, cfg.Auth, cfg.Build, cfg.Log)
+	return app
 }

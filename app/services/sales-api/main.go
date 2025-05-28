@@ -152,8 +152,13 @@ func run(ctx context.Context, log *logger.Logger) error {
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	api := http.Server{
-		Addr:         cfg.Web.APIHost,
-		Handler:      mux.WebAPI(log, a, shutdown),
+		Addr: cfg.Web.APIHost,
+		Handler: mux.WebAPI(mux.Config{
+			Build:    cfg.Version.Build,
+			Log:      log,
+			Auth:     a,
+			Shutdown: shutdown,
+		}),
 		ReadTimeout:  cfg.Web.ReadTimeout,
 		WriteTimeout: cfg.Web.WriteTimeout,
 		IdleTimeout:  cfg.Web.IdleTimeout,

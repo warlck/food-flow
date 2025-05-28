@@ -4,6 +4,7 @@ package web
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"syscall"
@@ -42,50 +43,20 @@ func (a *App) SignalShutdown() {
 
 // HandleFunc sets a handler function for a given HTTP method and path pair
 // to the application server mux.
-func (a *App) HandleFunc(pattern string, handler Handler, mw ...MidHandler) {
+func (a *App) HandleFunc(method string, group string, path string, handler Handler, mw ...MidHandler) {
 	handler = wrapMiddleware(mw, handler)
 	handler = wrapMiddleware(a.mw, handler)
 
-	h := func(w http.ResponseWriter, r *http.Request) {
+	h := a.handle(handler)
 
-		v := Values{
-			TraceID: uuid.NewString(),
-			Now:     time.Now().UTC(),
-		}
-		ctx := setValues(r.Context(), &v)
-
-		if err := handler(ctx, w, r); err != nil {
-			if validateError(err) {
-				a.SignalShutdown()
-				return
-			}
-		}
-
-		// PUT ANY CODE WE WANT HERE
-	}
-
-	a.ServeMux.HandleFunc(pattern, h)
+	a.ServeMux.HandleFunc(finalPath(method, group, path), h)
 }
 
 // HandleFuncNoMiddleware sets a handler function for a given HTTP method and
 // path pair to the application server mux with no middleware.
-func (a *App) HandleFuncNoMiddleware(pattern string, handler Handler, mw ...MidHandler) {
-	h := func(w http.ResponseWriter, r *http.Request) {
-		v := Values{
-			TraceID: uuid.NewString(),
-			Now:     time.Now().UTC(),
-		}
-		ctx := setValues(r.Context(), &v)
-
-		if err := handler(ctx, w, r); err != nil {
-			if validateError(err) {
-				a.SignalShutdown()
-				return
-			}
-		}
-	}
-
-	a.ServeMux.HandleFunc(pattern, h)
+func (a *App) HandleFuncNoMiddleware(method string, group string, path string, handler Handler, mw ...MidHandler) {
+	h := a.handle(handler)
+	a.ServeMux.HandleFunc(finalPath(method, group, path), h)
 }
 
 // validateError validates the error for special conditions that do not
@@ -126,4 +97,31 @@ func validateError(err error) bool {
 	}
 
 	return true
+}
+
+// handle is the function that wraps the handler function and adds the values to the context
+// and validates the error.
+func (a *App) handle(handler Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		v := Values{
+			TraceID: uuid.NewString(),
+			Now:     time.Now().UTC(),
+		}
+		ctx := setValues(r.Context(), &v)
+
+		if err := handler(ctx, w, r); err != nil {
+			if validateError(err) {
+				a.SignalShutdown()
+				return
+			}
+		}
+	}
+}
+
+func finalPath(method string, group string, path string) string {
+	finalPath := path
+	if group != "" {
+		finalPath = "/" + group + path
+	}
+	return fmt.Sprintf("%s %s", method, finalPath)
 }

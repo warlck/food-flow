@@ -57,23 +57,23 @@ version:
 	go run ./app/services/sales-api/main.go --version
 
 curl-live:
-	curl -il -X GET http://localhost:3000/liveness
+	curl -il -X GET http://localhost:3000/v1/liveness
 
 curl-ready:
-	curl -il -X GET http://localhost:3000/readiness
+	curl -il -X GET http://localhost:3000/v1/readiness
 
 curl-test-error:
-	curl -il -X GET http://localhost:3000/testerror
+	curl -il -X GET http://localhost:3000/v1/testerror
 
 load-test:
-	hey -m GET -c 100 -n 100000 "http://localhost:3000/testerror"
+	hey -m GET -c 100 -n 100000 "http://localhost:3000/v1/testerror"
 
 admin-genkey:
 	go run ./app/tooling/sales-admin/main.go
 
 curl-auth:
 	curl -il \
-	-H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/testerror"
+	-H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/testerror"
 
 
 
