@@ -74,6 +74,12 @@ admin-genkey:
 curl-auth:
 	curl -il \
 	-H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/testerror"
+	
+pgcli:
+	pgcli postgresql://postgres:postgres@localhost
+
+
+
 
 
 
@@ -101,6 +107,8 @@ dev-up:
 		--config infra/k8s/dev/kind-config.yaml
 
 	kubectl wait --timeout=120s --namespace=local-path-storage --for=condition=Available deployment/local-path-provisioner
+	kind load docker-image $(POSTGRES) --name $(KIND_CLUSTER)
+
 
 
 dev-down:
@@ -108,18 +116,22 @@ dev-down:
 
 # ------------------------------------------------------------------------------
 
+dev-load-db:
+	kind load docker-image $(POSTGRES) --name $(KIND_CLUSTER)
+
 dev-load:
 	kind load docker-image $(SALES_IMAGE) --name $(KIND_CLUSTER)
 
 
 dev-apply:
+	kustomize build infra/k8s/dev/database | kubectl apply -f -
 	kustomize build infra/k8s/dev/sales | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(SALES_APP) --timeout=120s --for=condition=Ready
 
 
 dev-restart:
 	kubectl rollout restart deployment $(SALES_APP) --namespace=$(NAMESPACE)
-
+ 
 dev-run: build dev-up dev-load dev-apply
 
 dev-update: build dev-load dev-restart
@@ -136,6 +148,9 @@ dev-describe-deployment:
 
 dev-describe-sales:
 	kubectl describe pod --namespace=$(NAMESPACE) -l app=$(SALES_APP)
+
+dev-logs-db:
+	kubectl logs --namespace=$(NAMESPACE) -l app=database --all-containers=true -f --tail=100
 
 
 # ------------------------------------------------------------------------------

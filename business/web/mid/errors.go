@@ -7,6 +7,7 @@ import (
 	"github.com/warlck/food-flow/business/web/auth"
 	"github.com/warlck/food-flow/business/web/response"
 	"github.com/warlck/food-flow/foundation/logger"
+	"github.com/warlck/food-flow/foundation/validate"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
@@ -20,22 +21,31 @@ func Errors(log *logger.Logger) web.MidHandler {
 				log.Error(ctx, "error", "msg", err)
 
 				var status int
-				var appErr *response.ErrorDocument
+				var appErr response.ErrorDocument
 
 				switch {
 				case response.IsError(err):
 					reqErr := response.GetError(err)
-					appErr = &response.ErrorDocument{
+					if validate.IsFieldErrors(reqErr.Err) {
+						fieldErrors := validate.GetFieldErrors(reqErr.Err)
+						appErr = response.ErrorDocument{
+							Error:  "data validation error",
+							Fields: fieldErrors.Fields(),
+						}
+						status = reqErr.Status
+						break
+					}
+					appErr = response.ErrorDocument{
 						Error: reqErr.Error(),
 					}
-					status = reqErr.StatusCode()
+					status = reqErr.Status
 				case auth.IsAuthError(err):
-					appErr = &response.ErrorDocument{
+					appErr = response.ErrorDocument{
 						Error: http.StatusText(http.StatusUnauthorized),
 					}
 					status = http.StatusUnauthorized
 				default:
-					appErr = &response.ErrorDocument{
+					appErr = response.ErrorDocument{
 						Error: http.StatusText(http.StatusInternalServerError),
 					}
 					status = http.StatusInternalServerError
