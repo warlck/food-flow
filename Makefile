@@ -74,7 +74,7 @@ admin-genkey:
 curl-auth:
 	curl -il \
 	-H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/testerror"
-	
+
 pgcli:
 	pgcli postgresql://postgres:postgres@localhost
 
@@ -151,6 +151,10 @@ dev-describe-sales:
 
 dev-logs-db:
 	kubectl logs --namespace=$(NAMESPACE) -l app=database --all-containers=true -f --tail=100
+
+# ------------------------------------------------------------------------------
+dev-logs-init:
+	kubectl logs --namespace=$(NAMESPACE) -l app=$(SALES_APP) -f --tail=100 -c init-migrate-seed
 
 
 # ------------------------------------------------------------------------------
