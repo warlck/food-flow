@@ -75,6 +75,10 @@ curl-auth:
 	curl -il \
 	-H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/testerror"
 
+curl-create-user:
+	curl -il -X POST -H 'Content-Type: application/json' -d '{"name":"foo","email":"foo@bar.com","roles":["ADMIN"],"department":"IT","password":"123","passwordConfirm":"123"}' http://localhost:3000/v1/users
+
+
 pgcli:
 	pgcli postgresql://postgres:postgres@localhost
 
