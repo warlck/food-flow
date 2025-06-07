@@ -13,21 +13,21 @@ import (
 )
 
 // Handlers manages the set of user endpoints.
-type Handlers struct {
+type api struct {
 	user *user.Business
 	auth *auth.Auth
 }
 
 // New constructs a handlers for route access.
-func New(user *user.Business, auth *auth.Auth) *Handlers {
-	return &Handlers{
+func newAPI(user *user.Business, auth *auth.Auth) *api {
+	return &api{
 		user: user,
 		auth: auth,
 	}
 }
 
 // Create adds a new user to the system.
-func (h *Handlers) Create(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (h *api) Create(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	var app NewUser
 	if err := web.Decode(r, &app); err != nil {
 		return response.NewError(err, http.StatusBadRequest)

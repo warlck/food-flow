@@ -25,6 +25,6 @@ func Routes(app *web.App, cfg Config) {
 
 	usrBus := userbus.NewBusiness(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB))
 
-	hdl := New(usrBus, cfg.Auth)
+	hdl := newAPI(usrBus, cfg.Auth)
 	app.HandleFunc(http.MethodPost, version, "/users", hdl.Create)
 }

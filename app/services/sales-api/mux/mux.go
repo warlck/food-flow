@@ -27,7 +27,11 @@ type Config struct {
 func WebAPI(cfg Config) *web.App {
 	app := web.NewApp(cfg.Shutdown, mid.Logger(cfg.Log), mid.Errors(cfg.Log), mid.Metrics(), mid.Panics())
 
-	checkapi.Routes(app, cfg.Auth, cfg.Build, cfg.Log)
+	checkapi.Routes(app, checkapi.Config{
+		Build: cfg.Build,
+		Log:   cfg.Log,
+		DB:    cfg.DB,
+	})
 
 	userapi.Routes(app, userapi.Config{
 		Build: cfg.Build,

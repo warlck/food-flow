@@ -7,7 +7,10 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"time"
 
+	"github.com/jmoiron/sqlx"
+	"github.com/warlck/food-flow/business/sdk/sqldb"
 	"github.com/warlck/food-flow/business/web/response"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/web"
@@ -16,12 +19,14 @@ import (
 type api struct {
 	build string
 	log   *logger.Logger
+	db    *sqlx.DB
 }
 
-func newAPI(build string, log *logger.Logger) *api {
+func newAPI(build string, log *logger.Logger, db *sqlx.DB) *api {
 	return &api{
 		build: build,
 		log:   log,
+		db:    db,
 	}
 }
 
@@ -49,16 +54,27 @@ func (a *api) liveness(ctx context.Context, w http.ResponseWriter, r *http.Reque
 }
 
 func (a *api) readiness(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	status := struct {
-		Status string
-	}{
-		Status: "OK",
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	status := "ok"
+	statusCode := http.StatusOK
+
+	if err := sqldb.StatusCheck(ctx, a.db); err != nil {
+		status = "db not ready"
+		statusCode = http.StatusInternalServerError
+		a.log.Info(ctx, "readiness failure", "status", status)
 	}
 
-	// TODO: LOG WHEN NOT OK ONLY to avoid spamming the logs
-	// a.log.Info(ctx, "readiness", "status", status)
+	data := struct {
+		Status string `json:"status"`
+	}{
+		Status: status,
+	}
 
-	return web.Respond(ctx, w, status, http.StatusOK)
+	a.log.Info(ctx, "readiness", "status", status)
+
+	return web.Respond(ctx, w, data, statusCode)
 }
 
 func (a *api) testError(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
