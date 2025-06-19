@@ -13,7 +13,7 @@ func applyFilter(filter userbus.QueryFilter, data map[string]interface{}, buf *b
 
 	if filter.ID != nil {
 		data["user_id"] = *filter.ID
-		wc = append(wc, "user_id = :user_id")
+		wc = append(wc, "user_id = :user_id") 	
 	}
 
 	if filter.Name != nil {

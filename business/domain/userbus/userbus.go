@@ -74,3 +74,119 @@ func (b *Business) Create(ctx context.Context, nu NewUser) (User, error) {
 
 	return usr, nil
 }
+
+// Update modifies information about a user.
+func (b *Business) Update(ctx context.Context, usr User, uu UpdateUser) (User, error) {
+	if uu.Name != nil {
+		usr.Name = *uu.Name
+	}
+
+	if uu.Email != nil {
+		usr.Email = *uu.Email
+	}
+
+	if uu.Roles != nil {
+		usr.Roles = uu.Roles
+	}
+
+	if uu.Password != nil {
+		pw, err := bcrypt.GenerateFromPassword([]byte(*uu.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return User{}, fmt.Errorf("generatefrompassword: %w", err)
+		}
+		usr.PasswordHash = pw
+	}
+
+	if uu.Department != nil {
+		usr.Department = *uu.Department
+	}
+
+	if uu.Enabled != nil {
+		usr.Enabled = *uu.Enabled
+	}
+	usr.DateUpdated = time.Now()
+
+	if err := b.storer.Update(ctx, usr); err != nil {
+		return User{}, fmt.Errorf("update: %w", err)
+	}
+
+	return usr, nil
+}
+
+// Delete removes the specified user.
+func (b *Business) Delete(ctx context.Context, usr User) error {
+	if err := b.storer.Delete(ctx, usr); err != nil {
+		return fmt.Errorf("delete: %w", err)
+	}
+
+	return nil
+}
+
+// Query retrieves a list of existing users.
+func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, pageNumber int, rowsPerPage int) ([]User, error) {
+	if err := filter.Validate(); err != nil {
+		return nil, err
+	}
+
+	users, err := b.storer.Query(ctx, filter, orderBy, pageNumber, rowsPerPage)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+
+	return users, nil
+}
+
+// Count returns the total number of users.
+func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
+	if err := filter.Validate(); err != nil {
+		return 0, err
+	}
+
+	return b.storer.Count(ctx, filter)
+}
+
+// QueryByID finds the user by the specified Ib.
+func (b *Business) QueryByID(ctx context.Context, userID uuid.UUID) (User, error) {
+	user, err := b.storer.QueryByID(ctx, userID)
+	if err != nil {
+		return User{}, fmt.Errorf("query: userID[%s]: %w", userID, err)
+	}
+
+	return user, nil
+}
+
+// QueryByIDs finds the users by a specified User IDs.
+func (b *Business) QueryByIDs(ctx context.Context, userIDs []uuid.UUID) ([]User, error) {
+	user, err := b.storer.QueryByIDs(ctx, userIDs)
+	if err != nil {
+		return nil, fmt.Errorf("query: userIDs[%s]: %w", userIDs, err)
+	}
+
+	return user, nil
+}
+
+// QueryByEmail finds the user by a specified user email.
+func (b *Business) QueryByEmail(ctx context.Context, email mail.Address) (User, error) {
+	user, err := b.storer.QueryByEmail(ctx, email)
+	if err != nil {
+		return User{}, fmt.Errorf("query: email[%s]: %w", email, err)
+	}
+
+	return user, nil
+}
+
+// Authenticate finds a user by their email and verifies their passworb. On
+// success it returns a Claims User representing this user. The claims can be
+// used to generate a token for future authentication.
+func (b *Business) Authenticate(ctx context.Context, email mail.Address, password string) (User, error) {
+	usr, err := b.QueryByEmail(ctx, email)
+	if err != nil {
+		return User{}, fmt.Errorf("query: email[%s]: %w", email, err)
+	}
+
+	if err := bcrypt.CompareHashAndPassword(usr.PasswordHash, []byte(password)); err != nil {
+		return User{}, fmt.Errorf("comparehashandpassword: %w", ErrAuthenticationFailure)
+	}
+
+	return usr, nil
+}

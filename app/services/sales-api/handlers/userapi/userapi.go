@@ -6,28 +6,32 @@ import (
 	"fmt"
 	"net/http"
 
-	user "github.com/warlck/food-flow/business/domain/userbus"
+	"github.com/google/uuid"
+	"github.com/warlck/food-flow/business/domain/userbus"
+	"github.com/warlck/food-flow/business/sdk/errs"
+	"github.com/warlck/food-flow/business/sdk/order"
 	"github.com/warlck/food-flow/business/web/auth"
+	"github.com/warlck/food-flow/business/web/page"
 	"github.com/warlck/food-flow/business/web/response"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
 // Handlers manages the set of user endpoints.
 type api struct {
-	user *user.Business
-	auth *auth.Auth
+	userBus *userbus.Business
+	auth    *auth.Auth
 }
 
 // New constructs a handlers for route access.
-func newAPI(user *user.Business, auth *auth.Auth) *api {
+func newAPI(user *userbus.Business, auth *auth.Auth) *api {
 	return &api{
-		user: user,
-		auth: auth,
+		userBus: user,
+		auth:    auth,
 	}
 }
 
 // Create adds a new user to the system.
-func (h *api) Create(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (a *api) create(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	var app NewUser
 	if err := web.Decode(r, &app); err != nil {
 		return response.NewError(err, http.StatusBadRequest)
@@ -38,13 +42,68 @@ func (h *api) Create(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return response.NewError(err, http.StatusBadRequest)
 	}
 
-	usr, err := h.user.Create(ctx, nb)
+	usr, err := a.userBus.Create(ctx, nb)
 	if err != nil {
-		if errors.Is(err, user.ErrUniqueEmail) {
+		if errors.Is(err, userbus.ErrUniqueEmail) {
 			return response.NewError(err, http.StatusConflict)
 		}
 		return fmt.Errorf("create: usr[%+v]: %w", usr, err)
 	}
 
 	return web.Respond(ctx, w, toAppUser(usr), http.StatusCreated)
+}
+
+// Query retrieves a list of users based on query parameters.
+func (a *api) query(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	qp, err := parseQueryParams(r)
+	if err != nil {
+		return response.NewError(err, http.StatusBadRequest)
+	}
+	pg, err := page.Parse(qp.Page, qp.Rows)
+	if err != nil {
+		return response.NewError(err, http.StatusBadRequest)
+	}
+
+	filter, err := parseFilter(qp)
+	if err != nil {
+		return response.NewError(err, http.StatusBadRequest)
+	}
+
+	orderBy, err := order.Parse(orderByFields, qp.OrderBy, defaultOrderBy)
+	if err != nil {
+		return response.NewError(err, http.StatusBadRequest)
+	}
+
+	usrs, err := a.userBus.Query(ctx, filter, orderBy, pg.Number, pg.RowsPerPage)
+	if err != nil {
+		return errs.Newf(errs.Internal, "query: %s", err)
+	}
+
+	total, err := a.userBus.Count(ctx, filter)
+	if err != nil {
+		return errs.Newf(errs.Internal, "count: %s", err)
+	}
+
+	users := page.NewDocument(toAppUsers(usrs), total, pg.Number, pg.RowsPerPage)
+	return web.Respond(ctx, w, users, http.StatusOK)
+}
+
+// QueryByID retrieves a user by its ID.
+func (a *api) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	userIDStr := web.Param(r, "user_id")
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return response.NewError(err, http.StatusBadRequest)
+	}
+
+	usr, err := a.userBus.QueryByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, userbus.ErrNotFound) {
+			return response.NewError(err, http.StatusNotFound)
+		}
+		return fmt.Errorf("querybyid: userID[%s]: %w", userID, err)
+	}
+
+	return web.Respond(ctx, w, toAppUser(usr), http.StatusOK)
 }

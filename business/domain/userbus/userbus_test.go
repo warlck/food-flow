@@ -6,7 +6,9 @@ import (
 	"net/mail"
 	"os"
 	"runtime/debug"
+	"sort"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/crypto/bcrypt"
@@ -51,21 +53,25 @@ func Test_User(t *testing.T) {
 		db.Teardown()
 	}()
 
-	_, err := userSeedData(db)
+	sd, err := userSeedData(db)
 	if err != nil {
 		t.Fatalf("Seeding error: %s", err)
 	}
 
 	// -------------------------------------------------------------------------
 
+	// Run the tests for the userbus package.
+	// ORDER IS IMPORTANT as the query function needs to be run before the create function
+	unittest.Run(t, query(db, sd), "userbus-query")
 	unittest.Run(t, create(db), "userbus-create")
+	unittest.Run(t, update(db, sd), "userbus-update")
+	unittest.Run(t, delete(db, sd), "userbus-delete")
 
 }
 
 // =============================================================================
 
-// =============================================================================
-
+// userSeedData seeds the database with test users and returns the seed data.
 func userSeedData(db *dbtest.Database) (dbtest.SeedData, error) {
 	ctx := context.Background()
 	busDomain := db.BusDomain
@@ -156,6 +162,182 @@ func create(db *dbtest.Database) []unittest.Table {
 				expResp.DateUpdated = gotResp.DateUpdated
 
 				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+
+	return table
+}
+
+func query(db *dbtest.Database, sd dbtest.SeedData) []unittest.Table {
+	usrs := make([]userbus.User, 0, len(sd.Admins)+len(sd.Users))
+
+	for _, adm := range sd.Admins {
+		usrs = append(usrs, adm.User)
+	}
+
+	for _, usr := range sd.Users {
+		usrs = append(usrs, usr.User)
+	}
+
+	sort.Slice(usrs, func(i, j int) bool {
+		return usrs[i].ID.String() <= usrs[j].ID.String()
+	})
+
+	table := []unittest.Table{
+		{
+			Name:    "all",
+			ExpResp: usrs,
+			ExcFunc: func(ctx context.Context) any {
+				filter := userbus.QueryFilter{
+					Name: dbtest.StringPointer("Name"),
+				}
+
+				resp, err := db.BusDomain.User.Query(ctx, filter, userbus.DefaultOrderBy, 1, 10)
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.([]userbus.User)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.([]userbus.User)
+
+				for i := range gotResp {
+					if gotResp[i].DateCreated.Format(time.RFC3339) == expResp[i].DateCreated.Format(time.RFC3339) {
+						expResp[i].DateCreated = gotResp[i].DateCreated
+					}
+
+					if gotResp[i].DateUpdated.Format(time.RFC3339) == expResp[i].DateUpdated.Format(time.RFC3339) {
+						expResp[i].DateUpdated = gotResp[i].DateUpdated
+					}
+				}
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+		{
+			Name:    "byid",
+			ExpResp: sd.Users[0].User,
+			ExcFunc: func(ctx context.Context) any {
+				resp, err := db.BusDomain.User.QueryByID(ctx, sd.Users[0].ID)
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(userbus.User)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(userbus.User)
+
+				if gotResp.DateCreated.Format(time.RFC3339) == expResp.DateCreated.Format(time.RFC3339) {
+					expResp.DateCreated = gotResp.DateCreated
+				}
+
+				if gotResp.DateUpdated.Format(time.RFC3339) == expResp.DateUpdated.Format(time.RFC3339) {
+					expResp.DateUpdated = gotResp.DateUpdated
+				}
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+
+	return table
+}
+
+func update(db *dbtest.Database, sd dbtest.SeedData) []unittest.Table {
+	email, _ := mail.ParseAddress("adil@gmail.com.com")
+
+	table := []unittest.Table{
+		{
+			Name: "basic",
+			ExpResp: userbus.User{
+				ID:          sd.Users[0].ID,
+				Name:        "Adil Zitdinov",
+				Email:       *email,
+				Roles:       []userbus.Role{userbus.RoleAdmin},
+				Department:  "IT",
+				Enabled:     true,
+				DateCreated: sd.Users[0].DateCreated,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				uu := userbus.UpdateUser{
+					Name:       dbtest.StringPointer("Adil Zitdinov"),
+					Email:      email,
+					Roles:      []userbus.Role{userbus.RoleAdmin},
+					Department: dbtest.StringPointer("IT"),
+					Password:   dbtest.StringPointer("1234"),
+				}
+
+				resp, err := db.BusDomain.User.Update(ctx, sd.Users[0].User, uu)
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(userbus.User)
+				if !exists {
+					return "error occurred"
+				}
+
+				if err := bcrypt.CompareHashAndPassword(gotResp.PasswordHash, []byte("1234")); err != nil {
+					return err.Error()
+				}
+
+				expResp := exp.(userbus.User)
+
+				expResp.PasswordHash = gotResp.PasswordHash
+				expResp.DateUpdated = gotResp.DateUpdated
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+
+	return table
+}
+
+func delete(db *dbtest.Database, sd dbtest.SeedData) []unittest.Table {
+	table := []unittest.Table{
+		{
+			Name:    "user",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				if err := db.BusDomain.User.Delete(ctx, sd.Users[1].User); err != nil {
+					return err
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:    "admin",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				if err := db.BusDomain.User.Delete(ctx, sd.Admins[1].User); err != nil {
+					return err
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
 			},
 		},
 	}
