@@ -6,7 +6,7 @@ import (
 	"sort"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/warlck/food-flow/app/services/sales-api/handlers/userapi"
+	"github.com/warlck/food-flow/apis/services/sales-api/handlers/userapi"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/errs"
 	"github.com/warlck/food-flow/business/web/apitest"

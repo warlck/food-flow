@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/warlck/food-flow/app/services/sales-api/mux"
+	"github.com/warlck/food-flow/apis/services/sales-api/mux"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
 	"github.com/warlck/food-flow/business/web/apitest"
 	"github.com/warlck/food-flow/business/web/auth"

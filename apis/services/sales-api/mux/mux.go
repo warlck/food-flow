@@ -6,8 +6,7 @@ import (
 	"os"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/warlck/food-flow/app/services/sales-api/handlers/checkapi"
-	"github.com/warlck/food-flow/app/services/sales-api/handlers/userapi"
+	"github.com/warlck/food-flow/apis/services/sales-api/handlers/userapi"
 	"github.com/warlck/food-flow/business/web/auth"
 	"github.com/warlck/food-flow/business/web/mid"
 	"github.com/warlck/food-flow/foundation/logger"
@@ -26,12 +25,6 @@ type Config struct {
 // WebAPI constructs a http.Handler with all application routes bound.
 func WebAPI(cfg Config) *web.App {
 	app := web.NewApp(cfg.Shutdown, mid.Logger(cfg.Log), mid.Errors(cfg.Log), mid.Metrics(), mid.Panics())
-
-	checkapi.Routes(app, checkapi.Config{
-		Build: cfg.Build,
-		Log:   cfg.Log,
-		DB:    cfg.DB,
-	})
 
 	userapi.Routes(app, userapi.Config{
 		Build: cfg.Build,
