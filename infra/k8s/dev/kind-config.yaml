@@ -20,7 +20,7 @@ nodes:
     hostPort: 4020
   # Auth
   - containerPort: 6000
-    hostPort: 6000
+    hostPort: 6000 
   # Auth debug
   - containerPort: 6010
     hostPort: 6010

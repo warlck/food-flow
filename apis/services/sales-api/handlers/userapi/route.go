@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/domain/userbus/stores/userdb"
 	"github.com/warlck/food-flow/business/web/auth"
-	"github.com/warlck/food-flow/business/web/mid"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/web"
 )

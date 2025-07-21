@@ -14,9 +14,9 @@ import (
 
 	"github.com/ardanlabs/conf/v3"
 	"github.com/warlck/food-flow/apis/services/sales-api/mux"
+	"github.com/warlck/food-flow/app/sdk/debug"
 	"github.com/warlck/food-flow/business/sdk/sqldb"
 	"github.com/warlck/food-flow/business/web/auth"
-	"github.com/warlck/food-flow/business/web/debug"
 	"github.com/warlck/food-flow/foundation/keystore"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/web"

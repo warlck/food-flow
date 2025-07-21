@@ -7,8 +7,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/warlck/food-flow/apis/services/sales-api/handlers/userapi"
+	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/business/web/auth"
-	"github.com/warlck/food-flow/business/web/mid"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/web"
 )
