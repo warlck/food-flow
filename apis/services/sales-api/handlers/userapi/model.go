@@ -5,8 +5,8 @@ import (
 	"net/mail"
 	"time"
 
+	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/business/domain/userbus"
-	"github.com/warlck/food-flow/business/sdk/errs"
 	"github.com/warlck/food-flow/foundation/validate"
 )
 

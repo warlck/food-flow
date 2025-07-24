@@ -5,12 +5,7 @@ import (
 
 	"github.com/warlck/food-flow/apis/services/sales-api/handlers/userapi"
 	"github.com/warlck/food-flow/business/domain/userbus"
-	"github.com/warlck/food-flow/business/sdk/errs"
 )
-
-func toErrorPtr(err errs.Error) *errs.Error {
-	return &err
-}
 
 func toAppUser(usr userbus.User) userapi.User {
 	roles := make([]string, len(usr.Roles))

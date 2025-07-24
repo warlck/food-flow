@@ -2,12 +2,11 @@ package mid
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
-	"github.com/warlck/food-flow/business/web/auth"
-	"github.com/warlck/food-flow/business/web/response"
+	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/foundation/logger"
-	"github.com/warlck/food-flow/foundation/validate"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
@@ -19,39 +18,12 @@ func Errors(log *logger.Logger) web.MidHandler {
 		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 			if err := handler(ctx, w, r); err != nil {
 				log.Error(ctx, "error", "msg", err)
-
-				var status int
-				var appErr response.ErrorDocument
-
-				switch {
-				case response.IsError(err):
-					reqErr := response.GetError(err)
-					if validate.IsFieldErrors(reqErr.Err) {
-						fieldErrors := validate.GetFieldErrors(reqErr.Err)
-						appErr = response.ErrorDocument{
-							Error:  "data validation error",
-							Fields: fieldErrors.Fields(),
-						}
-						status = reqErr.Status
-						break
-					}
-					appErr = response.ErrorDocument{
-						Error: reqErr.Error(),
-					}
-					status = reqErr.Status
-				case auth.IsAuthError(err):
-					appErr = response.ErrorDocument{
-						Error: http.StatusText(http.StatusUnauthorized),
-					}
-					status = http.StatusUnauthorized
-				default:
-					appErr = response.ErrorDocument{
-						Error: http.StatusText(http.StatusInternalServerError),
-					}
-					status = http.StatusInternalServerError
+				var appErr *errs.Error
+				if !errors.As(err, &appErr) {
+					appErr = errs.Newf(errs.Internal, "Internal Server Error")
 				}
 
-				if err := web.Respond(ctx, w, appErr, status); err != nil {
+				if err := web.Respond(ctx, w, appErr, errs.ErrCodeHttpStatus(appErr.Code)); err != nil {
 					return err
 				}
 
