@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/warlck/food-flow/app/sdk/apitest"
+	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
-	"github.com/warlck/food-flow/business/web/apitest"
-	"github.com/warlck/food-flow/business/web/auth"
 )
 
 func userSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, error) {

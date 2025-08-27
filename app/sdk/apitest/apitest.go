@@ -12,9 +12,9 @@ import (
 
 	"github.com/go-json-experiment/json"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/business/domain/userbus/stores/userdb"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
-	"github.com/warlck/food-flow/business/web/auth"
 )
 
 // Test contains functions for executing an api test.

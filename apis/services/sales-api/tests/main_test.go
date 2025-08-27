@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/warlck/food-flow/apis/services/sales-api/mux"
+	"github.com/warlck/food-flow/app/sdk/apitest"
+	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
-	"github.com/warlck/food-flow/business/web/apitest"
-	"github.com/warlck/food-flow/business/web/auth"
 	"github.com/warlck/food-flow/foundation/docker"
 )
 
@@ -40,7 +40,7 @@ func startTest(t *testing.T, testName string) *apitest.Test {
 
 	// -------------------------------------------------------------------------
 
-	auth, err := auth.NewAuth(auth.Config{
+	auth, err := auth.New(auth.Config{
 		Log:       db.Log,
 		KeyLookup: &apitest.KeyStore{},
 		Issuer:    "service api",

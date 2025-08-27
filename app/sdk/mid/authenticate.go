@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/warlck/food-flow/business/web/auth"
+	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/foundation/web"
 )
 

@@ -22,4 +22,5 @@ func Routes(app *web.App, cfg Config) {
 
 	app.HandleFuncNoMiddleware(http.MethodGet, version, "/liveness", api.liveness)
 	app.HandleFuncNoMiddleware(http.MethodGet, version, "/readiness", api.readiness)
+	app.HandleFunc(http.MethodGet, version, "/testerror", api.testError)
 }

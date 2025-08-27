@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/warlck/food-flow/business/web/auth"
+	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/business/web/response"
 	"github.com/warlck/food-flow/foundation/web"
 )

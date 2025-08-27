@@ -44,7 +44,7 @@ func Migrate() error {
 	if err := migrate.Migrate(ctx, db); err != nil {
 		return fmt.Errorf("migrate database: %w", err)
 	}
-
+ 
 	fmt.Println("migrations complete")
 
 	if err := migrate.Seed(ctx, db); err != nil {

@@ -14,9 +14,9 @@ import (
 
 	"github.com/ardanlabs/conf/v3"
 	"github.com/warlck/food-flow/apis/services/sales-api/mux"
+	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/app/sdk/debug"
 	"github.com/warlck/food-flow/business/sdk/sqldb"
-	"github.com/warlck/food-flow/business/web/auth"
 	"github.com/warlck/food-flow/foundation/keystore"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/web"
@@ -157,7 +157,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 		Issuer:    "sales-api",
 	}
 
-	a, err := auth.NewAuth(authCfg)
+	a, err := auth.New(authCfg)
 	if err != nil {
 		return fmt.Errorf("constructing auth: %w", err)
 	}

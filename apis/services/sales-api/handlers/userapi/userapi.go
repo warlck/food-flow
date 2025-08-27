@@ -7,10 +7,10 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/warlck/food-flow/app/sdk/auth"
+	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/business/domain/userbus"
-	"github.com/warlck/food-flow/business/sdk/errs"
 	"github.com/warlck/food-flow/business/sdk/order"
-	"github.com/warlck/food-flow/business/web/auth"
 	"github.com/warlck/food-flow/business/web/page"
 	"github.com/warlck/food-flow/business/web/response"
 	"github.com/warlck/food-flow/foundation/web"

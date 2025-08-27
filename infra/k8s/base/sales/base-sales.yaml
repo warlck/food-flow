@@ -30,7 +30,7 @@ spec:
         command: ['./sales-admin']
       
       containers:
-        - name: sales-api
+        - name: sales
           image: sales-image
 
           ports:

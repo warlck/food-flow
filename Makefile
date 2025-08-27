@@ -48,10 +48,10 @@ sales:
 # ==============================================================================
 # Running the service
 run:
-	go run ./app/services/sales-api/main.go | go run ./app/tooling/logfmt/main.go
+	go run ./apis/services/sales-api/main.go | go run ./apis/tooling/logfmt/main.go
 
 help:
-	go run ./app/services/sales-api/main.go --help
+	go run ./apis/services/sales-api/main.go --help
 
 version:
 	go run ./app/services/sales-api/main.go --version
@@ -81,8 +81,6 @@ curl-create-user:
 
 pgcli:
 	pgcli postgresql://postgres:postgres@localhost
-
-
 
 
 
@@ -145,7 +143,7 @@ dev-update-apply: build dev-load dev-apply
 # ------------------------------------------------------------------------------
 
 dev-logs:
-	kubectl logs --namespace=$(NAMESPACE) -l app=$(SALES_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run app/tooling/logfmt/main.go -service=$(SALES_APP)
+	kubectl logs --namespace=$(NAMESPACE) -l app=$(SALES_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run apis/tooling/logfmt/main.go -service=$(SALES_APP)
 
 dev-describe-deployment:
 	kubectl describe deployment --namespace=$(NAMESPACE) $(SALES_APP)

@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -22,6 +23,10 @@ var ErrForbidden = errors.New("attempted action is not allowed")
 type Claims struct {
 	jwt.RegisteredClaims
 	Roles []string `json:"roles"`
+}
+
+func (c Claims) HasRole(role string) bool {
+	return slices.Contains(c.Roles, role)
 }
 
 // KeyLookup declares a method set of behavior for looking up
@@ -50,7 +55,7 @@ type Auth struct {
 }
 
 // New creates an Auth to support authentication/authorization.
-func NewAuth(cfg Config) (*Auth, error) {
+func New(cfg Config) (*Auth, error) {
 	a := Auth{
 		log:       cfg.Log,
 		keyLookup: cfg.KeyLookup,
