@@ -15,7 +15,7 @@ func NewAuthError(format string, args ...any) error {
 	return &authError{message: fmt.Sprintf(format, args...)}
 }
 
-// Error implements the error interface. It return the message of the wrapped error.
+// Error implements the error interface. It returns the message of the wrapped error.
 func (e *authError) Error() string {
 	return e.message
 }

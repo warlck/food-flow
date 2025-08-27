@@ -1,4 +1,4 @@
-// Package apitest provides support for excuting api test logic.
+// Package apitest provides support for executing api test logic.
 package apitest
 
 import (
