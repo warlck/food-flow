@@ -186,6 +186,11 @@ func (a *Auth) opaPolicyEvaluation(ctx context.Context, regoScript string, rule 
 	return nil
 }
 
+// Issuer provides the configured issuer used to authenticate tokens.
+func (a *Auth) Issuer() string {
+	return a.issuer
+}
+
 // isUserEnabled hits the database and checks the user is not disabled. If the
 // no database connection was provided, this check is skipped.
 func (a *Auth) isUserEnabled(ctx context.Context, claims Claims) error {
