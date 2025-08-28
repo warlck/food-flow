@@ -16,7 +16,7 @@ import (
 func Authorize(a *auth.Auth, rule string) web.MidHandler {
 	m := func(handler web.Handler) web.Handler {
 		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-			claims := auth.GetClaims(ctx)
+			claims := GetClaims(ctx)
 
 			if claims.Subject == "" {
 				return auth.NewAuthError("unauthorized: no claims provided")
@@ -29,7 +29,7 @@ func Authorize(a *auth.Auth, rule string) web.MidHandler {
 				if err != nil {
 					return response.NewError(errors.New("invalid userID"), http.StatusBadRequest)
 				}
-				ctx = auth.SetUserID(ctx, userID)
+				ctx = setUserID(ctx, userID)
 			}
 
 			if err := a.Authorize(ctx, claims, userID, rule); err != nil {

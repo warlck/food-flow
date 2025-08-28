@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"time"
 
@@ -14,9 +13,14 @@ import (
 )
 
 func main() {
-	err := Migrate()
+	// err := Migrate()
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
+	err := gentoken()
 	if err != nil {
-		log.Fatalln(err)
+		fmt.Println("ERROR:", err)
+		os.Exit(1)
 	}
 }
 
@@ -44,7 +48,7 @@ func Migrate() error {
 	if err := migrate.Migrate(ctx, db); err != nil {
 		return fmt.Errorf("migrate database: %w", err)
 	}
- 
+
 	fmt.Println("migrations complete")
 
 	if err := migrate.Seed(ctx, db); err != nil {
@@ -152,12 +156,12 @@ func gentoken() error {
 		Roles []string `json:"roles"`
 	}{
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   "1234567890",
+			Subject:   "5a4f42ef-5439-423d-881f-4a3628efeaf1",
 			Issuer:    "sales-api",
 			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(8760 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 		},
-		Roles: []string{"ADMIN"},
+		Roles: []string{"USER"},
 	}
 
 	method := jwt.GetSigningMethod(jwt.SigningMethodRS256.Name)

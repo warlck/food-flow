@@ -48,10 +48,10 @@ sales:
 # ==============================================================================
 # Running the service
 run:
-	go run ./apis/services/sales-api/main.go | go run ./apis/tooling/logfmt/main.go
+	go run ./api/services/sales-api/main.go | go run ./api/tooling/logfmt/main.go
 
 help:
-	go run ./apis/services/sales-api/main.go --help
+	go run ./api/services/sales-api/main.go --help
 
 version:
 	go run ./app/services/sales-api/main.go --version
@@ -69,11 +69,11 @@ load-test:
 	hey -m GET -c 100 -n 100000 "http://localhost:3000/v1/testerror"
 
 admin-genkey:
-	go run ./app/tooling/sales-admin/main.go
+	go run ./api/tooling/sales-admin/main.go
 
 curl-auth:
 	curl -il \
-	-H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/testerror"
+	-H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/testauth"
 
 curl-create-user:
 	curl -il -X POST -H 'Content-Type: application/json' -d '{"name":"foo","email":"foo@bar.com","roles":["ADMIN"],"department":"IT","password":"123","passwordConfirm":"123"}' http://localhost:3000/v1/users
@@ -143,7 +143,7 @@ dev-update-apply: build dev-load dev-apply
 # ------------------------------------------------------------------------------
 
 dev-logs:
-	kubectl logs --namespace=$(NAMESPACE) -l app=$(SALES_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run apis/tooling/logfmt/main.go -service=$(SALES_APP)
+	kubectl logs --namespace=$(NAMESPACE) -l app=$(SALES_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run api/tooling/logfmt/main.go -service=$(SALES_APP)
 
 dev-describe-deployment:
 	kubectl describe deployment --namespace=$(NAMESPACE) $(SALES_APP)

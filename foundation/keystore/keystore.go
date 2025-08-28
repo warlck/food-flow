@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -13,8 +14,10 @@ import (
 	"io/fs"
 	"path"
 	"strings"
+	"sync"
 )
 
+const maxPEMFileSize = 1024 * 1024 // 1 MiB
 // key represents key information.
 type key struct {
 	privatePEM string
@@ -24,6 +27,7 @@ type key struct {
 // KeyStore represents an in memory store implementation of the
 // KeyLookup interface for use with the auth package.
 type KeyStore struct {
+	mu    sync.RWMutex
 	store map[string]key
 }
 
@@ -54,11 +58,44 @@ func (ks *KeyStore) PublicKey(kid string) (string, error) {
 	return key.publicPEM, nil
 }
 
-// LoadRSAKeys loads a set of RSA PEM files rooted inside of a directory. The
-// name of each PEM file will be used as the key id.
+// LoadByJSON is given a JSON document read with two fields, key and pem
+// (private key).
+func (ks *KeyStore) LoadByJSON(document string) (int, error) {
+	if document == "" {
+		return 0, nil
+	}
+
+	var d struct {
+		Key string `json:"key"`
+		PEM string `json:"pem"`
+	}
+	if err := json.Unmarshal([]byte(document), &d); err != nil {
+		return len(ks.store), fmt.Errorf("unable to marshal document: %w", err)
+	}
+
+	publicPEM, err := toPublicPEM(d.PEM)
+	if err != nil {
+		return 0, fmt.Errorf("converting private PEM to public: %w", err)
+	}
+
+	key := key{
+		privatePEM: d.PEM,
+		publicPEM:  publicPEM,
+	}
+
+	ks.mu.Lock()
+	defer ks.mu.Unlock()
+	ks.store[d.Key] = key
+
+	return len(ks.store), nil
+}
+
+// LoadByFileSystem loads a set of RSA PEM files rooted inside of a directory. The
+// name of each PEM file will be used as the key id. The function also returns
+// the total number of keys in the store.
 // Example: ks.LoadRSAKeys(os.DirFS("/zarf/keys/"))
 // Example: /zarf/keys/54bb2165-71e1-41a6-af3e-7da4a0e1e2c1.pem
-func (ks *KeyStore) LoadRSAKeys(fsys fs.FS) error {
+func (ks *KeyStore) LoadByFileSystem(fsys fs.FS) (int, error) {
 	fn := func(fileName string, dirEntry fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("walkdir failure: %w", err)
@@ -81,7 +118,7 @@ func (ks *KeyStore) LoadRSAKeys(fsys fs.FS) error {
 		// limit PEM file size to 1 megabyte. This should be reasonable for
 		// almost any PEM file and prevents shenanigans like linking the file
 		// to /dev/random or something like that.
-		pem, err := io.ReadAll(io.LimitReader(file, 1024*1024))
+		pem, err := io.ReadAll(io.LimitReader(file, maxPEMFileSize))
 		if err != nil {
 			return fmt.Errorf("reading auth private key: %w", err)
 		}
@@ -97,16 +134,20 @@ func (ks *KeyStore) LoadRSAKeys(fsys fs.FS) error {
 			publicPEM:  publicPEM,
 		}
 
+		ks.mu.Lock()
+		defer ks.mu.Unlock()
 		ks.store[strings.TrimSuffix(dirEntry.Name(), ".pem")] = key
 
 		return nil
 	}
 
 	if err := fs.WalkDir(fsys, ".", fn); err != nil {
-		return fmt.Errorf("walking directory: %w", err)
+		return 0, fmt.Errorf("walking directory: %w", err)
 	}
 
-	return nil
+	ks.mu.RLock()
+	defer ks.mu.RUnlock()
+	return len(ks.store), nil
 }
 
 func toPublicPEM(privatePEM string) (string, error) {

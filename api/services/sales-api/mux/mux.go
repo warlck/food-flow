@@ -6,8 +6,8 @@ import (
 	"os"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/warlck/food-flow/apis/services/sales-api/handlers/checkapi"
-	"github.com/warlck/food-flow/apis/services/sales-api/handlers/userapi"
+	"github.com/warlck/food-flow/api/services/sales-api/handlers/checkapi"
+	"github.com/warlck/food-flow/api/services/sales-api/handlers/userapi"
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/foundation/logger"
