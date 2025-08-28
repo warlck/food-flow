@@ -3,6 +3,7 @@ package mux
 import (
 	"os"
 
+	"github.com/warlck/food-flow/api/services/auth/handlers/authapi"
 	"github.com/warlck/food-flow/api/services/auth/handlers/checkapi"
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/app/sdk/mid"
@@ -25,6 +26,10 @@ func WebAPI(cfg Config) *web.App {
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
 		Log:   cfg.Log,
+	})
+
+	authapi.Routes(app, authapi.Config{
+		Auth: cfg.Auth,
 	})
 
 	return app
