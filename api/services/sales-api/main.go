@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/ardanlabs/conf/v3"
-	"github.com/warlck/food-flow/apis/services/sales-api/mux"
+	"github.com/warlck/food-flow/api/services/sales-api/mux"
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/app/sdk/debug"
 	"github.com/warlck/food-flow/business/sdk/sqldb"
