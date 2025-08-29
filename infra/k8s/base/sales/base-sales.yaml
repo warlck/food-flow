@@ -7,18 +7,18 @@ metadata:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sales-api
+  name: sales
   namespace: sales-system
 
 spec:
   selector:
     matchLabels:
-      app: sales-api
+      app: sales
 
   template:
     metadata:
       labels:
-        app: sales-api
+        app: sales
 
 
     spec:
@@ -35,9 +35,9 @@ spec:
 
           ports:
             - containerPort: 3000
-              name: sales-api
+              name: sales
             - containerPort: 3010
-              name: sales-api-debug
+              name: sales-debug
 
           livenessProbe:
             httpGet:
@@ -86,11 +86,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: sales-api
+  name: sales-service
   namespace: sales-system
 
 spec:
   selector:
-    app: sales-api
+    app: sales
 
 

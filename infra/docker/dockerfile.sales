@@ -1,5 +1,5 @@
 # Build the Go Binary.
-FROM golang:1.23-alpine AS build_sales
+FROM golang:1.24-alpine AS build_sales
 ENV CGO_ENABLED=0
 ARG BUILD_REF
 
@@ -19,7 +19,7 @@ WORKDIR /service/api/tooling/sales-admin
 RUN go build -ldflags "-X main.build=${BUILD_REF}"
 
 # Build the service binary.
-WORKDIR /service/api/services/sales-api
+WORKDIR /service/api/services/sales
 RUN go build -ldflags "-X main.build=${BUILD_REF}"
 
 
@@ -30,14 +30,14 @@ ARG BUILD_REF
 RUN addgroup -g 1000 -S sales && \
     adduser -u 1000 -h /service -G sales -S sales
 COPY --from=build_sales --chown=sales:sales /service/infra/keys/. /service/infra/keys/.
-COPY --from=build_sales --chown=sales:sales /service/api/services/sales-api/sales-api /service/sales-api
+COPY --from=build_sales --chown=sales:sales /service/api/services/sales/sales /service/sales
 COPY --from=build_sales --chown=sales:sales /service/api/tooling/sales-admin/sales-admin /service/sales-admin
 WORKDIR /service
 USER sales
-CMD ["./sales-api"]
+CMD ["./sales"]
 
 LABEL org.opencontainers.image.created="${BUILD_DATE}" \
-      org.opencontainers.image.title="sales-api" \
+      org.opencontainers.image.title="sales" \
       org.opencontainers.image.authors="Adil Kanzitdinov <adil@codecrafters.com>" \
       org.opencontainers.image.source="https://github.com/warlck/food-flow/tree/master" \
       org.opencontainers.image.revision="${BUILD_REF}" \

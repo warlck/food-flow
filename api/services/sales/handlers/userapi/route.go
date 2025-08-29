@@ -5,6 +5,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/warlck/food-flow/app/sdk/auth"
+	"github.com/warlck/food-flow/app/sdk/authclient"
 	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/domain/userbus/stores/userdb"
@@ -17,7 +18,7 @@ type Config struct {
 	Build string
 	Log   *logger.Logger
 	DB    *sqlx.DB
-	Auth  *auth.Auth
+	Auth  *authclient.Client
 }
 
 // Routes adds specific routes for this group.

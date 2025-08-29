@@ -144,6 +144,7 @@ dev-apply:
 
 dev-restart:
 	kubectl rollout restart deployment $(SALES_APP) --namespace=$(NAMESPACE)
+	kubectl rollout restart deployment $(AUTH_APP) --namespace=$(NAMESPACE)
  
 dev-run: build dev-up dev-load dev-apply
 

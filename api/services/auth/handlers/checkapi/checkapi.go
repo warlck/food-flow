@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/warlck/food-flow/business/sdk/sqldb"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/web"
 )
@@ -57,11 +56,11 @@ func (a *api) readiness(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	status := "ok"
 	statusCode := http.StatusOK
 
-	if err := sqldb.StatusCheck(ctx, a.db); err != nil {
-		status = "db not ready"
-		statusCode = http.StatusInternalServerError
-		a.log.Info(ctx, "readiness failure", "status", status)
-	}
+	// if err := sqldb.StatusCheck(ctx, a.db); err != nil {
+	// 	status = "db not ready"
+	// 	statusCode = http.StatusInternalServerError
+	// 	a.log.Info(ctx, "readiness failure", "status", status)
+	// }
 
 	data := struct {
 		Status string `json:"status"`

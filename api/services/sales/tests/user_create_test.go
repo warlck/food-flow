@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/warlck/food-flow/api/services/sales-api/handlers/userapi"
+	"github.com/warlck/food-flow/api/services/sales/handlers/userapi"
 	"github.com/warlck/food-flow/app/sdk/apitest"
 	"github.com/warlck/food-flow/app/sdk/errs"
 )

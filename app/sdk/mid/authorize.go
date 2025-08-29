@@ -7,13 +7,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/auth"
+	"github.com/warlck/food-flow/app/sdk/authclient"
 	"github.com/warlck/food-flow/business/web/response"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
 // Authorize is a middleware function that integrates with an authentication client
 // to validate user credentials and attach user data to the request context.
-func Authorize(a *auth.Auth, rule string) web.MidHandler {
+func Authorize(client *authclient.Client, rule string) web.MidHandler {
 	m := func(handler web.Handler) web.Handler {
 		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 			claims := GetClaims(ctx)
@@ -32,7 +33,12 @@ func Authorize(a *auth.Auth, rule string) web.MidHandler {
 				ctx = setUserID(ctx, userID)
 			}
 
-			if err := a.Authorize(ctx, claims, userID, rule); err != nil {
+			ath := authclient.Authorize{
+				UserID: userID,
+				Rule:   rule,
+				Claims: claims,
+			}
+			if err := client.Authorize(ctx, ath); err != nil {
 				return auth.NewAuthError("unauthorized: %v", err)
 			}
 

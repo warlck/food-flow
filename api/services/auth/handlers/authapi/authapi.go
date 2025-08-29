@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/auth"
+	"github.com/warlck/food-flow/app/sdk/authclient"
 	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/foundation/web"
@@ -52,10 +52,7 @@ func (a *api) authenticate(ctx context.Context, w http.ResponseWriter, r *http.R
 		return errs.New(errs.Unauthenticated, err)
 	}
 
-	resp := struct {
-		UserID uuid.UUID   `json:"userID"`
-		Claims auth.Claims `json:"claims"`
-	}{
+	resp := authclient.AuthenticateResp{
 		UserID: userID,
 		Claims: mid.GetClaims(ctx),
 	}
@@ -64,11 +61,7 @@ func (a *api) authenticate(ctx context.Context, w http.ResponseWriter, r *http.R
 }
 
 func (a *api) authorize(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	var auth struct {
-		Claims auth.Claims `json:"claims"`
-		UserID uuid.UUID   `json:"userID"`
-		Rule   string      `json:"rule"`
-	}
+	var auth authclient.Authorize
 	if err := web.Decode(r, &auth); err != nil {
 		return errs.New(errs.InvalidArgument, err)
 	}

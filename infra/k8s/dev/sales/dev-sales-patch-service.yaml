@@ -1,16 +1,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: sales-api
+  name: sales
   namespace: sales-system
 
 spec:
   type: ClusterIP
 
   ports:
-  - name: sales-api
+  - name: sales
     port: 3000
-    targetPort: sales-api
-  - name: sales-api-debug
+    targetPort: sales
+  - name: sales-debug
     port: 3010
-    targetPort: sales-api-debug
+    targetPort: sales-debug

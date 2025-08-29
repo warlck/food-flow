@@ -9,5 +9,5 @@ patches:
   - path: ./dev-sales-patch-service.yaml
 images:
   - name: sales-image
-    newName: localhost/food-flow/sales-api
+    newName: localhost/food-flow/sales
     newTag: 0.0.1
