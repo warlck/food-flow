@@ -33,7 +33,7 @@ func StartDB() (*docker.Container, error) {
 
 	fmt.Printf("Image:       %s\n", image)
 	fmt.Printf("ContainerID: %s\n", c.ID)
-	fmt.Printf("HostPort:    %s\n", c.HostPort)
+	fmt.Printf("HostPort:    %s\n", c.Host)
 
 	return c, nil
 }
@@ -79,7 +79,7 @@ func NewDatabase(t *testing.T, c *docker.Container, testName string) *Database {
 	dbM, err := sqldb.Open(sqldb.Config{
 		User:       "postgres",
 		Password:   "postgres",
-		HostPort:   c.HostPort,
+		Host:       c.Host,
 		Name:       "postgres",
 		DisableTLS: true,
 	})
@@ -110,7 +110,7 @@ func NewDatabase(t *testing.T, c *docker.Container, testName string) *Database {
 	db, err := sqldb.Open(sqldb.Config{
 		User:       "postgres",
 		Password:   "postgres",
-		HostPort:   c.HostPort,
+		Host:       c.Host,
 		Name:       dbName,
 		DisableTLS: true,
 	})

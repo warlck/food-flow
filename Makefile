@@ -136,6 +136,8 @@ dev-load:
 
 dev-apply:
 	kustomize build infra/k8s/dev/database | kubectl apply -f -
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/database
+	
 	kustomize build infra/k8s/dev/sales | kubectl apply -f -
 	kustomize build infra/k8s/dev/auth | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(SALES_APP) --timeout=120s --for=condition=Ready

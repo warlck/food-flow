@@ -125,7 +125,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 	db, err := sqldb.Open(sqldb.Config{
 		User:         cfg.DB.User,
 		Password:     cfg.DB.Password,
-		HostPort:     cfg.DB.HostPort,
+		Host:         cfg.DB.HostPort,
 		Name:         cfg.DB.Name,
 		MaxIdleConns: cfg.DB.MaxIdleConns,
 		MaxOpenConns: cfg.DB.MaxOpenConns,

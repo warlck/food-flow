@@ -34,7 +34,7 @@ var (
 type Config struct {
 	User         string
 	Password     string
-	HostPort     string
+	Host         string
 	Name         string
 	Schema       string
 	MaxIdleConns int
@@ -59,7 +59,7 @@ func Open(cfg Config) (*sqlx.DB, error) {
 	u := url.URL{
 		Scheme:   "postgres",
 		User:     url.UserPassword(cfg.User, cfg.Password),
-		Host:     cfg.HostPort,
+		Host:     cfg.Host,
 		Path:     cfg.Name,
 		RawQuery: q.Encode(),
 	}
@@ -85,13 +85,13 @@ func StatusCheck(ctx context.Context, db *sqlx.DB) error {
 		defer cancel()
 	}
 
-	var pingError error
 	for attempts := 1; ; attempts++ {
-		pingError = db.Ping()
-		if pingError == nil {
+		if err := db.Ping(); err == nil {
 			break
 		}
+
 		time.Sleep(time.Duration(attempts) * 100 * time.Millisecond)
+
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
@@ -103,7 +103,7 @@ func StatusCheck(ctx context.Context, db *sqlx.DB) error {
 
 	// Run a simple query to determine connectivity.
 	// Running this query forces a round trip through the database.
-	const q = `SELECT true`
+	const q = `SELECT TRUE`
 	var tmp bool
 	return db.QueryRowContext(ctx, q).Scan(&tmp)
 }
@@ -121,16 +121,18 @@ func NamedExecContext(ctx context.Context, log *logger.Logger, db sqlx.ExtContex
 
 	defer func() {
 		if err != nil {
-			if _, ok := data.(struct{}); ok {
+			switch data.(type) {
+			case struct{}:
 				log.Infoc(ctx, 6, "database.NamedExecContext", "query", q, "ERROR", err)
-			} else {
+			default:
 				log.Infoc(ctx, 5, "database.NamedExecContext", "query", q, "ERROR", err)
 			}
 		}
 	}()
 
 	if _, err := sqlx.NamedExecContext(ctx, db, query, data); err != nil {
-		if pqerr, ok := err.(*pgconn.PgError); ok {
+		var pqerr *pgconn.PgError
+		if errors.As(err, &pqerr) {
 			switch pqerr.Code {
 			case undefinedTable:
 				return ErrUndefinedTable
@@ -197,7 +199,8 @@ func namedQuerySlice[T any](ctx context.Context, log *logger.Logger, db sqlx.Ext
 	}
 
 	if err != nil {
-		if pqerr, ok := err.(*pgconn.PgError); ok && pqerr.Code == undefinedTable {
+		var pqerr *pgconn.PgError
+		if errors.As(err, &pqerr) && pqerr.Code == undefinedTable {
 			return ErrUndefinedTable
 		}
 		return err
@@ -269,7 +272,8 @@ func namedQueryStruct(ctx context.Context, log *logger.Logger, db sqlx.ExtContex
 	}
 
 	if err != nil {
-		if pqerr, ok := err.(*pgconn.PgError); ok && pqerr.Code == undefinedTable {
+		var pqerr *pgconn.PgError
+		if errors.As(err, &pqerr) && pqerr.Code == undefinedTable {
 			return ErrUndefinedTable
 		}
 		return err

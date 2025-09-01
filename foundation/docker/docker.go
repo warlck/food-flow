@@ -13,8 +13,8 @@ import (
 
 // Container tracks information about the docker container started for tests.
 type Container struct {
-	ID       string
-	HostPort string
+	ID   string
+	Host string
 }
 
 // StartContainer starts the specified container for running tests.
@@ -39,8 +39,8 @@ func StartContainer(image string, port string, dockerArgs []string, appArgs []st
 	}
 
 	c := Container{
-		ID:       id,
-		HostPort: net.JoinHostPort(hostIP, hostPort),
+		ID:   id,
+		Host: net.JoinHostPort(hostIP, hostPort),
 	}
 
 	return &c, nil

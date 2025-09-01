@@ -29,7 +29,7 @@ func Migrate() error {
 	dbConfig := sqldb.Config{
 		User:         "postgres",
 		Password:     "postgres",
-		HostPort:     "database-service.sales-system.svc.cluster.local",
+		Host:         "database-service.sales-system.svc.cluster.local",
 		Name:         "postgres",
 		MaxIdleConns: 2,
 		MaxOpenConns: 0,
