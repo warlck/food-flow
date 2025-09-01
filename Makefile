@@ -22,7 +22,7 @@ LOKI            := grafana/loki:3.4.0
 PROMTAIL        := grafana/promtail:3.4.0
 
 NAMESPACE       := sales-system
-SALES_APP       := sales-api
+SALES_APP       := sales
 AUTH_APP        := auth
 BASE_IMAGE_NAME := localhost/food-flow
 VERSION         := 0.0.1

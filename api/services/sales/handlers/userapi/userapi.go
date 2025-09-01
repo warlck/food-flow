@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/warlck/food-flow/app/sdk/authclient"
 	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/order"
@@ -19,14 +18,12 @@ import (
 // Handlers manages the set of user endpoints.
 type api struct {
 	userBus *userbus.Business
-	ac      *authclient.Client
 }
 
 // New constructs a handlers for route access.
-func newAPI(user *userbus.Business, ac *authclient.Client) *api {
+func newAPI(user *userbus.Business) *api {
 	return &api{
 		userBus: user,
-		ac:      ac,
 	}
 }
 

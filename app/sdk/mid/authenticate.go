@@ -17,10 +17,10 @@ import (
 
 // Authenticate is a middleware function that integrates with an authentication client
 // to validate user credentials and attach user data to the request context.
-func Authenticate(a *authclient.Client) web.MidHandler {
+func Authenticate(ac *authclient.Client) web.MidHandler {
 	m := func(handler web.Handler) web.Handler {
 		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-			resp, err := a.Authenticate(r.Context(), r.Header.Get("Authorization"))
+			resp, err := ac.Authenticate(r.Context(), r.Header.Get("Authorization"))
 			if err != nil {
 				return auth.NewAuthError("authentication failed: %v", err)
 			}

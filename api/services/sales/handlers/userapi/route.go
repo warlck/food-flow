@@ -29,7 +29,7 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.Auth)
 	ruleAdmin := mid.Authorize(cfg.Auth, auth.RuleAdminOnly)
 
-	api := newAPI(usrBus, cfg.Auth)
+	api := newAPI(usrBus)
 	app.HandleFunc(http.MethodPost, version, "/users", api.create, authen, ruleAdmin)
 	app.HandleFunc(http.MethodGet, version, "/users", api.query, authen, ruleAdmin)
 	app.HandleFunc(http.MethodGet, version, "/users/{user_id}", api.queryByID, authen)
