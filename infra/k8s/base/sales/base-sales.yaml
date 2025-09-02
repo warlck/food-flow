@@ -27,7 +27,7 @@ spec:
       initContainers:
       - name: init-migrate-seed
         image: sales-image
-        command: ['./sales-admin']
+        command: ['./admin']
       
       containers:
         - name: sales
@@ -64,7 +64,7 @@ spec:
             valueFrom:
               resourceFieldRef:
                 resource: limits.cpu
-                
+
           - name: GOGC
             value: "off"
 

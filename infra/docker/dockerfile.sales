@@ -15,7 +15,7 @@ ARG BUILD_REF
 COPY . /service
 
 # Build the admin binary.
-WORKDIR /service/api/tooling/sales-admin
+WORKDIR /service/api/tooling/admin
 RUN go build -ldflags "-X main.build=${BUILD_REF}"
 
 # Build the service binary.
@@ -28,10 +28,10 @@ FROM alpine:3.21
 ARG BUILD_DATE
 ARG BUILD_REF
 RUN addgroup -g 1000 -S sales && \
-    adduser -u 1000 -h /service -G sales -S sales
+    adduser -u 1000 -h /service -G sales -S sales 
 COPY --from=build_sales --chown=sales:sales /service/infra/keys/. /service/infra/keys/.
 COPY --from=build_sales --chown=sales:sales /service/api/services/sales/sales /service/sales
-COPY --from=build_sales --chown=sales:sales /service/api/tooling/sales-admin/sales-admin /service/sales-admin
+COPY --from=build_sales --chown=sales:sales /service/api/tooling/admin/admin /service/admin
 WORKDIR /service
 USER sales
 CMD ["./sales"]

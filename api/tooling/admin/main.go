@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"time"
 
@@ -13,15 +14,15 @@ import (
 )
 
 func main() {
-	// err := Migrate()
-	// if err != nil {
-	// 	log.Fatalln(err)
-	// }
-	err := gentoken()
+	err := Migrate()
 	if err != nil {
-		fmt.Println("ERROR:", err)
-		os.Exit(1)
+		log.Fatalln(err)
 	}
+	// err := gentoken()
+	// if err != nil {
+	// 	fmt.Println("ERROR:", err)
+	// 	os.Exit(1)
+	// }
 }
 
 // Migrate creates the schema in the database.
@@ -29,7 +30,7 @@ func Migrate() error {
 	dbConfig := sqldb.Config{
 		User:         "postgres",
 		Password:     "postgres",
-		Host:         "database-service.sales-system.svc.cluster.local",
+		Host:         "database-service",
 		Name:         "postgres",
 		MaxIdleConns: 2,
 		MaxOpenConns: 0,
