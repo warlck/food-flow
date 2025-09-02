@@ -16,6 +16,7 @@ import (
 	"github.com/warlck/food-flow/api/services/auth/mux"
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/app/sdk/debug"
+	"github.com/warlck/food-flow/business/sdk/sqldb"
 	"github.com/warlck/food-flow/foundation/keystore"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/web"
@@ -75,6 +76,15 @@ func run(ctx context.Context, log *logger.Logger) error {
 			ActiveKID  string `conf:"default:54bb2165-71e1-41a6-af3e-7da4a0e1e2c1"`
 			Issuer     string `conf:"default:food-flow-auth"`
 		}
+		DB struct {
+			User         string `conf:"default:postgres"`
+			Password     string `conf:"default:postgres,mask"`
+			Host         string `conf:"default:database-service"`
+			Name         string `conf:"default:postgres"`
+			MaxIdleConns int    `conf:"default:0"`
+			MaxOpenConns int    `conf:"default:0"`
+			DisableTLS   bool   `conf:"default:true"`
+		}
 	}{
 		Version: conf.Version{
 			Build: build,
@@ -107,6 +117,26 @@ func run(ctx context.Context, log *logger.Logger) error {
 	log.BuildInfo(ctx)
 
 	expvar.NewString("build").Set(cfg.Build)
+
+	// -------------------------------------------------------------------------
+	// Database Support
+
+	log.Info(ctx, "startup", "status", "initializing database support", "hostport", cfg.DB.Host)
+
+	db, err := sqldb.Open(sqldb.Config{
+		User:         cfg.DB.User,
+		Password:     cfg.DB.Password,
+		Host:         cfg.DB.Host,
+		Name:         cfg.DB.Name,
+		MaxIdleConns: cfg.DB.MaxIdleConns,
+		MaxOpenConns: cfg.DB.MaxOpenConns,
+		DisableTLS:   cfg.DB.DisableTLS,
+	})
+	if err != nil {
+		return fmt.Errorf("connecting to db: %w", err)
+	}
+
+	defer db.Close()
 
 	// -------------------------------------------------------------------------
 	// Initialize authentication support
@@ -168,6 +198,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 		Build: build,
 		Log:   log,
 		Auth:  ath,
+		DB:    db,
 	}
 
 	api := http.Server{

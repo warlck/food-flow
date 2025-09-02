@@ -78,9 +78,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 		DB struct {
 			User         string `conf:"default:postgres"`
 			Password     string `conf:"default:postgres,mask"`
-			HostPort     string `conf:"default:database-service.sales-system.svc.cluster.local"`
+			Host         string `conf:"default:database-service"`
 			Name         string `conf:"default:postgres"`
-			MaxIdleConns int    `conf:"default:2"`
+			MaxIdleConns int    `conf:"default:0"`
 			MaxOpenConns int    `conf:"default:0"`
 			DisableTLS   bool   `conf:"default:true"`
 		}
@@ -120,12 +120,12 @@ func run(ctx context.Context, log *logger.Logger) error {
 	// -------------------------------------------------------------------------
 	// Database Support
 
-	log.Info(ctx, "startup", "status", "initializing database support", "hostport", cfg.DB.HostPort)
+	log.Info(ctx, "startup", "status", "initializing database support", "hostport", cfg.DB.Host)
 
 	db, err := sqldb.Open(sqldb.Config{
 		User:         cfg.DB.User,
 		Password:     cfg.DB.Password,
-		Host:         cfg.DB.HostPort,
+		Host:         cfg.DB.Host,
 		Name:         cfg.DB.Name,
 		MaxIdleConns: cfg.DB.MaxIdleConns,
 		MaxOpenConns: cfg.DB.MaxOpenConns,

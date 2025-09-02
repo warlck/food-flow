@@ -59,6 +59,31 @@ spec:
                 resourceFieldRef:
                   resource: limits.cpu
 
+            - name: AUTH_DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: db_user
+                  optional: true
+            - name: AUTH_DB_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: db_password
+                  optional: true
+            - name: AUTH_DB_HOST_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: db_hostport
+                  optional: true
+            - name: AUTH_DB_DISABLE_TLS
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: db_disabletls
+                  optional: true
+
             - name: KUBERNETES_NAMESPACE
               valueFrom:
                 fieldRef:
@@ -75,7 +100,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-
 ---
 apiVersion: v1
 kind: Service

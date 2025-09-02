@@ -64,6 +64,15 @@ spec:
             valueFrom:
               resourceFieldRef:
                 resource: limits.cpu
+                
+          - name: GOGC
+            value: "off"
+
+          - name: GOMEMLIMIT
+            valueFrom:
+              resourceFieldRef:
+                resource: limits.memory
+
           - name: KUBERNETES_NAMESPACE    
             valueFrom:
               fieldRef:
@@ -80,6 +89,31 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: spec.nodeName
+          - name: SALES_DB_USER # here as an example for configuring a hosted db.
+            valueFrom:
+              configMapKeyRef:
+                name: app-config
+                key: db_user
+                optional: true
+          - name: SALES_DB_PASSWORD
+            valueFrom:
+              configMapKeyRef:
+                name: app-config
+                key: db_password
+                optional: true
+          - name: SALES_DB_HOST_PORT
+            valueFrom:
+              configMapKeyRef:
+                name: app-config
+                key: db_hostport
+                optional: true
+          - name: SALES_DB_DISABLE_TLS
+            valueFrom:
+              configMapKeyRef:
+                name: app-config
+                key: db_disabletls
+                optional: true
+        
 
 
 ---

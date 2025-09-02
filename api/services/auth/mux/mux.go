@@ -3,6 +3,7 @@ package mux
 import (
 	"os"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/warlck/food-flow/api/services/auth/handlers/authapi"
 	"github.com/warlck/food-flow/api/services/auth/handlers/checkapi"
 	"github.com/warlck/food-flow/app/sdk/auth"
@@ -13,9 +14,10 @@ import (
 
 // Config contains all the mandatory systems required by handlers.
 type Config struct {
-	Build    string
-	Log      *logger.Logger
 	Auth     *auth.Auth
+	Build    string
+	DB       *sqlx.DB
+	Log      *logger.Logger
 	Shutdown chan os.Signal
 }
 
@@ -26,6 +28,7 @@ func WebAPI(cfg Config) *web.App {
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
 		Log:   cfg.Log,
+		DB:    cfg.DB,
 	})
 
 	authapi.Routes(app, authapi.Config{
