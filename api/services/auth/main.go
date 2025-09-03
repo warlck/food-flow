@@ -13,9 +13,11 @@ import (
 	"time"
 
 	"github.com/ardanlabs/conf/v3"
-	"github.com/warlck/food-flow/api/services/auth/mux"
+
+	"github.com/warlck/food-flow/api/services/auth/build/all"
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/app/sdk/debug"
+	"github.com/warlck/food-flow/app/sdk/mux"
 	"github.com/warlck/food-flow/business/sdk/sqldb"
 	"github.com/warlck/food-flow/foundation/keystore"
 	"github.com/warlck/food-flow/foundation/logger"
@@ -203,7 +205,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,
-		Handler:      mux.WebAPI(cfgMux),
+		Handler:      mux.WebAPI(cfgMux, all.Routes()),
 		ReadTimeout:  cfg.Web.ReadTimeout,
 		WriteTimeout: cfg.Web.WriteTimeout,
 		IdleTimeout:  cfg.Web.IdleTimeout,

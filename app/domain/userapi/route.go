@@ -15,10 +15,10 @@ import (
 
 // Config contains all the mandatory systems required by handlers.
 type Config struct {
-	Build string
-	Log   *logger.Logger
-	DB    *sqlx.DB
-	Auth  *authclient.Client
+	Build      string
+	Log        *logger.Logger
+	DB         *sqlx.DB
+	AuthClient *authclient.Client
 }
 
 // Routes adds specific routes for this group.
@@ -26,8 +26,8 @@ func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
 	usrBus := userbus.NewBusiness(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB))
-	authen := mid.Authenticate(cfg.Auth)
-	ruleAdmin := mid.Authorize(cfg.Auth, auth.RuleAdminOnly)
+	authen := mid.Authenticate(cfg.AuthClient)
+	ruleAdmin := mid.Authorize(cfg.AuthClient, auth.RuleAdminOnly)
 
 	api := newAPI(usrBus)
 	app.HandleFunc(http.MethodPost, version, "/users", api.create, authen, ruleAdmin)

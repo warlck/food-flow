@@ -3,7 +3,7 @@ package tests
 import (
 	"time"
 
-	"github.com/warlck/food-flow/api/services/sales/handlers/userapi"
+	"github.com/warlck/food-flow/app/domain/userapi"
 	"github.com/warlck/food-flow/business/domain/userbus"
 )
 
