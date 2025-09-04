@@ -2,13 +2,12 @@ package mid
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/app/sdk/authclient"
-	"github.com/warlck/food-flow/business/web/response"
+	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
@@ -20,7 +19,7 @@ func Authorize(client *authclient.Client, rule string) web.MidHandler {
 			claims := GetClaims(ctx)
 
 			if claims.Subject == "" {
-				return auth.NewAuthError("unauthorized: no claims provided")
+				return errs.New(errs.Unauthenticated, auth.NewAuthError("unauthorized: no claims provided"))
 			}
 
 			var userID uuid.UUID
@@ -28,7 +27,7 @@ func Authorize(client *authclient.Client, rule string) web.MidHandler {
 			if id != "" {
 				userID, err := uuid.Parse(id)
 				if err != nil {
-					return response.NewError(errors.New("invalid userID"), http.StatusBadRequest)
+					return errs.New(errs.Unauthenticated, err)
 				}
 				ctx = setUserID(ctx, userID)
 			}
@@ -39,7 +38,7 @@ func Authorize(client *authclient.Client, rule string) web.MidHandler {
 				Claims: claims,
 			}
 			if err := client.Authorize(ctx, ath); err != nil {
-				return auth.NewAuthError("unauthorized: %v", err)
+				return errs.New(errs.Unauthenticated, err)
 			}
 
 			return handler(ctx, w, r)

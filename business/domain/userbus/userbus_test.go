@@ -190,7 +190,7 @@ func query(db *dbtest.Database, sd dbtest.SeedData) []unittest.Table {
 			ExpResp: usrs,
 			ExcFunc: func(ctx context.Context) any {
 				filter := userbus.QueryFilter{
-					Name: dbtest.StringPointer("Name"),
+					Name: dbtest.NamePointer("Name"),
 				}
 
 				resp, err := db.BusDomain.User.Query(ctx, filter, userbus.DefaultOrderBy, 1, 10)

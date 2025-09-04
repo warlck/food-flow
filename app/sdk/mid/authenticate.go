@@ -22,7 +22,7 @@ func Authenticate(ac *authclient.Client) web.MidHandler {
 		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 			resp, err := ac.Authenticate(r.Context(), r.Header.Get("Authorization"))
 			if err != nil {
-				return auth.NewAuthError("authentication failed: %v", err)
+				return errs.New(errs.Unauthenticated, err)
 			}
 			ctx = setClaims(ctx, resp.Claims)
 			return handler(ctx, w, r)

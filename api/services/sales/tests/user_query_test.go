@@ -9,8 +9,8 @@ import (
 	"github.com/warlck/food-flow/app/domain/userapi"
 	"github.com/warlck/food-flow/app/sdk/apitest"
 	"github.com/warlck/food-flow/app/sdk/errs"
+	"github.com/warlck/food-flow/app/sdk/query"
 	"github.com/warlck/food-flow/business/domain/userbus"
-	"github.com/warlck/food-flow/business/web/page"
 )
 
 func query200(sd apitest.SeedData) []apitest.Table {
@@ -35,8 +35,8 @@ func query200(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
-			GotResp:    &page.Document[userapi.User]{},
-			ExpResp: &page.Document[userapi.User]{
+			GotResp:    &query.Result[userapi.User]{},
+			ExpResp: &query.Result[userapi.User]{
 				Page:        1,
 				RowsPerPage: 10,
 				Total:       len(usrs),

@@ -11,7 +11,7 @@ import (
 	"github.com/warlck/food-flow/app/sdk/query"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/order"
-	"github.com/warlck/food-flow/business/web/page"
+	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
@@ -71,7 +71,7 @@ func (a *api) query(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		return errs.NewFieldErrors("order", err)
 	}
 
-	usrs, err := a.userBus.Query(ctx, filter, orderBy, pg.Number, pg.RowsPerPage)
+	usrs, err := a.userBus.Query(ctx, filter, orderBy, pg.Number(), pg.RowsPerPage())
 	if err != nil {
 		return errs.Newf(errs.Internal, "query: %s", err)
 	}
@@ -91,14 +91,11 @@ func (a *api) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		return response.NewError(err, http.StatusBadRequest)
+		return errs.NewFieldErrors("user_id", err)
 	}
 
 	usr, err := a.userBus.QueryByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, userbus.ErrNotFound) {
-			return response.NewError(err, http.StatusNotFound)
-		}
 		return fmt.Errorf("querybyid: userID[%s]: %w", userID, err)
 	}
 

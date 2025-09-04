@@ -14,6 +14,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/userbus/stores/userdb"
 	"github.com/warlck/food-flow/business/sdk/migrate"
 	"github.com/warlck/food-flow/business/sdk/sqldb"
+	"github.com/warlck/food-flow/business/types/name"
 	"github.com/warlck/food-flow/foundation/docker"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/web"
@@ -178,4 +179,12 @@ func FloatPointer(f float64) *float64 {
 // useful in some tests.
 func BoolPointer(b bool) *bool {
 	return &b
+}
+
+// NamePointer is a helper to get a *Name from a string. It's in the tests
+// package because we normally don't want to deal with pointers to basic types
+// but it's useful in some tests.
+func NamePointer(value string) *name.Name {
+	name := name.MustParse(value)
+	return &name
 }
