@@ -8,10 +8,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
+	"github.com/warlck/food-flow/app/sdk/query"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/order"
 	"github.com/warlck/food-flow/business/web/page"
-	"github.com/warlck/food-flow/business/web/response"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
@@ -31,18 +31,18 @@ func newAPI(user *userbus.Business) *api {
 func (a *api) create(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	var app NewUser
 	if err := web.Decode(r, &app); err != nil {
-		return response.NewError(err, http.StatusBadRequest)
+		return errs.New(errs.InvalidArgument, err)
 	}
 
 	nb, err := toBusNewUser(app)
 	if err != nil {
-		return response.NewError(err, http.StatusBadRequest)
+		return errs.New(errs.InvalidArgument, err)
 	}
 
 	usr, err := a.userBus.Create(ctx, nb)
 	if err != nil {
 		if errors.Is(err, userbus.ErrUniqueEmail) {
-			return response.NewError(err, http.StatusConflict)
+			return errs.New(errs.Aborted, userbus.ErrUniqueEmail)
 		}
 		return fmt.Errorf("create: usr[%+v]: %w", usr, err)
 	}
@@ -54,21 +54,21 @@ func (a *api) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 func (a *api) query(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	qp, err := parseQueryParams(r)
 	if err != nil {
-		return response.NewError(err, http.StatusBadRequest)
+		return errs.New(errs.InvalidArgument, err)
 	}
 	pg, err := page.Parse(qp.Page, qp.Rows)
 	if err != nil {
-		return response.NewError(err, http.StatusBadRequest)
+		return errs.NewFieldErrors("page", err)
 	}
 
 	filter, err := parseFilter(qp)
 	if err != nil {
-		return response.NewError(err, http.StatusBadRequest)
+		return err.(*errs.Error)
 	}
 
 	orderBy, err := order.Parse(orderByFields, qp.OrderBy, defaultOrderBy)
 	if err != nil {
-		return response.NewError(err, http.StatusBadRequest)
+		return errs.NewFieldErrors("order", err)
 	}
 
 	usrs, err := a.userBus.Query(ctx, filter, orderBy, pg.Number, pg.RowsPerPage)
@@ -81,7 +81,7 @@ func (a *api) query(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		return errs.Newf(errs.Internal, "count: %s", err)
 	}
 
-	users := page.NewDocument(toAppUsers(usrs), total, pg.Number, pg.RowsPerPage)
+	users := query.NewResult(toAppUsers(usrs), total, pg)
 	return web.Respond(ctx, w, users, http.StatusOK)
 }
 

@@ -7,20 +7,7 @@ import (
 
 	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/business/domain/userbus"
-	"github.com/warlck/food-flow/foundation/validate"
 )
-
-// QueryParams represents the set of possible query strings.
-type QueryParams struct {
-	Page             string
-	Rows             string
-	OrderBy          string
-	ID               string
-	Name             string
-	Email            string
-	StartCreatedDate string
-	EndCreatedDate   string
-}
 
 // User represents information about an individual user.
 type User struct {
@@ -101,7 +88,7 @@ func toBusNewUser(app NewUser) (userbus.NewUser, error) {
 
 // Validate checks the data in the model is considered clean.
 func (app NewUser) Validate() error {
-	if err := validate.Check(app); err != nil {
+	if err := errs.Check(app); err != nil {
 		return errs.Newf(errs.FailedPrecondition, "validate: %s", err)
 	}
 
@@ -166,7 +153,7 @@ func toBusUpdateUser(app UpdateUser) (userbus.UpdateUser, error) {
 
 // Validate checks the data in the model is considered clean.
 func (app UpdateUser) Validate() error {
-	if err := validate.Check(app); err != nil {
+	if err := errs.Check(app); err != nil {
 		return errs.Newf(errs.FailedPrecondition, "validate: %s", err)
 	}
 

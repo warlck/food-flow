@@ -20,7 +20,7 @@ var (
 	ErrAuthenticationFailure = errors.New("authentication failed")
 )
 
-// Storer interface declares the behavior this package needs to perists and
+// Storer interface declares the behavior this package needs to perist and
 // retrieve data.
 type Storer interface {
 	Create(ctx context.Context, usr User) error
@@ -124,9 +124,6 @@ func (b *Business) Delete(ctx context.Context, usr User) error {
 
 // Query retrieves a list of existing users.
 func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, pageNumber int, rowsPerPage int) ([]User, error) {
-	if err := filter.Validate(); err != nil {
-		return nil, err
-	}
 
 	users, err := b.storer.Query(ctx, filter, orderBy, pageNumber, rowsPerPage)
 	if err != nil {
@@ -138,10 +135,6 @@ func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.
 
 // Count returns the total number of users.
 func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
-	if err := filter.Validate(); err != nil {
-		return 0, err
-	}
-
 	return b.storer.Count(ctx, filter)
 }
 
