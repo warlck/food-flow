@@ -8,13 +8,14 @@ import (
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
+	"github.com/warlck/food-flow/business/types/role"
 )
 
 func userSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, error) {
 	ctx := context.Background()
 	busDomain := db.BusDomain
 
-	usrs, err := userbus.TestSeedUsers(ctx, 2, userbus.RoleAdmin, busDomain.User)
+	usrs, err := userbus.TestSeedUsers(ctx, 2, role.Admin, busDomain.User)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
 	}
@@ -31,7 +32,7 @@ func userSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, error)
 
 	// -------------------------------------------------------------------------
 
-	usrs, err = userbus.TestSeedUsers(ctx, 3, userbus.RoleUser, busDomain.User)
+	usrs, err = userbus.TestSeedUsers(ctx, 3, role.User, busDomain.User)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
 	}

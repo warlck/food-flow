@@ -188,3 +188,11 @@ func NamePointer(value string) *name.Name {
 	name := name.MustParse(value)
 	return &name
 }
+
+// NameNullPointer is a helper to get a *EmptyName from a string. It's in the tests
+// package because we normally don't want to deal with pointers to basic types
+// but it's useful in some tests.
+func NameNullPointer(value string) *name.Null {
+	name := name.MustParseNull(value)
+	return &name
+}

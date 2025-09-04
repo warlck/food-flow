@@ -99,7 +99,7 @@ func Token(db *dbtest.Database, ath *auth.Auth, email string) string {
 	// Hacking this because we need to integrate the userbus package into
 	// the auth package and fix auth middleware.
 	roles := []string{
-		dbUsr.Roles[0].Name(),
+		dbUsr.Roles[0].String(),
 	}
 
 	claims := auth.Claims{

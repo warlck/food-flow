@@ -16,6 +16,8 @@ import (
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
 	"github.com/warlck/food-flow/business/sdk/unittest"
+	"github.com/warlck/food-flow/business/types/name"
+	"github.com/warlck/food-flow/business/types/role"
 	"github.com/warlck/food-flow/foundation/docker"
 )
 
@@ -76,7 +78,7 @@ func userSeedData(db *dbtest.Database) (dbtest.SeedData, error) {
 	ctx := context.Background()
 	busDomain := db.BusDomain
 
-	usrs, err := userbus.TestSeedUsers(ctx, 2, userbus.RoleAdmin, busDomain.User)
+	usrs, err := userbus.TestSeedUsers(ctx, 2, role.Admin, busDomain.User)
 	if err != nil {
 		return dbtest.SeedData{}, fmt.Errorf("seeding users : %w", err)
 	}
@@ -91,7 +93,7 @@ func userSeedData(db *dbtest.Database) (dbtest.SeedData, error) {
 
 	// -------------------------------------------------------------------------
 
-	usrs, err = userbus.TestSeedUsers(ctx, 2, userbus.RoleUser, busDomain.User)
+	usrs, err = userbus.TestSeedUsers(ctx, 2, role.User, busDomain.User)
 	if err != nil {
 		return dbtest.SeedData{}, fmt.Errorf("seeding users : %w", err)
 	}
@@ -122,18 +124,18 @@ func create(db *dbtest.Database) []unittest.Table {
 		{
 			Name: "basic",
 			ExpResp: userbus.User{
-				Name:       "Adil Zitdinov",
+				Name:       name.MustParse("Adil Zitdinov"),
 				Email:      *email,
-				Roles:      []userbus.Role{userbus.RoleAdmin},
-				Department: "IT",
+				Roles:      []role.Role{role.Admin},
+				Department: name.MustParseNull("IT"),
 				Enabled:    true,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				nu := userbus.NewUser{
-					Name:       "Adil Zitdinov",
+					Name:       name.MustParse("Adil Zitdinov"),
 					Email:      *email,
-					Roles:      []userbus.Role{userbus.RoleAdmin},
-					Department: "IT",
+					Roles:      []role.Role{role.Admin},
+					Department: name.MustParseNull("IT"),
 					Password:   "123",
 				}
 
@@ -264,19 +266,19 @@ func update(db *dbtest.Database, sd dbtest.SeedData) []unittest.Table {
 			Name: "basic",
 			ExpResp: userbus.User{
 				ID:          sd.Users[0].ID,
-				Name:        "Adil Zitdinov",
+				Name:        name.MustParse("Adil Zitdinov"),
 				Email:       *email,
-				Roles:       []userbus.Role{userbus.RoleAdmin},
-				Department:  "IT",
+				Roles:       []role.Role{role.Admin},
+				Department:  name.MustParseNull("IT"),
 				Enabled:     true,
 				DateCreated: sd.Users[0].DateCreated,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				uu := userbus.UpdateUser{
-					Name:       dbtest.StringPointer("Adil Zitdinov"),
+					Name:       dbtest.NamePointer("Adil Zitdinov"),
 					Email:      email,
-					Roles:      []userbus.Role{userbus.RoleAdmin},
-					Department: dbtest.StringPointer("IT"),
+					Roles:      []role.Role{role.Admin},
+					Department: dbtest.NameNullPointer("IT"),
 					Password:   dbtest.StringPointer("1234"),
 				}
 

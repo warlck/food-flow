@@ -5,24 +5,19 @@ import (
 
 	"github.com/warlck/food-flow/app/domain/userapi"
 	"github.com/warlck/food-flow/business/domain/userbus"
+	"github.com/warlck/food-flow/business/types/role"
 )
 
-func toAppUser(usr userbus.User) userapi.User {
-	roles := make([]string, len(usr.Roles))
-	for i, role := range usr.Roles {
-		roles[i] = role.Name()
-	}
-
+func toAppUser(bus userbus.User) userapi.User {
 	return userapi.User{
-		ID:           usr.ID.String(),
-		Name:         usr.Name,
-		Email:        usr.Email.Address,
-		Roles:        roles,
-		PasswordHash: nil, // This field is not marshalled.
-		Department:   usr.Department,
-		Enabled:      usr.Enabled,
-		DateCreated:  usr.DateCreated.Format(time.RFC3339),
-		DateUpdated:  usr.DateUpdated.Format(time.RFC3339),
+		ID:          bus.ID.String(),
+		Name:        bus.Name.String(),
+		Email:       bus.Email.Address,
+		Roles:       role.ParseToString(bus.Roles),
+		Department:  bus.Department.String(),
+		Enabled:     bus.Enabled,
+		DateCreated: bus.DateCreated.Format(time.RFC3339),
+		DateUpdated: bus.DateUpdated.Format(time.RFC3339),
 	}
 }
 
@@ -35,7 +30,7 @@ func toAppUsers(users []userbus.User) []userapi.User {
 	return items
 }
 
-func toAppUserPtr(usr userbus.User) *userapi.User {
-	appUsr := toAppUser(usr)
+func toAppUserPtr(bus userbus.User) *userapi.User {
+	appUsr := toAppUser(bus)
 	return &appUsr
 }
