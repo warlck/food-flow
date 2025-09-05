@@ -8,12 +8,12 @@ import (
 	"github.com/warlck/food-flow/business/domain/userbus"
 )
 
-func applyFilter(filter userbus.QueryFilter, data map[string]interface{}, buf *bytes.Buffer) {
+func applyFilter(filter userbus.QueryFilter, data map[string]any, buf *bytes.Buffer) {
 	var wc []string
 
 	if filter.ID != nil {
 		data["user_id"] = *filter.ID
-		wc = append(wc, "user_id = :user_id") 	
+		wc = append(wc, "user_id = :user_id")
 	}
 
 	if filter.Name != nil {

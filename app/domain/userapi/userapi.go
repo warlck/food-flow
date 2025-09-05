@@ -71,7 +71,7 @@ func (a *api) query(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		return errs.NewFieldErrors("order", err)
 	}
 
-	usrs, err := a.userBus.Query(ctx, filter, orderBy, pg.Number(), pg.RowsPerPage())
+	usrs, err := a.userBus.Query(ctx, filter, orderBy, pg)
 	if err != nil {
 		return errs.Newf(errs.Internal, "query: %s", err)
 	}

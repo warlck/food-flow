@@ -12,8 +12,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/order"
+	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/business/sdk/sqldb"
-	"github.com/warlck/food-flow/business/sdk/sqldb/dbarray"
 	"github.com/warlck/food-flow/foundation/logger"
 )
 
@@ -97,10 +97,10 @@ func (s *Store) Delete(ctx context.Context, usr userbus.User) error {
 }
 
 // Query retrieves a list of existing users from the database.
-func (s *Store) Query(ctx context.Context, filter userbus.QueryFilter, orderBy order.By, pageNumber int, rowsPerPage int) ([]userbus.User, error) {
-	data := map[string]interface{}{
-		"offset":        (pageNumber - 1) * rowsPerPage,
-		"rows_per_page": rowsPerPage,
+func (s *Store) Query(ctx context.Context, filter userbus.QueryFilter, orderBy order.By, page page.Page) ([]userbus.User, error) {
+	data := map[string]any{
+		"offset":        (page.Number() - 1) * page.RowsPerPage(),
+		"rows_per_page": page.RowsPerPage(),
 	}
 
 	const q = `
@@ -130,7 +130,7 @@ func (s *Store) Query(ctx context.Context, filter userbus.QueryFilter, orderBy o
 
 // Count returns the total number of users in the DB.
 func (s *Store) Count(ctx context.Context, filter userbus.QueryFilter) (int, error) {
-	data := map[string]interface{}{}
+	data := map[string]any{}
 
 	const q = `
 	SELECT
@@ -176,38 +176,6 @@ func (s *Store) QueryByID(ctx context.Context, userID uuid.UUID) (userbus.User, 
 	}
 
 	return toBusUser(dbUsr)
-}
-
-// QueryByIDs gets the specified users from the database.
-func (s *Store) QueryByIDs(ctx context.Context, userIDs []uuid.UUID) ([]userbus.User, error) {
-	ids := make([]string, len(userIDs))
-	for i, userID := range userIDs {
-		ids[i] = userID.String()
-	}
-
-	data := struct {
-		ID any `db:"user_id"`
-	}{
-		ID: dbarray.Array(ids),
-	}
-
-	const q = `
-	SELECT
-        user_id, name, email, password_hash, roles, department, enabled, date_created, date_updated
-	FROM
-		users
-	WHERE
-		user_id = ANY(:user_id)`
-
-	var dbUsrs []user
-	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbUsrs); err != nil {
-		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return nil, userbus.ErrNotFound
-		}
-		return nil, fmt.Errorf("db: %w", err)
-	}
-
-	return toBusUsers(dbUsrs)
 }
 
 // QueryByEmail gets the specified user from the database by email.

@@ -15,6 +15,7 @@ import (
 
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
+	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/business/sdk/unittest"
 	"github.com/warlck/food-flow/business/types/name"
 	"github.com/warlck/food-flow/business/types/role"
@@ -195,7 +196,7 @@ func query(db *dbtest.Database, sd dbtest.SeedData) []unittest.Table {
 					Name: dbtest.NamePointer("Name"),
 				}
 
-				resp, err := db.BusDomain.User.Query(ctx, filter, userbus.DefaultOrderBy, 1, 10)
+				resp, err := db.BusDomain.User.Query(ctx, filter, userbus.DefaultOrderBy, page.MustParse("1", "10"))
 				if err != nil {
 					return err
 				}
