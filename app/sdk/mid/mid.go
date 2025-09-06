@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/auth"
+	"github.com/warlck/food-flow/business/domain/userbus"
 )
 
 type ctxKey int
@@ -14,6 +15,7 @@ type ctxKey int
 const (
 	claimsKey ctxKey = iota + 1
 	userIDKey
+	userKey
 )
 
 // setClaims adds the claims to the context.
@@ -40,6 +42,20 @@ func GetUserID(ctx context.Context) (uuid.UUID, error) {
 	v, ok := ctx.Value(userIDKey).(uuid.UUID)
 	if !ok {
 		return uuid.UUID{}, errors.New("user id not found in context")
+	}
+
+	return v, nil
+}
+
+func setUser(ctx context.Context, usr userbus.User) context.Context {
+	return context.WithValue(ctx, userKey, usr)
+}
+
+// GetUser returns the user from the context.
+func GetUser(ctx context.Context) (userbus.User, error) {
+	v, ok := ctx.Value(userKey).(userbus.User)
+	if !ok {
+		return userbus.User{}, errors.New("user not found in context")
 	}
 
 	return v, nil

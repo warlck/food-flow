@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
+	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/app/sdk/query"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/order"
@@ -100,4 +101,65 @@ func (a *api) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	return web.Respond(ctx, w, toAppUser(usr), http.StatusOK)
+}
+
+func (a *api) update(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	var app UpdateUser
+	if err := web.Decode(r, &app); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	uu, err := toBusUpdateUser(app)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	usr, err := mid.GetUser(ctx)
+	if err != nil {
+		return errs.Newf(errs.Internal, "user missing in context: %s", err)
+	}
+
+	updUsr, err := a.userBus.Update(ctx, usr, uu)
+	if err != nil {
+		return errs.Newf(errs.Internal, "update: userID[%s] uu[%+v]: %s", usr.ID, uu, err)
+	}
+
+	return web.Respond(ctx, w, toAppUser(updUsr), http.StatusOK)
+}
+
+func (a *api) updateRole(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	var app UpdateUserRole
+	if err := web.Decode(r, &app); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	uu, err := toBusUpdateUserRole(app)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	usr, err := mid.GetUser(ctx)
+	if err != nil {
+		return errs.Newf(errs.Internal, "user missing in context: %s", err)
+	}
+
+	updUsr, err := a.userBus.Update(ctx, usr, uu)
+	if err != nil {
+		return errs.Newf(errs.Internal, "updaterole: userID[%s] uu[%+v]: %s", usr.ID, uu, err)
+	}
+
+	return web.Respond(ctx, w, toAppUser(updUsr), http.StatusOK)
+}
+
+func (a *api) delete(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	usr, err := mid.GetUser(ctx)
+	if err != nil {
+		return errs.Newf(errs.Internal, "userID missing in context: %s", err)
+	}
+
+	if err := a.userBus.Delete(ctx, usr); err != nil {
+		return errs.Newf(errs.Internal, "delete: userID[%s]: %s", usr.ID, err)
+	}
+
+	return nil
 }
