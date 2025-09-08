@@ -26,7 +26,7 @@ type queryParams struct {
 func parseQueryParams(r *http.Request) (queryParams, error) {
 	values := r.URL.Query()
 
-	filter := queryParams{
+	qp := queryParams{
 		Page:             values.Get("page"),
 		Rows:             values.Get("rows"),
 		OrderBy:          values.Get("orderBy"),
@@ -37,7 +37,7 @@ func parseQueryParams(r *http.Request) (queryParams, error) {
 		EndCreatedDate:   values.Get("end_created_date"),
 	}
 
-	return filter, nil
+	return qp, nil
 }
 
 func parseFilter(qp queryParams) (userbus.QueryFilter, error) {

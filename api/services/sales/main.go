@@ -17,6 +17,8 @@ import (
 	"github.com/warlck/food-flow/app/sdk/authclient"
 	"github.com/warlck/food-flow/app/sdk/debug"
 	"github.com/warlck/food-flow/app/sdk/mux"
+	"github.com/warlck/food-flow/business/domain/userbus"
+	"github.com/warlck/food-flow/business/domain/userbus/stores/userdb"
 	"github.com/warlck/food-flow/business/sdk/sqldb"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/web"
@@ -137,8 +139,11 @@ func run(ctx context.Context, log *logger.Logger) error {
 	}
 
 	defer db.Close()
+
 	// -------------------------------------------------------------------------
-	// Initialize authentication support
+	// Create Business Packages
+	userstore := userdb.NewStore(log, db)
+	userBus := userbus.NewBusiness(log, userstore)
 
 	// -------------------------------------------------------------------------
 	// Initialize authentication support
@@ -173,6 +178,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 			Log:        log,
 			AuthClient: authClient,
 			DB:         db,
+			BusConfig: mux.BusConfig{
+				UserBus: userBus,
+			},
 		}, all.Routes()),
 		ReadTimeout:  cfg.Web.ReadTimeout,
 		WriteTimeout: cfg.Web.WriteTimeout,

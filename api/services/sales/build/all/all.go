@@ -28,7 +28,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	userapi.Routes(app, userapi.Config{
 		AuthClient: cfg.AuthClient,
 		Build:      cfg.Build,
-		DB:         cfg.DB,
+		UserBus:    cfg.UserBus,
 		Log:        cfg.Log,
 	})
 }

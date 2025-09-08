@@ -60,7 +60,7 @@ func Authorize(client *authclient.Client, rule string) web.MidHandler {
 // user from the DB if a user id is specified in the call. Depending on the rule
 // specified, the userid from the claims may be compared with the specified
 // user id.
-func AuthorizeUser(client *authclient.Client, userBus userbus.Business, rule string) web.MidHandler {
+func AuthorizeUser(client *authclient.Client, userBus *userbus.Business, rule string) web.MidHandler {
 	m := func(handler web.Handler) web.Handler {
 		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 			id := web.Param(r, "user_id")

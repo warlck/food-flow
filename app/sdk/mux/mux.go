@@ -5,9 +5,14 @@ import (
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/app/sdk/authclient"
 	"github.com/warlck/food-flow/app/sdk/mid"
+	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/web"
 )
+
+type BusConfig struct {
+	UserBus *userbus.Business
+}
 
 // Config contains all the mandatory systems required by handlers.
 type Config struct {
@@ -16,6 +21,7 @@ type Config struct {
 	AuthClient *authclient.Client
 	DB         *sqlx.DB
 	Auth       *auth.Auth
+	BusConfig
 }
 
 // RouteAdder defines behavior that sets the routes to bind for an instance

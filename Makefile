@@ -244,6 +244,10 @@ token:
 	--user "admin@example.com:gophers" http://localhost:6000/v1/auth/token/54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
 
 
+users:
+	curl -i \
+	-H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/users?page=1&rows=2"
+	
 test-auth:
 	curl -il \
 	-H "Authorization: Bearer ${TOKEN}" "http://localhost:6000/v1/auth/authenticate"
