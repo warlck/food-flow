@@ -13,8 +13,9 @@ import (
 	"github.com/go-json-experiment/json"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/warlck/food-flow/app/sdk/auth"
-	"github.com/warlck/food-flow/business/domain/userbus/stores/userdb"
+	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
+	"github.com/warlck/food-flow/business/types/role"
 )
 
 // Test contains functions for executing an api test.
@@ -22,15 +23,6 @@ type Test struct {
 	DB   *dbtest.Database
 	Auth *auth.Auth
 	mux  http.Handler
-}
-
-// New constructs a Test value for running api tests.
-func New(db *dbtest.Database, ath *auth.Auth, mux http.Handler) *Test {
-	return &Test{
-		DB:   db,
-		Auth: ath,
-		mux:  mux,
-	}
 }
 
 // Run performs the actual test logic based on the table data.
@@ -85,31 +77,23 @@ func (at *Test) Run(t *testing.T, table []Table, testName string) {
 }
 
 // =============================================================================
-
 // Token generates an authenticated token for a user.
-func Token(db *dbtest.Database, ath *auth.Auth, email string) string {
+func Token(userBus *userbus.Business, ath *auth.Auth, email string) string {
 	addr, _ := mail.ParseAddress(email)
 
-	store := userdb.NewStore(db.Log, db.DB)
-	dbUsr, err := store.QueryByEmail(context.Background(), *addr)
+	dbUsr, err := userBus.QueryByEmail(context.Background(), *addr)
 	if err != nil {
 		return ""
-	}
-
-	// Hacking this because we need to integrate the userbus package into
-	// the auth package and fix auth middleware.
-	roles := []string{
-		dbUsr.Roles[0].String(),
 	}
 
 	claims := auth.Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   dbUsr.ID.String(),
-			Issuer:    "service api",
+			Issuer:    ath.Issuer(),
 			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 		},
-		Roles: roles,
+		Roles: role.ParseToString(dbUsr.Roles),
 	}
 
 	token, err := ath.GenerateToken(kid, claims)

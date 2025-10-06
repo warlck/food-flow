@@ -1,4 +1,4 @@
-package tests
+package userapi_test
 
 import (
 	"time"

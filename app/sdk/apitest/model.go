@@ -2,7 +2,7 @@ package apitest
 
 import "github.com/warlck/food-flow/business/domain/userbus"
 
-// User extends the dbtest user for api test support.
+// User extends the userbus.User with token for api test support.
 type User struct {
 	userbus.User
 	Token string
