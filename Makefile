@@ -11,10 +11,10 @@ SHELL = $(if $(wildcard $(SHELL_PATH)),/bin/ash,/bin/bash)
 # Define dependencies
 
 KIND_CLUSTER    := food-flow-cluster
-KIND            := kindest/node:v1.32.2
+KIND            := kindest/node:v1.34.0
 GOLANG          := golang:1.24
 ALPINE          := alpine:3.21
-POSTGRES        := postgres:17.4
+POSTGRES        := postgres:18
 GRAFANA         := grafana/grafana:11.6.0
 PROMETHEUS      := prom/prometheus:v3.2.0
 TEMPO           := grafana/tempo:2.7.0
@@ -117,7 +117,11 @@ dev-up:
 		--config infra/k8s/dev/kind-config.yaml
 
 	kubectl wait --timeout=120s --namespace=local-path-storage --for=condition=Available deployment/local-path-provisioner
-	kind load docker-image $(POSTGRES) --name $(KIND_CLUSTER)
+		
+# 	docker save $(POSTGRES) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & 
+# 	wait;
+
+
 
 
 
@@ -127,7 +131,7 @@ dev-down:
 # ------------------------------------------------------------------------------
 
 dev-load-db:
-	kind load docker-image $(POSTGRES) --name $(KIND_CLUSTER)
+	@echo "Note: Skipping image pre-load due to Kind/containerd issue. Image will be pulled directly by Kubernetes."
 
 dev-load:
 	kind load docker-image $(SALES_IMAGE) --name $(KIND_CLUSTER)
