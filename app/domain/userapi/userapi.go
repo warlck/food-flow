@@ -161,5 +161,6 @@ func (a *api) delete(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return errs.Newf(errs.Internal, "delete: userID[%s]: %s", usr.ID, err)
 	}
 
-	return nil
+	return web.Respond(ctx, w, struct{}{}, http.StatusNoContent)
+
 }
