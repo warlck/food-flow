@@ -1,0 +1,281 @@
+package restaurantbus_test
+
+import (
+	"context"
+	"fmt"
+	"sort"
+	"testing"
+	"time"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/warlck/food-flow/business/domain/restaurantbus"
+	"github.com/warlck/food-flow/business/sdk/dbtest"
+	"github.com/warlck/food-flow/business/sdk/page"
+	"github.com/warlck/food-flow/business/sdk/unittest"
+	"github.com/warlck/food-flow/business/types/name"
+)
+
+func Test_Restaurant(t *testing.T) {
+	t.Parallel()
+
+	db := dbtest.New(t, "Test_Restaurant")
+
+	sd, err := insertSeedData(db.BusDomain)
+	if err != nil {
+		t.Fatalf("Seeding error: %s", err)
+	}
+
+	// -------------------------------------------------------------------------
+
+	unittest.Run(t, query(db.BusDomain, sd), "query")
+	unittest.Run(t, create(db.BusDomain), "create")
+	unittest.Run(t, update(db.BusDomain, sd), "update")
+	unittest.Run(t, delete(db.BusDomain, sd), "delete")
+}
+
+// =============================================================================
+
+func insertSeedData(busDomain dbtest.BusDomain) (unittest.SeedData, error) {
+	ctx := context.Background()
+
+	rests, err := restaurantbus.TestSeedRestaurants(ctx, 4, busDomain.Restaurant)
+	if err != nil {
+		return unittest.SeedData{}, fmt.Errorf("seeding restaurants : %w", err)
+	}
+
+	tr1 := unittest.Restaurant{
+		Restaurant: rests[0],
+	}
+
+	tr2 := unittest.Restaurant{
+		Restaurant: rests[1],
+	}
+
+	tr3 := unittest.Restaurant{
+		Restaurant: rests[2],
+	}
+
+	tr4 := unittest.Restaurant{
+		Restaurant: rests[3],
+	}
+
+	// -------------------------------------------------------------------------
+
+	sd := unittest.SeedData{
+		Restaurants: []unittest.Restaurant{tr1, tr2, tr3, tr4},
+	}
+
+	return sd, nil
+}
+
+// =============================================================================
+
+func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
+	rests := make([]restaurantbus.Restaurant, 0, len(sd.Restaurants))
+
+	for _, rest := range sd.Restaurants {
+		rests = append(rests, rest.Restaurant)
+	}
+
+	sort.Slice(rests, func(i, j int) bool {
+		return rests[i].ID.String() <= rests[j].ID.String()
+	})
+
+	table := []unittest.Table{
+		{
+			Name:    "all",
+			ExpResp: rests,
+			ExcFunc: func(ctx context.Context) any {
+				filter := restaurantbus.QueryFilter{
+					Name: dbtest.NamePointer("Rest"),
+				}
+
+				resp, err := busDomain.Restaurant.Query(ctx, filter, restaurantbus.DefaultOrderBy, page.MustParse("1", "10"))
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.([]restaurantbus.Restaurant)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.([]restaurantbus.Restaurant)
+
+				for i := range gotResp {
+					if gotResp[i].DateCreated.Format(time.RFC3339) == expResp[i].DateCreated.Format(time.RFC3339) {
+						expResp[i].DateCreated = gotResp[i].DateCreated
+					}
+
+					if gotResp[i].DateUpdated.Format(time.RFC3339) == expResp[i].DateUpdated.Format(time.RFC3339) {
+						expResp[i].DateUpdated = gotResp[i].DateUpdated
+					}
+				}
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+		{
+			Name:    "byid",
+			ExpResp: sd.Restaurants[0].Restaurant,
+			ExcFunc: func(ctx context.Context) any {
+				resp, err := busDomain.Restaurant.QueryByID(ctx, sd.Restaurants[0].ID)
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(restaurantbus.Restaurant)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(restaurantbus.Restaurant)
+
+				if gotResp.DateCreated.Format(time.RFC3339) == expResp.DateCreated.Format(time.RFC3339) {
+					expResp.DateCreated = gotResp.DateCreated
+				}
+
+				if gotResp.DateUpdated.Format(time.RFC3339) == expResp.DateUpdated.Format(time.RFC3339) {
+					expResp.DateUpdated = gotResp.DateUpdated
+				}
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+
+	return table
+}
+
+func create(busDomain dbtest.BusDomain) []unittest.Table {
+	table := []unittest.Table{
+		{
+			Name: "basic",
+			ExpResp: restaurantbus.Restaurant{
+				Name:        name.MustParse("The Italian Place"),
+				Description: "Authentic Italian cuisine with traditional recipes",
+				Address:     "123 Pasta Lane",
+				Phone:       "+1-555-1234",
+				Email:       "info@italianplace.com",
+				ImageURL:    "italian.jpg",
+				Enabled:     true,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				nr := restaurantbus.NewRestaurant{
+					Name:        name.MustParse("The Italian Place"),
+					Description: "Authentic Italian cuisine with traditional recipes",
+					Address:     "123 Pasta Lane",
+					Phone:       "+1-555-1234",
+					Email:       "info@italianplace.com",
+					ImageURL:    "italian.jpg",
+				}
+
+				resp, err := busDomain.Restaurant.Create(ctx, nr)
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(restaurantbus.Restaurant)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(restaurantbus.Restaurant)
+
+				expResp.ID = gotResp.ID
+				expResp.DateCreated = gotResp.DateCreated
+				expResp.DateUpdated = gotResp.DateUpdated
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+
+	return table
+}
+
+func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
+	table := []unittest.Table{
+		{
+			Name: "basic",
+			ExpResp: restaurantbus.Restaurant{
+				ID:          sd.Restaurants[0].ID,
+				Name:        name.MustParse("Updated Rest Name"),
+				Description: "Updated description for this restaurant",
+				Address:     "456 New Street",
+				Phone:       "+1-555-9999",
+				Email:       "updated@example.com",
+				ImageURL:    "updated.jpg",
+				Enabled:     false,
+				DateCreated: sd.Restaurants[0].DateCreated,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				ur := restaurantbus.UpdateRestaurant{
+					Name:        ptr(name.MustParse("Updated Rest Name")),
+					Description: ptr("Updated description for this restaurant"),
+					Address:     ptr("456 New Street"),
+					Phone:       ptr("+1-555-9999"),
+					Email:       ptr("updated@example.com"),
+					ImageURL:    ptr("updated.jpg"),
+					Enabled:     ptr(false),
+				}
+
+				resp, err := busDomain.Restaurant.Update(ctx, sd.Restaurants[0].Restaurant, ur)
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(restaurantbus.Restaurant)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(restaurantbus.Restaurant)
+
+				expResp.DateUpdated = gotResp.DateUpdated
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+
+	return table
+}
+
+func delete(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
+	table := []unittest.Table{
+		{
+			Name:    "basic",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				if err := busDomain.Restaurant.Delete(ctx, sd.Restaurants[1].Restaurant); err != nil {
+					return err
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+
+	return table
+}
+
+// ptr is a helper function for getting the address of a value.
+func ptr[T any](v T) *T {
+	return &v
+}

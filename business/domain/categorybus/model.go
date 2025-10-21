@@ -11,7 +11,7 @@ import (
 type Category struct {
 	ID           uuid.UUID
 	Name         name.Name
-	Description  name.Null
+	Description  string
 	RestaurantID uuid.UUID
 	Enabled      bool
 	DateCreated  time.Time
@@ -21,13 +21,13 @@ type Category struct {
 // NewCategory contains information needed to create a new category.
 type NewCategory struct {
 	Name         name.Name
-	Description  name.Null
+	Description  string
 	RestaurantID uuid.UUID
 }
 
 // UpdateCategory contains information needed to update a category.
 type UpdateCategory struct {
 	Name        *name.Name
-	Description *name.Null
+	Description *string
 	Enabled     *bool
 }

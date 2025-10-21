@@ -17,6 +17,12 @@ import (
 	"github.com/warlck/food-flow/app/sdk/authclient"
 	"github.com/warlck/food-flow/app/sdk/debug"
 	"github.com/warlck/food-flow/app/sdk/mux"
+	"github.com/warlck/food-flow/business/domain/categorybus"
+	"github.com/warlck/food-flow/business/domain/categorybus/stores/categorydb"
+	"github.com/warlck/food-flow/business/domain/menuitembus"
+	"github.com/warlck/food-flow/business/domain/menuitembus/stores/menuitemdb"
+	"github.com/warlck/food-flow/business/domain/restaurantbus"
+	"github.com/warlck/food-flow/business/domain/restaurantbus/stores/restaurantdb"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/domain/userbus/stores/userdb"
 	"github.com/warlck/food-flow/business/sdk/sqldb"
@@ -145,9 +151,14 @@ func run(ctx context.Context, log *logger.Logger) error {
 	userstore := userdb.NewStore(log, db)
 	userBus := userbus.NewBusiness(log, userstore)
 
-	// Categories Biz Package
-	// MenuItem Biz Package
-	// Restaurant Biz packages
+	restaurantstore := restaurantdb.NewStore(log, db)
+	restaurantBus := restaurantbus.NewBusiness(log, restaurantstore)
+
+	categorystore := categorydb.NewStore(log, db)
+	categoryBus := categorybus.NewBusiness(log, categorystore)
+
+	menuitemstore := menuitemdb.NewStore(log, db)
+	menuitemBus := menuitembus.NewBusiness(log, menuitemstore)
 
 	// -------------------------------------------------------------------------
 	// Initialize authentication support
@@ -183,7 +194,10 @@ func run(ctx context.Context, log *logger.Logger) error {
 			AuthClient: authClient,
 			DB:         db,
 			BusConfig: mux.BusConfig{
-				UserBus: userBus,
+				UserBus:       userBus,
+				RestaurantBus: restaurantBus,
+				CategoryBus:   categoryBus,
+				MenuItemBus:   menuitemBus,
 			},
 		}, all.Routes()),
 		ReadTimeout:  cfg.Web.ReadTimeout,

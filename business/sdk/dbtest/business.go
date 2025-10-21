@@ -2,6 +2,12 @@ package dbtest
 
 import (
 	"github.com/jmoiron/sqlx"
+	"github.com/warlck/food-flow/business/domain/categorybus"
+	"github.com/warlck/food-flow/business/domain/categorybus/stores/categorydb"
+	"github.com/warlck/food-flow/business/domain/menuitembus"
+	"github.com/warlck/food-flow/business/domain/menuitembus/stores/menuitemdb"
+	"github.com/warlck/food-flow/business/domain/restaurantbus"
+	"github.com/warlck/food-flow/business/domain/restaurantbus/stores/restaurantdb"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/domain/userbus/stores/userdb"
 	"github.com/warlck/food-flow/foundation/logger"
@@ -9,7 +15,10 @@ import (
 
 // BusDomain represents all the business domain apis needed for testing.
 type BusDomain struct {
-	User *userbus.Business
+	User       *userbus.Business
+	Restaurant *restaurantbus.Business
+	Category   *categorybus.Business
+	MenuItem   *menuitembus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -17,7 +26,19 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	userStorage := userdb.NewStore(log, db)
 	userBus := userbus.NewBusiness(log, userStorage)
 
+	restaurantStorage := restaurantdb.NewStore(log, db)
+	restaurantBus := restaurantbus.NewBusiness(log, restaurantStorage)
+
+	categoryStorage := categorydb.NewStore(log, db)
+	categoryBus := categorybus.NewBusiness(log, categoryStorage)
+
+	menuItemStorage := menuitemdb.NewStore(log, db)
+	menuItemBus := menuitembus.NewBusiness(log, menuItemStorage)
+
 	return BusDomain{
-		User: userBus,
+		User:       userBus,
+		Restaurant: restaurantBus,
+		Category:   categoryBus,
+		MenuItem:   menuItemBus,
 	}
 }

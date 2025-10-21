@@ -33,7 +33,10 @@ func New(t *testing.T, testName string) *Test {
 		Log: db.Log,
 		DB:  db.DB,
 		BusConfig: mux.BusConfig{
-			UserBus: db.BusDomain.User,
+			UserBus:       db.BusDomain.User,
+			RestaurantBus: db.BusDomain.Restaurant,
+			CategoryBus:   db.BusDomain.Category,
+			MenuItemBus:   db.BusDomain.MenuItem,
 		},
 		Auth: auth,
 	}, authbuild.Routes()))
@@ -46,7 +49,10 @@ func New(t *testing.T, testName string) *Test {
 		Log: db.Log,
 		DB:  db.DB,
 		BusConfig: mux.BusConfig{
-			UserBus: db.BusDomain.User,
+			UserBus:       db.BusDomain.User,
+			RestaurantBus: db.BusDomain.Restaurant,
+			CategoryBus:   db.BusDomain.Category,
+			MenuItemBus:   db.BusDomain.MenuItem,
 		},
 		AuthClient: authClient,
 	}, salesbuild.Routes())

@@ -1,7 +1,6 @@
 package restaurantdb
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -11,33 +10,27 @@ import (
 )
 
 type restaurant struct {
-	ID          uuid.UUID      `db:"restaurant_id"`
-	Name        string         `db:"name"`
-	Description sql.NullString `db:"description"`
-	Address     string         `db:"address"`
-	Phone       string         `db:"phone"`
-	Email       string         `db:"email"`
-	ImageURL    sql.NullString `db:"image_url"`
-	Enabled     bool           `db:"enabled"`
-	DateCreated time.Time      `db:"date_created"`
-	DateUpdated time.Time      `db:"date_updated"`
+	ID          uuid.UUID `db:"restaurant_id"`
+	Name        string    `db:"name"`
+	Description string    `db:"description"`
+	Address     string    `db:"address"`
+	Phone       string    `db:"phone"`
+	Email       string    `db:"email"`
+	ImageURL    string    `db:"image_url"`
+	Enabled     bool      `db:"enabled"`
+	DateCreated time.Time `db:"date_created"`
+	DateUpdated time.Time `db:"date_updated"`
 }
 
 func toDBRestaurant(bus restaurantbus.Restaurant) restaurant {
 	return restaurant{
-		ID:   bus.ID,
-		Name: bus.Name.String(),
-		Description: sql.NullString{
-			String: bus.Description.String(),
-			Valid:  bus.Description.Valid(),
-		},
-		Address: bus.Address,
-		Phone:   bus.Phone,
-		Email:   bus.Email,
-		ImageURL: sql.NullString{
-			String: bus.ImageURL.String(),
-			Valid:  bus.ImageURL.Valid(),
-		},
+		ID:          bus.ID,
+		Name:        bus.Name.String(),
+		Description: bus.Description,
+		Address:     bus.Address,
+		Phone:       bus.Phone,
+		Email:       bus.Email,
+		ImageURL:    bus.ImageURL,
 		Enabled:     bus.Enabled,
 		DateCreated: bus.DateCreated.UTC(),
 		DateUpdated: bus.DateUpdated.UTC(),
@@ -50,24 +43,14 @@ func toBusRestaurant(db restaurant) (restaurantbus.Restaurant, error) {
 		return restaurantbus.Restaurant{}, fmt.Errorf("parse name: %w", err)
 	}
 
-	description, err := name.ParseNull(db.Description.String)
-	if err != nil {
-		return restaurantbus.Restaurant{}, fmt.Errorf("parse description: %w", err)
-	}
-
-	imageURL, err := name.ParseNull(db.ImageURL.String)
-	if err != nil {
-		return restaurantbus.Restaurant{}, fmt.Errorf("parse image_url: %w", err)
-	}
-
 	bus := restaurantbus.Restaurant{
 		ID:          db.ID,
 		Name:        nme,
-		Description: description,
+		Description: db.Description,
 		Address:     db.Address,
 		Phone:       db.Phone,
 		Email:       db.Email,
-		ImageURL:    imageURL,
+		ImageURL:    db.ImageURL,
 		Enabled:     db.Enabled,
 		DateCreated: db.DateCreated.In(time.Local),
 		DateUpdated: db.DateUpdated.In(time.Local),

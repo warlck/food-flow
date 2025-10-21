@@ -36,11 +36,11 @@ func toAppMenuItem(bus menuitembus.MenuItem) MenuItem {
 	return MenuItem{
 		ID:           bus.ID.String(),
 		Name:         bus.Name.String(),
-		Description:  bus.Description.String(),
+		Description:  bus.Description,
 		Price:        bus.Price.Value(),
 		CategoryID:   bus.CategoryID.String(),
 		RestaurantID: bus.RestaurantID.String(),
-		ImageURL:     bus.ImageURL.String(),
+		ImageURL:     bus.ImageURL,
 		Available:    bus.Available,
 		DateCreated:  bus.DateCreated.Format(time.RFC3339),
 		DateUpdated:  bus.DateUpdated.Format(time.RFC3339),
@@ -88,11 +88,6 @@ func toBusNewMenuItem(app NewMenuItem) (menuitembus.NewMenuItem, error) {
 		return menuitembus.NewMenuItem{}, fmt.Errorf("parse name: %w", err)
 	}
 
-	description, err := name.ParseNull(app.Description)
-	if err != nil {
-		return menuitembus.NewMenuItem{}, fmt.Errorf("parse description: %w", err)
-	}
-
 	price, err := money.Parse(app.Price)
 	if err != nil {
 		return menuitembus.NewMenuItem{}, fmt.Errorf("parse price: %w", err)
@@ -108,18 +103,13 @@ func toBusNewMenuItem(app NewMenuItem) (menuitembus.NewMenuItem, error) {
 		return menuitembus.NewMenuItem{}, fmt.Errorf("parse restaurantID: %w", err)
 	}
 
-	imageURL, err := name.ParseNull(app.ImageURL)
-	if err != nil {
-		return menuitembus.NewMenuItem{}, fmt.Errorf("parse imageURL: %w", err)
-	}
-
 	bus := menuitembus.NewMenuItem{
 		Name:         nme,
-		Description:  description,
+		Description:  app.Description,
 		Price:        price,
 		CategoryID:   categoryID,
 		RestaurantID: restaurantID,
-		ImageURL:     imageURL,
+		ImageURL:     app.ImageURL,
 	}
 
 	return bus, nil
@@ -161,15 +151,6 @@ func toBusUpdateMenuItem(app UpdateMenuItem) (menuitembus.UpdateMenuItem, error)
 		nme = &nm
 	}
 
-	var description *name.Null
-	if app.Description != nil {
-		desc, err := name.ParseNull(*app.Description)
-		if err != nil {
-			return menuitembus.UpdateMenuItem{}, fmt.Errorf("parse description: %w", err)
-		}
-		description = &desc
-	}
-
 	var price *money.Money
 	if app.Price != nil {
 		p, err := money.Parse(*app.Price)
@@ -188,21 +169,12 @@ func toBusUpdateMenuItem(app UpdateMenuItem) (menuitembus.UpdateMenuItem, error)
 		categoryID = &catID
 	}
 
-	var imageURL *name.Null
-	if app.ImageURL != nil {
-		img, err := name.ParseNull(*app.ImageURL)
-		if err != nil {
-			return menuitembus.UpdateMenuItem{}, fmt.Errorf("parse imageURL: %w", err)
-		}
-		imageURL = &img
-	}
-
 	bus := menuitembus.UpdateMenuItem{
 		Name:        nme,
-		Description: description,
+		Description: app.Description,
 		Price:       price,
 		CategoryID:  categoryID,
-		ImageURL:    imageURL,
+		ImageURL:    app.ImageURL,
 		Available:   app.Available,
 	}
 

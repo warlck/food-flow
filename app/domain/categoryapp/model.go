@@ -32,7 +32,7 @@ func toAppCategory(bus categorybus.Category) Category {
 	return Category{
 		ID:           bus.ID.String(),
 		Name:         bus.Name.String(),
-		Description:  bus.Description.String(),
+		Description:  bus.Description,
 		RestaurantID: bus.RestaurantID.String(),
 		Enabled:      bus.Enabled,
 		DateCreated:  bus.DateCreated.Format(time.RFC3339),
@@ -78,11 +78,6 @@ func toBusNewCategory(app NewCategory) (categorybus.NewCategory, error) {
 		return categorybus.NewCategory{}, fmt.Errorf("parse name: %w", err)
 	}
 
-	description, err := name.ParseNull(app.Description)
-	if err != nil {
-		return categorybus.NewCategory{}, fmt.Errorf("parse description: %w", err)
-	}
-
 	restaurantID, err := uuid.Parse(app.RestaurantID)
 	if err != nil {
 		return categorybus.NewCategory{}, fmt.Errorf("parse restaurantID: %w", err)
@@ -90,7 +85,7 @@ func toBusNewCategory(app NewCategory) (categorybus.NewCategory, error) {
 
 	bus := categorybus.NewCategory{
 		Name:         nme,
-		Description:  description,
+		Description:  app.Description,
 		RestaurantID: restaurantID,
 	}
 
@@ -130,18 +125,9 @@ func toBusUpdateCategory(app UpdateCategory) (categorybus.UpdateCategory, error)
 		nme = &nm
 	}
 
-	var description *name.Null
-	if app.Description != nil {
-		desc, err := name.ParseNull(*app.Description)
-		if err != nil {
-			return categorybus.UpdateCategory{}, fmt.Errorf("parse description: %w", err)
-		}
-		description = &desc
-	}
-
 	bus := categorybus.UpdateCategory{
 		Name:        nme,
-		Description: description,
+		Description: app.Description,
 		Enabled:     app.Enabled,
 	}
 

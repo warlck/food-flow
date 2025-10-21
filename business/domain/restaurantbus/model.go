@@ -11,11 +11,11 @@ import (
 type Restaurant struct {
 	ID          uuid.UUID
 	Name        name.Name
-	Description name.Null
+	Description string
 	Address     string
 	Phone       string
 	Email       string
-	ImageURL    name.Null
+	ImageURL    string
 	Enabled     bool
 	DateCreated time.Time
 	DateUpdated time.Time
@@ -24,20 +24,20 @@ type Restaurant struct {
 // NewRestaurant contains information needed to create a new restaurant.
 type NewRestaurant struct {
 	Name        name.Name
-	Description name.Null
+	Description string
 	Address     string
 	Phone       string
 	Email       string
-	ImageURL    name.Null
+	ImageURL    string
 }
 
 // UpdateRestaurant contains information needed to update a restaurant.
 type UpdateRestaurant struct {
 	Name        *name.Name
-	Description *name.Null
+	Description *string
 	Address     *string
 	Phone       *string
 	Email       *string
-	ImageURL    *name.Null
+	ImageURL    *string
 	Enabled     *bool
 }

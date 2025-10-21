@@ -12,11 +12,11 @@ import (
 type MenuItem struct {
 	ID           uuid.UUID
 	Name         name.Name
-	Description  name.Null
+	Description  string
 	Price        money.Money
 	CategoryID   uuid.UUID
 	RestaurantID uuid.UUID
-	ImageURL     name.Null
+	ImageURL     string
 	Available    bool
 	DateCreated  time.Time
 	DateUpdated  time.Time
@@ -25,19 +25,19 @@ type MenuItem struct {
 // NewMenuItem contains information needed to create a new menu item.
 type NewMenuItem struct {
 	Name         name.Name
-	Description  name.Null
+	Description  string
 	Price        money.Money
 	CategoryID   uuid.UUID
 	RestaurantID uuid.UUID
-	ImageURL     name.Null
+	ImageURL     string
 }
 
 // UpdateMenuItem contains information needed to update a menu item.
 type UpdateMenuItem struct {
 	Name        *name.Name
-	Description *name.Null
+	Description *string
 	Price       *money.Money
 	CategoryID  *uuid.UUID
-	ImageURL    *name.Null
+	ImageURL    *string
 	Available   *bool
 }

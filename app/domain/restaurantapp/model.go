@@ -34,11 +34,11 @@ func toAppRestaurant(bus restaurantbus.Restaurant) Restaurant {
 	return Restaurant{
 		ID:          bus.ID.String(),
 		Name:        bus.Name.String(),
-		Description: bus.Description.String(),
+		Description: bus.Description,
 		Address:     bus.Address,
 		Phone:       bus.Phone,
 		Email:       bus.Email,
-		ImageURL:    bus.ImageURL.String(),
+		ImageURL:    bus.ImageURL,
 		Enabled:     bus.Enabled,
 		DateCreated: bus.DateCreated.Format(time.RFC3339),
 		DateUpdated: bus.DateUpdated.Format(time.RFC3339),
@@ -86,23 +86,13 @@ func toBusNewRestaurant(app NewRestaurant) (restaurantbus.NewRestaurant, error) 
 		return restaurantbus.NewRestaurant{}, fmt.Errorf("parse name: %w", err)
 	}
 
-	description, err := name.ParseNull(app.Description)
-	if err != nil {
-		return restaurantbus.NewRestaurant{}, fmt.Errorf("parse description: %w", err)
-	}
-
-	imageURL, err := name.ParseNull(app.ImageURL)
-	if err != nil {
-		return restaurantbus.NewRestaurant{}, fmt.Errorf("parse imageURL: %w", err)
-	}
-
 	bus := restaurantbus.NewRestaurant{
 		Name:        nme,
-		Description: description,
+		Description: app.Description,
 		Address:     app.Address,
 		Phone:       app.Phone,
 		Email:       app.Email,
-		ImageURL:    imageURL,
+		ImageURL:    app.ImageURL,
 	}
 
 	return bus, nil
@@ -145,31 +135,13 @@ func toBusUpdateRestaurant(app UpdateRestaurant) (restaurantbus.UpdateRestaurant
 		nme = &nm
 	}
 
-	var description *name.Null
-	if app.Description != nil {
-		desc, err := name.ParseNull(*app.Description)
-		if err != nil {
-			return restaurantbus.UpdateRestaurant{}, fmt.Errorf("parse description: %w", err)
-		}
-		description = &desc
-	}
-
-	var imageURL *name.Null
-	if app.ImageURL != nil {
-		img, err := name.ParseNull(*app.ImageURL)
-		if err != nil {
-			return restaurantbus.UpdateRestaurant{}, fmt.Errorf("parse imageURL: %w", err)
-		}
-		imageURL = &img
-	}
-
 	bus := restaurantbus.UpdateRestaurant{
 		Name:        nme,
-		Description: description,
+		Description: app.Description,
 		Address:     app.Address,
 		Phone:       app.Phone,
 		Email:       app.Email,
-		ImageURL:    imageURL,
+		ImageURL:    app.ImageURL,
 		Enabled:     app.Enabled,
 	}
 
