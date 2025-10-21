@@ -17,19 +17,19 @@ import (
 )
 
 // Handlers manages the set of user endpoints.
-type api struct {
+type app struct {
 	userBus *userbus.Business
 }
 
 // New constructs a handlers for route access.
-func newAPI(user *userbus.Business) *api {
-	return &api{
+func newApp(user *userbus.Business) *app {
+	return &app{
 		userBus: user,
 	}
 }
 
 // Create adds a new user to the system.
-func (a *api) create(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	var app NewUser
 	if err := web.Decode(r, &app); err != nil {
 		return errs.New(errs.InvalidArgument, err)
@@ -52,7 +52,7 @@ func (a *api) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 }
 
 // Query retrieves a list of users based on query parameters.
-func (a *api) query(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (a *app) query(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	qp, err := parseQueryParams(r)
 	if err != nil {
 		return errs.New(errs.InvalidArgument, err)
@@ -87,7 +87,7 @@ func (a *api) query(ctx context.Context, w http.ResponseWriter, r *http.Request)
 }
 
 // QueryByID retrieves a user by its ID.
-func (a *api) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (a *app) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	userIDStr := web.Param(r, "user_id")
 
 	userID, err := uuid.Parse(userIDStr)
@@ -103,7 +103,7 @@ func (a *api) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	return web.Respond(ctx, w, toAppUser(usr), http.StatusOK)
 }
 
-func (a *api) update(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	var app UpdateUser
 	if err := web.Decode(r, &app); err != nil {
 		return errs.New(errs.InvalidArgument, err)
@@ -127,7 +127,7 @@ func (a *api) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 	return web.Respond(ctx, w, toAppUser(updUsr), http.StatusOK)
 }
 
-func (a *api) updateRole(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (a *app) updateRole(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	var app UpdateUserRole
 	if err := web.Decode(r, &app); err != nil {
 		return errs.New(errs.InvalidArgument, err)
@@ -151,7 +151,7 @@ func (a *api) updateRole(ctx context.Context, w http.ResponseWriter, r *http.Req
 	return web.Respond(ctx, w, toAppUser(updUsr), http.StatusOK)
 }
 
-func (a *api) delete(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (a *app) delete(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	usr, err := mid.GetUser(ctx)
 	if err != nil {
 		return errs.Newf(errs.Internal, "userID missing in context: %s", err)

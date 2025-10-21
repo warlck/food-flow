@@ -14,69 +14,54 @@ CREATE TABLE users (
 	PRIMARY KEY (user_id)
 );
 
--- Version: 1.02
--- Description: Create table products
-CREATE TABLE products (
-	product_id   UUID           NOT NULL,
-    user_id      UUID           NOT NULL,
-	name         TEXT           NOT NULL,
-    cost         NUMERIC(10, 2) NOT NULL,
-	quantity     INT            NOT NULL,
-	date_created TIMESTAMP      NOT NULL,
-	date_updated TIMESTAMP      NOT NULL,
 
-	PRIMARY KEY (product_id),
-	FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+-- Version: 1.02
+-- Description: Create table restaurants
+CREATE TABLE restaurants (
+    restaurant_id UUID      NOT NULL,
+    name          TEXT      NOT NULL,
+    description   TEXT      NULL,
+    address       TEXT      NOT NULL,
+    phone         TEXT      NOT NULL,
+    email         TEXT      NOT NULL,
+    image_url     TEXT      NULL,
+    enabled       BOOLEAN   NOT NULL,
+    date_created  TIMESTAMP NOT NULL,
+    date_updated  TIMESTAMP NOT NULL,
+
+    PRIMARY KEY (restaurant_id)
 );
 
 -- Version: 1.03
--- Description: Add products view.
-CREATE OR REPLACE VIEW view_products AS
-SELECT
-    p.product_id,
-    p.user_id,
-	p.name,
-    p.cost,
-	p.quantity,
-    p.date_created,
-    p.date_updated,
-    u.name AS user_name
-FROM
-    products AS p
-JOIN
-    users AS u ON u.user_id = p.user_id
+-- Description: Create table categories
+CREATE TABLE categories (
+    category_id   UUID      NOT NULL,
+    name          TEXT      NOT NULL,
+    description   TEXT      NULL,
+    restaurant_id UUID      NOT NULL,
+    enabled       BOOLEAN   NOT NULL,
+    date_created  TIMESTAMP NOT NULL,
+    date_updated  TIMESTAMP NOT NULL,
 
--- Version: 1.04
--- Description: Create table homes
-CREATE TABLE homes (
-    home_id       UUID       NOT NULL,
-    type          TEXT       NOT NULL,
-    user_id       UUID       NOT NULL,
-    address_1     TEXT       NOT NULL,
-    address_2     TEXT       NULL,
-    zip_code      TEXT       NOT NULL,
-    city          TEXT       NOT NULL,
-    state         TEXT       NOT NULL,
-    country       TEXT       NOT NULL,
-    date_created  TIMESTAMP  NOT NULL,
-    date_updated  TIMESTAMP  NOT NULL,
-
-    PRIMARY KEY (home_id),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    PRIMARY KEY (category_id),
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants(restaurant_id) ON DELETE CASCADE
 );
 
--- Version: 1.05
--- Description: Create table audit
-CREATE TABLE audit (
-    id          UUID      NOT NULL,
-    obj_id      UUID      NOT NULL,
-    obj_domain  TEXT      NOT NULL,
-    obj_name    TEXT      NOT NULL,
-    actor_id    UUID      NOT NULL,
-    action      TEXT      NOT NULL,
-    data        JSONB     NULL,
-    message     TEXT      NULL,
-    timestamp   TIMESTAMP NOT NULL,
+-- Version: 1.04
+-- Description: Create table menu_items
+CREATE TABLE menu_items (
+    menu_item_id  UUID           NOT NULL,
+    name          TEXT           NOT NULL,
+    description   TEXT           NULL,
+    price         NUMERIC(10, 2) NOT NULL,
+    category_id   UUID           NOT NULL,
+    restaurant_id UUID           NOT NULL,
+    image_url     TEXT           NULL,
+    available     BOOLEAN        NOT NULL,
+    date_created  TIMESTAMP      NOT NULL,
+    date_updated  TIMESTAMP      NOT NULL,
 
-    PRIMARY KEY (id)
+    PRIMARY KEY (menu_item_id),
+    FOREIGN KEY (category_id) REFERENCES categories(category_id) ON DELETE CASCADE,
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants(restaurant_id) ON DELETE CASCADE
 );

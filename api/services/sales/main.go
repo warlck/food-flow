@@ -145,6 +145,10 @@ func run(ctx context.Context, log *logger.Logger) error {
 	userstore := userdb.NewStore(log, db)
 	userBus := userbus.NewBusiness(log, userstore)
 
+	// Categories Biz Package
+	// MenuItem Biz Package
+	// Restaurant Biz packages
+
 	// -------------------------------------------------------------------------
 	// Initialize authentication support
 

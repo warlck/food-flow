@@ -3,7 +3,7 @@ package userapi_test
 import (
 	"time"
 
-	"github.com/warlck/food-flow/app/domain/userapi"
+	userapi "github.com/warlck/food-flow/app/domain/userapp"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/types/role"
 )

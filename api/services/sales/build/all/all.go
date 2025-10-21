@@ -2,8 +2,8 @@
 package all
 
 import (
-	"github.com/warlck/food-flow/app/domain/checkapi"
-	"github.com/warlck/food-flow/app/domain/userapi"
+	checkapi "github.com/warlck/food-flow/app/domain/checkapp"
+	userapi "github.com/warlck/food-flow/app/domain/userapp"
 	"github.com/warlck/food-flow/app/sdk/mux"
 	"github.com/warlck/food-flow/foundation/web"
 )

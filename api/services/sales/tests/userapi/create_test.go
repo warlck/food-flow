@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/warlck/food-flow/app/domain/userapi"
+	userapi "github.com/warlck/food-flow/app/domain/userapp"
 	"github.com/warlck/food-flow/app/sdk/apitest"
 	"github.com/warlck/food-flow/app/sdk/errs"
 )

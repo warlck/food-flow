@@ -28,7 +28,7 @@ func Routes(app *web.App, cfg Config) {
 	ruleAuthorizeUser := mid.AuthorizeUser(cfg.AuthClient, cfg.UserBus, auth.RuleAdminOrSubject)
 	ruleAuthorizeAdmin := mid.AuthorizeUser(cfg.AuthClient, cfg.UserBus, auth.RuleAdminOnly)
 
-	api := newAPI(cfg.UserBus)
+	api := newApp(cfg.UserBus)
 	app.HandleFunc(http.MethodGet, version, "/users", api.query, authen, ruleAdmin)
 	app.HandleFunc(http.MethodGet, version, "/users/{user_id}", api.queryByID, authen, ruleAuthorizeUser)
 	app.HandleFunc(http.MethodPost, version, "/users", api.create, authen, ruleAdmin)
