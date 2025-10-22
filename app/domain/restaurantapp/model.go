@@ -10,18 +10,40 @@ import (
 	"github.com/warlck/food-flow/business/types/name"
 )
 
+// MenuItem represents information about a menu items embedded with restaurant categories
+// that are included in the restaurant API response
+type MenuItem struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Price       float64 `json:"price"`
+	ImageURL    string  `json:"imageUrl"`
+	Available   bool    `json:"available"`
+}
+
+// Category represents information about a category that is included with restaurant
+// API response
+type Category struct {
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Enabled     bool       `json:"enabled"`
+	MenuItems   []MenuItem `json:"mentuItems"`
+}
+
 // Restaurant represents information about a restaurant for API responses.
 type Restaurant struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Address     string `json:"address"`
-	Phone       string `json:"phone"`
-	Email       string `json:"email"`
-	ImageURL    string `json:"imageUrl"`
-	Enabled     bool   `json:"enabled"`
-	DateCreated string `json:"dateCreated"`
-	DateUpdated string `json:"dateUpdated"`
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Address     string     `json:"address"`
+	Phone       string     `json:"phone"`
+	Email       string     `json:"email"`
+	ImageURL    string     `json:"imageUrl"`
+	Enabled     bool       `json:"enabled"`
+	Categories  []Category `json:"categories"`
+	DateCreated string     `json:"dateCreated"`
+	DateUpdated string     `json:"dateUpdated"`
 }
 
 // Encode implements the encoder interface.
