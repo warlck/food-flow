@@ -1,4 +1,4 @@
-package userapi
+package userapp
 
 import (
 	"context"
@@ -48,7 +48,7 @@ func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return fmt.Errorf("create: usr[%+v]: %w", usr, err)
 	}
 
-	return web.Respond(ctx, w, toAppUser(usr), http.StatusCreated)
+	return web.Respond(ctx, w, ToAppUser(usr), http.StatusCreated)
 }
 
 // Query retrieves a list of users based on query parameters.
@@ -82,7 +82,7 @@ func (a *app) query(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		return errs.Newf(errs.Internal, "count: %s", err)
 	}
 
-	users := query.NewResult(toAppUsers(usrs), total, pg)
+	users := query.NewResult(ToAppUsers(usrs), total, pg)
 	return web.Respond(ctx, w, users, http.StatusOK)
 }
 
@@ -100,7 +100,7 @@ func (a *app) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return fmt.Errorf("querybyid: userID[%s]: %w", userID, err)
 	}
 
-	return web.Respond(ctx, w, toAppUser(usr), http.StatusOK)
+	return web.Respond(ctx, w, ToAppUser(usr), http.StatusOK)
 }
 
 func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
@@ -124,7 +124,7 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return errs.Newf(errs.Internal, "update: userID[%s] uu[%+v]: %s", usr.ID, uu, err)
 	}
 
-	return web.Respond(ctx, w, toAppUser(updUsr), http.StatusOK)
+	return web.Respond(ctx, w, ToAppUser(updUsr), http.StatusOK)
 }
 
 func (a *app) updateRole(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
@@ -148,7 +148,7 @@ func (a *app) updateRole(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return errs.Newf(errs.Internal, "updaterole: userID[%s] uu[%+v]: %s", usr.ID, uu, err)
 	}
 
-	return web.Respond(ctx, w, toAppUser(updUsr), http.StatusOK)
+	return web.Respond(ctx, w, ToAppUser(updUsr), http.StatusOK)
 }
 
 func (a *app) delete(ctx context.Context, w http.ResponseWriter, r *http.Request) error {

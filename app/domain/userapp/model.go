@@ -1,4 +1,4 @@
-package userapi
+package userapp
 
 import (
 	"encoding/json"
@@ -30,7 +30,8 @@ func (app User) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func toAppUser(bus userbus.User) User {
+// ToAppUser converts a business layer user to an app layer user.
+func ToAppUser(bus userbus.User) User {
 	return User{
 		ID:          bus.ID.String(),
 		Name:        bus.Name.String(),
@@ -43,10 +44,11 @@ func toAppUser(bus userbus.User) User {
 	}
 }
 
-func toAppUsers(users []userbus.User) []User {
+// ToAppUsers converts a slice of business layer users to app layer users.
+func ToAppUsers(users []userbus.User) []User {
 	app := make([]User, len(users))
 	for i, usr := range users {
-		app[i] = toAppUser(usr)
+		app[i] = ToAppUser(usr)
 	}
 
 	return app

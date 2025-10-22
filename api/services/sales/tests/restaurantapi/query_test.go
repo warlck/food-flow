@@ -15,7 +15,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	rests := make([]restaurantapi.Restaurant, 0, len(sd.Restaurants))
 
 	for _, rest := range sd.Restaurants {
-		rests = append(rests, *toAppRestaurantPtr(rest.Restaurant))
+		rests = append(rests, toAppRestaurant(rest.Restaurant))
 	}
 
 	sort.Slice(rests, func(i, j int) bool {

@@ -38,6 +38,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	restaurantapi.Routes(app, restaurantapi.Config{
 		AuthClient:    cfg.AuthClient,
 		RestaurantBus: cfg.RestaurantBus,
+		CategoryBus:   cfg.CategoryBus,
+		MenuItemBus:   cfg.MenuItemBus,
 		Log:           cfg.Log,
 	})
 

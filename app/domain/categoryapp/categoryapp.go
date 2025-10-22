@@ -43,7 +43,7 @@ func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return fmt.Errorf("create: category[%+v]: %w", cat, err)
 	}
 
-	return web.Respond(ctx, w, toAppCategory(cat), http.StatusCreated)
+	return web.Respond(ctx, w, ToAppCategory(cat), http.StatusCreated)
 }
 
 // Query retrieves a list of categories based on query parameters.
@@ -78,7 +78,7 @@ func (a *app) query(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		return errs.Newf(errs.Internal, "count: %s", err)
 	}
 
-	result := query.NewResult(toAppCategories(categories), total, pg)
+	result := query.NewResult(ToAppCategories(categories), total, pg)
 	return web.Respond(ctx, w, result, http.StatusOK)
 }
 
@@ -96,7 +96,7 @@ func (a *app) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return fmt.Errorf("querybyid: categoryID[%s]: %w", categoryID, err)
 	}
 
-	return web.Respond(ctx, w, toAppCategory(cat), http.StatusOK)
+	return web.Respond(ctx, w, ToAppCategory(cat), http.StatusOK)
 }
 
 // Update modifies a category.
@@ -128,7 +128,7 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return errs.Newf(errs.Internal, "update: categoryID[%s] uc[%+v]: %s", categoryID, uc, err)
 	}
 
-	return web.Respond(ctx, w, toAppCategory(updCat), http.StatusOK)
+	return web.Respond(ctx, w, ToAppCategory(updCat), http.StatusOK)
 }
 
 // Delete removes a category.

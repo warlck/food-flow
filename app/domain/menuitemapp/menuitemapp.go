@@ -43,7 +43,7 @@ func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return fmt.Errorf("create: menuItem[%+v]: %w", item, err)
 	}
 
-	return web.Respond(ctx, w, toAppMenuItem(item), http.StatusCreated)
+	return web.Respond(ctx, w, ToAppMenuItem(item), http.StatusCreated)
 }
 
 // query retrieves a list of menu items based on query parameters.
@@ -78,7 +78,7 @@ func (a *app) query(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		return errs.Newf(errs.Internal, "count: %s", err)
 	}
 
-	result := query.NewResult(toAppMenuItems(items), total, pg)
+	result := query.NewResult(ToAppMenuItems(items), total, pg)
 	return web.Respond(ctx, w, result, http.StatusOK)
 }
 
@@ -96,7 +96,7 @@ func (a *app) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return fmt.Errorf("querybyid: menuItemID[%s]: %w", menuItemID, err)
 	}
 
-	return web.Respond(ctx, w, toAppMenuItem(item), http.StatusOK)
+	return web.Respond(ctx, w, ToAppMenuItem(item), http.StatusOK)
 }
 
 // update modifies an existing menu item.
@@ -127,7 +127,7 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return errs.Newf(errs.Internal, "update: menuItemID[%s] ub[%+v]: %s", menuItemID, ub, err)
 	}
 
-	return web.Respond(ctx, w, toAppMenuItem(updItem), http.StatusOK)
+	return web.Respond(ctx, w, ToAppMenuItem(updItem), http.StatusOK)
 }
 
 // delete removes a menu item from the system.

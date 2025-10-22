@@ -1,4 +1,4 @@
-package userapi
+package userapp
 
 import (
 	"github.com/warlck/food-flow/business/domain/userbus"

@@ -10,40 +10,18 @@ import (
 	"github.com/warlck/food-flow/business/types/name"
 )
 
-// MenuItem represents information about a menu items embedded with restaurant categories
-// that are included in the restaurant API response
-type MenuItem struct {
-	ID          string  `json:"id"`
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-	ImageURL    string  `json:"imageUrl"`
-	Available   bool    `json:"available"`
-}
-
-// Category represents information about a category that is included with restaurant
-// API response
-type Category struct {
-	ID          string     `json:"id"`
-	Name        string     `json:"name"`
-	Description string     `json:"description"`
-	Enabled     bool       `json:"enabled"`
-	MenuItems   []MenuItem `json:"mentuItems"`
-}
-
 // Restaurant represents information about a restaurant for API responses.
 type Restaurant struct {
-	ID          string     `json:"id"`
-	Name        string     `json:"name"`
-	Description string     `json:"description"`
-	Address     string     `json:"address"`
-	Phone       string     `json:"phone"`
-	Email       string     `json:"email"`
-	ImageURL    string     `json:"imageUrl"`
-	Enabled     bool       `json:"enabled"`
-	Categories  []Category `json:"categories"`
-	DateCreated string     `json:"dateCreated"`
-	DateUpdated string     `json:"dateUpdated"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Address     string `json:"address"`
+	Phone       string `json:"phone"`
+	Email       string `json:"email"`
+	ImageURL    string `json:"imageUrl"`
+	Enabled     bool   `json:"enabled"`
+	DateCreated string `json:"dateCreated"`
+	DateUpdated string `json:"dateUpdated"`
 }
 
 // Encode implements the encoder interface.
@@ -52,7 +30,8 @@ func (app Restaurant) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func toAppRestaurant(bus restaurantbus.Restaurant) Restaurant {
+// ToAppRestaurant converts a business layer restaurant to an app layer restaurant.
+func ToAppRestaurant(bus restaurantbus.Restaurant) Restaurant {
 	return Restaurant{
 		ID:          bus.ID.String(),
 		Name:        bus.Name.String(),
@@ -67,10 +46,11 @@ func toAppRestaurant(bus restaurantbus.Restaurant) Restaurant {
 	}
 }
 
-func toAppRestaurants(restaurants []restaurantbus.Restaurant) []Restaurant {
+// ToAppRestaurants converts a slice of business layer restaurants to app layer restaurants.
+func ToAppRestaurants(restaurants []restaurantbus.Restaurant) []Restaurant {
 	app := make([]Restaurant, len(restaurants))
 	for i, res := range restaurants {
-		app[i] = toAppRestaurant(res)
+		app[i] = ToAppRestaurant(res)
 	}
 
 	return app
@@ -168,4 +148,49 @@ func toBusUpdateRestaurant(app UpdateRestaurant) (restaurantbus.UpdateRestaurant
 	}
 
 	return bus, nil
+}
+
+// =============================================================================
+
+// MenuItem represents information about a menu items embedded with restaurant categories
+// that are included in the restaurant API response
+type MenuItem struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Price       float64 `json:"price"`
+	ImageURL    string  `json:"imageUrl"`
+	Available   bool    `json:"available"`
+}
+
+// Category represents information about a category that is included with restaurant
+// API response
+type Category struct {
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Enabled     bool       `json:"enabled"`
+	MenuItems   []MenuItem `json:"mentuItems"`
+}
+
+// RestaurantWithMenuCategories represents information about restaurant including menu item categories
+// of the restaurant. Each category object embeds all the menuItems that in that category
+type RestaurantWithMenuCategories struct {
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Address     string     `json:"address"`
+	Phone       string     `json:"phone"`
+	Email       string     `json:"email"`
+	ImageURL    string     `json:"imageUrl"`
+	Enabled     bool       `json:"enabled"`
+	Categories  []Category `json:"categories"`
+	DateCreated string     `json:"dateCreated"`
+	DateUpdated string     `json:"dateUpdated"`
+}
+
+// Encode implements the encoder interface.
+func (app RestaurantWithMenuCategories) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
 }

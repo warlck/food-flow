@@ -1,36 +1,19 @@
 package userapi_test
 
 import (
-	"time"
-
-	userapi "github.com/warlck/food-flow/app/domain/userapp"
+	"github.com/warlck/food-flow/app/domain/userapp"
 	"github.com/warlck/food-flow/business/domain/userbus"
-	"github.com/warlck/food-flow/business/types/role"
 )
 
-func toAppUser(bus userbus.User) userapi.User {
-	return userapi.User{
-		ID:          bus.ID.String(),
-		Name:        bus.Name.String(),
-		Email:       bus.Email.Address,
-		Roles:       role.ParseToString(bus.Roles),
-		Department:  bus.Department.String(),
-		Enabled:     bus.Enabled,
-		DateCreated: bus.DateCreated.Format(time.RFC3339),
-		DateUpdated: bus.DateUpdated.Format(time.RFC3339),
-	}
+func toAppUser(bus userbus.User) userapp.User {
+	return userapp.ToAppUser(bus)
 }
 
-func toAppUsers(users []userbus.User) []userapi.User {
-	items := make([]userapi.User, len(users))
-	for i, usr := range users {
-		items[i] = toAppUser(usr)
-	}
-
-	return items
+func toAppUsers(users []userbus.User) []userapp.User {
+	return userapp.ToAppUsers(users)
 }
 
-func toAppUserPtr(bus userbus.User) *userapi.User {
+func toAppUserPtr(bus userbus.User) *userapp.User {
 	appUsr := toAppUser(bus)
 	return &appUsr
 }

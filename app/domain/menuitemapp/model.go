@@ -32,7 +32,8 @@ func (app MenuItem) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func toAppMenuItem(bus menuitembus.MenuItem) MenuItem {
+// ToAppMenuItem converts a business layer menu item to an app layer menu item.
+func ToAppMenuItem(bus menuitembus.MenuItem) MenuItem {
 	return MenuItem{
 		ID:           bus.ID.String(),
 		Name:         bus.Name.String(),
@@ -47,10 +48,11 @@ func toAppMenuItem(bus menuitembus.MenuItem) MenuItem {
 	}
 }
 
-func toAppMenuItems(items []menuitembus.MenuItem) []MenuItem {
+// ToAppMenuItems converts a slice of business layer menu items to app layer menu items.
+func ToAppMenuItems(items []menuitembus.MenuItem) []MenuItem {
 	app := make([]MenuItem, len(items))
 	for i, item := range items {
-		app[i] = toAppMenuItem(item)
+		app[i] = ToAppMenuItem(item)
 	}
 
 	return app

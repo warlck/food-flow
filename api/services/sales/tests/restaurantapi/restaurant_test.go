@@ -22,6 +22,9 @@ func Test_Restaurant(t *testing.T) {
 
 	test.Run(t, query200(sd), "query-200")
 	test.Run(t, queryByID200(sd), "querybyid-200")
+	test.Run(t, queryByIDWithDetails200(sd), "querybyidwithdetails-200")
+	test.Run(t, queryByIDWithDetails400(sd), "querybyidwithdetails-400")
+	test.Run(t, queryByIDWithDetails401(sd), "querybyidwithdetails-401")
 
 	test.Run(t, create201(sd), "create-201")
 	test.Run(t, create400(sd), "create-400")

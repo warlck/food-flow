@@ -28,7 +28,8 @@ func (app Category) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func toAppCategory(bus categorybus.Category) Category {
+// ToAppCategory converts a business layer category to an app layer category.
+func ToAppCategory(bus categorybus.Category) Category {
 	return Category{
 		ID:           bus.ID.String(),
 		Name:         bus.Name.String(),
@@ -40,10 +41,11 @@ func toAppCategory(bus categorybus.Category) Category {
 	}
 }
 
-func toAppCategories(categories []categorybus.Category) []Category {
+// ToAppCategories converts a slice of business layer categories to app layer categories.
+func ToAppCategories(categories []categorybus.Category) []Category {
 	app := make([]Category, len(categories))
 	for i, cat := range categories {
-		app[i] = toAppCategory(cat)
+		app[i] = ToAppCategory(cat)
 	}
 
 	return app

@@ -6,6 +6,8 @@ import (
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/app/sdk/authclient"
 	"github.com/warlck/food-flow/app/sdk/mid"
+	"github.com/warlck/food-flow/business/domain/categorybus"
+	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/web"
@@ -17,6 +19,8 @@ type Config struct {
 	Log           *logger.Logger
 	AuthClient    *authclient.Client
 	RestaurantBus *restaurantbus.Business
+	CategoryBus   *categorybus.Business
+	MenuItemBus   *menuitembus.Business
 }
 
 // Routes adds specific routes for this group.
@@ -26,9 +30,10 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 	ruleAdmin := mid.Authorize(cfg.AuthClient, auth.RuleAdminOnly)
 
-	api := newApp(cfg.RestaurantBus)
+	api := newApp(cfg.RestaurantBus, cfg.CategoryBus, cfg.MenuItemBus)
 	app.HandleFunc(http.MethodGet, version, "/restaurants", api.query, authen)
 	app.HandleFunc(http.MethodGet, version, "/restaurants/{restaurant_id}", api.queryByID, authen)
+	app.HandleFunc(http.MethodGet, version, "/restaurants/{restaurant_id}/details", api.queryByIDWithDetails, authen)
 	app.HandleFunc(http.MethodPost, version, "/restaurants", api.create, authen, ruleAdmin)
 	app.HandleFunc(http.MethodPut, version, "/restaurants/{restaurant_id}", api.update, authen, ruleAdmin)
 	app.HandleFunc(http.MethodDelete, version, "/restaurants/{restaurant_id}", api.delete, authen, ruleAdmin)

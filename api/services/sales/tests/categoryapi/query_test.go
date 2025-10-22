@@ -15,7 +15,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	cats := make([]categoryapi.Category, 0, len(sd.Categories))
 
 	for _, cat := range sd.Categories {
-		cats = append(cats, *toAppCategoryPtr(cat.Category))
+		cats = append(cats, toAppCategory(cat.Category))
 	}
 
 	sort.Slice(cats, func(i, j int) bool {
