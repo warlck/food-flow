@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
-import { ShoppingCart, Menu, X, Home, Book, Store, ChefHat, LogIn } from 'lucide-react';
+import { ShoppingCart, Menu, X, Home, Book, ChefHat, LogIn } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { getTotalItems } = useCart();
@@ -33,10 +32,6 @@ const Header: React.FC = () => {
           <Link to="/menu" className="text-gray-700 hover:text-food-primary transition-colors flex items-center">
             <Book className="mr-1" size={18} />
             <span>Menu</span>
-          </Link>
-          <Link to="/restaurant/dashboard" className="text-gray-700 hover:text-food-primary transition-colors flex items-center">
-            <Store className="mr-1" size={18} />
-            <span>Restaurant Dashboard</span>
           </Link>
           <Link to="/login" className="text-gray-700 hover:text-food-primary transition-colors flex items-center">
             <LogIn className="mr-1" size={18} />
@@ -86,14 +81,6 @@ const Header: React.FC = () => {
             >
               <Book className="mr-2" size={18} />
               <span>Menu</span>
-            </Link>
-            <Link 
-              to="/restaurant/dashboard" 
-              className="text-gray-700 hover:text-food-primary transition-colors flex items-center p-2"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <Store className="mr-2" size={18} />
-              <span>Restaurant Dashboard</span>
             </Link>
             <Link 
               to="/login" 

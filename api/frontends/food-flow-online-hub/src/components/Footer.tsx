@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Twitter } from 'lucide-react';
@@ -9,9 +8,9 @@ const Footer: React.FC = () => {
   return (
     <footer className="bg-gray-800 text-white mt-auto">
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Logo & Description */}
-          <div className="col-span-1 md:col-span-1">
+          <div className="col-span-1">
             <h3 className="text-food-primary font-bold text-xl mb-4">FoodFlow</h3>
             <p className="text-gray-300">
               Connecting restaurants with hungry customers through a seamless food delivery experience.
@@ -27,33 +26,6 @@ const Footer: React.FC = () => {
                 <Twitter className="h-5 w-5" />
               </a>
             </div>
-          </div>
-
-          {/* For Restaurants */}
-          <div className="col-span-1">
-            <h3 className="font-semibold text-lg mb-4">For Restaurants</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link to="/restaurant/join" className="text-gray-300 hover:text-food-primary">
-                  Join FoodFlow
-                </Link>
-              </li>
-              <li>
-                <Link to="/restaurant/login" className="text-gray-300 hover:text-food-primary">
-                  Restaurant Login
-                </Link>
-              </li>
-              <li>
-                <Link to="/restaurant/dashboard" className="text-gray-300 hover:text-food-primary">
-                  Restaurant Dashboard
-                </Link>
-              </li>
-              <li>
-                <Link to="/restaurant/resources" className="text-gray-300 hover:text-food-primary">
-                  Resources
-                </Link>
-              </li>
-            </ul>
           </div>
 
           {/* For Customers */}

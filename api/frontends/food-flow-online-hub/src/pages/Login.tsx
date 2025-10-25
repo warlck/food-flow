@@ -1,33 +1,22 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
 
-  const handleCustomerLogin = (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     toast({
       title: "Login successful",
       description: "Welcome back to FoodFlow!",
     });
     navigate('/');
-  };
-
-  const handleRestaurantLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast({
-      title: "Restaurant login successful",
-      description: "Welcome back to your restaurant dashboard!",
-    });
-    navigate('/restaurant/dashboard');
   };
 
   return (
@@ -44,72 +33,32 @@ const Login: React.FC = () => {
           </CardHeader>
           
           <CardContent>
-            <Tabs defaultValue="customer" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="customer">Customer</TabsTrigger>
-                <TabsTrigger value="restaurant">Restaurant</TabsTrigger>
-              </TabsList>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" placeholder="your@email.com" required />
+              </div>
               
-              {/* Customer Login */}
-              <TabsContent value="customer">
-                <form onSubmit={handleCustomerLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="customer-email">Email</Label>
-                    <Input id="customer-email" type="email" placeholder="your@email.com" required />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <Label htmlFor="customer-password">Password</Label>
-                      <Link 
-                        to="/forgot-password" 
-                        className="text-sm text-food-primary hover:underline"
-                      >
-                        Forgot password?
-                      </Link>
-                    </div>
-                    <Input id="customer-password" type="password" placeholder="••••••••" required />
-                  </div>
-                  
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-food-primary hover:bg-food-accent"
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="password">Password</Label>
+                  <Link 
+                    to="/forgot-password" 
+                    className="text-sm text-food-primary hover:underline"
                   >
-                    Sign In
-                  </Button>
-                </form>
-              </TabsContent>
+                    Forgot password?
+                  </Link>
+                </div>
+                <Input id="password" type="password" placeholder="••••••••" required />
+              </div>
               
-              {/* Restaurant Login */}
-              <TabsContent value="restaurant">
-                <form onSubmit={handleRestaurantLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="restaurant-email">Email</Label>
-                    <Input id="restaurant-email" type="email" placeholder="restaurant@email.com" required />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <Label htmlFor="restaurant-password">Password</Label>
-                      <Link 
-                        to="/forgot-password" 
-                        className="text-sm text-food-primary hover:underline"
-                      >
-                        Forgot password?
-                      </Link>
-                    </div>
-                    <Input id="restaurant-password" type="password" placeholder="••••••••" required />
-                  </div>
-                  
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-food-primary hover:bg-food-accent"
-                  >
-                    Sign In to Restaurant
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+              <Button 
+                type="submit" 
+                className="w-full bg-food-primary hover:bg-food-accent"
+              >
+                Sign In
+              </Button>
+            </form>
           </CardContent>
           
           <CardFooter className="flex flex-col space-y-4">
