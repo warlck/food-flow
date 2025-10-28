@@ -24,6 +24,9 @@ nodes:
   # Auth debug
   - containerPort: 6010
     hostPort: 6010
+  # Frontend
+  - containerPort: 30080
+    hostPort: 8080
   # Grafana
   - containerPort: 3100
     hostPort: 3100

@@ -5,6 +5,7 @@
 .gitignore
 apis/programs/frontends/
 infra/docker/
+!infra/docker/nginx.conf
 infra/k8s/
 CONTRIBUTORS
 LICENSE
