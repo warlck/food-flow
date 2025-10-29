@@ -49,7 +49,7 @@ func NewBusiness(log *logger.Logger, storer Storer) *Business {
 
 // Create adds a new user to the system.
 func (b *Business) Create(ctx context.Context, nu NewUser) (User, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(nu.Password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(nu.Password.String()), bcrypt.DefaultCost)
 	if err != nil {
 		return User{}, fmt.Errorf("generatefrompassword: %w", err)
 	}

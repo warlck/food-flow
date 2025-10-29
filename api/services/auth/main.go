@@ -172,7 +172,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 		Issuer:    cfg.Auth.Issuer,
 	}
 
-	ath, err := auth.New(authCfg)
+	ath := auth.New(authCfg)
 	if err != nil {
 		return fmt.Errorf("constructing auth: %w", err)
 	}

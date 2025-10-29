@@ -9,6 +9,7 @@ import (
 	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/types/name"
+	"github.com/warlck/food-flow/business/types/password"
 	"github.com/warlck/food-flow/business/types/role"
 )
 
@@ -101,12 +102,16 @@ func toBusNewUser(app NewUser) (userbus.NewUser, error) {
 		return userbus.NewUser{}, fmt.Errorf("parse: %w", err)
 	}
 
+	pass, err := password.Parse(app.Password)
+	if err != nil {
+		return userbus.NewUser{}, fmt.Errorf("parse: %w", err)
+	}
 	bus := userbus.NewUser{
 		Name:       nme,
 		Email:      *addr,
 		Roles:      roles,
 		Department: department,
-		Password:   app.Password,
+		Password:   pass,
 	}
 
 	return bus, nil

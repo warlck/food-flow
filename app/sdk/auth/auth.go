@@ -62,7 +62,7 @@ type Auth struct {
 }
 
 // New creates an Auth to support authentication/authorization.
-func New(cfg Config) (*Auth, error) {
+func New(cfg Config) *Auth {
 	a := Auth{
 		log:       cfg.Log,
 		keyLookup: cfg.KeyLookup,
@@ -72,7 +72,7 @@ func New(cfg Config) (*Auth, error) {
 		issuer:    cfg.Issuer,
 	}
 
-	return &a, nil
+	return &a
 }
 
 // Issuer provides the configured issuer used to authenticate tokens.

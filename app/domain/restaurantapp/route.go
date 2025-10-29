@@ -33,7 +33,7 @@ func Routes(app *web.App, cfg Config) {
 	api := newApp(cfg.RestaurantBus, cfg.CategoryBus, cfg.MenuItemBus)
 	app.HandleFunc(http.MethodGet, version, "/restaurants", api.query, authen)
 	app.HandleFunc(http.MethodGet, version, "/restaurants/{restaurant_id}", api.queryByID, authen)
-	app.HandleFunc(http.MethodGet, version, "/restaurants/{restaurant_id}/details", api.queryByIDWithDetails, authen)
+	app.HandleFunc(http.MethodGet, version, "/restaurants/{restaurant_id}/details", api.queryByIDWithDetails)
 	app.HandleFunc(http.MethodPost, version, "/restaurants", api.create, authen, ruleAdmin)
 	app.HandleFunc(http.MethodPut, version, "/restaurants/{restaurant_id}", api.update, authen, ruleAdmin)
 	app.HandleFunc(http.MethodDelete, version, "/restaurants/{restaurant_id}", api.delete, authen, ruleAdmin)

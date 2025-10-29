@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/business/types/name"
+	"github.com/warlck/food-flow/business/types/password"
 	"github.com/warlck/food-flow/business/types/role"
 )
 
@@ -28,7 +29,7 @@ type NewUser struct {
 	Email      mail.Address
 	Roles      []role.Role
 	Department name.Null
-	Password   string
+	Password   password.Password
 }
 
 // UpdateUser contains information needed to update a user.

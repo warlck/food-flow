@@ -16,6 +16,7 @@ import (
 	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/business/sdk/unittest"
 	"github.com/warlck/food-flow/business/types/name"
+	"github.com/warlck/food-flow/business/types/password"
 	"github.com/warlck/food-flow/business/types/role"
 )
 
@@ -188,7 +189,7 @@ func create(busDomain dbtest.BusDomain) []unittest.Table {
 					Email:      *email,
 					Roles:      []role.Role{role.Admin},
 					Department: name.MustParseNull("ITO"),
-					Password:   "123",
+					Password:   password.MustParse("123"),
 				}
 
 				resp, err := busDomain.User.Create(ctx, nu)

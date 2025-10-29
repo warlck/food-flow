@@ -16,14 +16,11 @@ import (
 func Test_Auth(t *testing.T) {
 	log := newUnit(t)
 
-	ath, err := auth.New(auth.Config{
+	ath := auth.New(auth.Config{
 		Log:       log,
 		KeyLookup: &keyStore{},
 		Issuer:    "foodflow.test",
 	})
-	if err != nil {
-		t.Fatalf("Should be able to create an authenticator: %s", err)
-	}
 
 	t.Run("authorize admin", test1(ath))
 	t.Run("authorize user", test2(ath))
