@@ -1,0 +1,74 @@
+// API Configuration
+// Use empty string for relative URLs (same origin) so nginx can proxy the requests
+// In development, use the full URL to localhost:3000
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+
+// API Types based on backend response
+export interface ApiMenuItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  imageUrl: string;
+  available: boolean;
+}
+
+export interface ApiCategory {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  mentuItems: ApiMenuItem[];
+}
+
+export interface ApiRestaurantDetails {
+  id: string;
+  name: string;
+  description: string;
+  address: string;
+  phone: string;
+  email: string;
+  imageUrl: string;
+  enabled: boolean;
+  categories: ApiCategory[];
+  dateCreated: string;
+  dateUpdated: string;
+}
+
+// API Service
+export class RestaurantApiService {
+  private baseUrl: string;
+
+  constructor(baseUrl: string = API_BASE_URL) {
+    this.baseUrl = baseUrl;
+  }
+
+  /**
+   * Fetch restaurant details including categories and menu items
+   */
+  async getRestaurantDetails(restaurantId: string): Promise<ApiRestaurantDetails> {
+    const url = `${this.baseUrl}/v1/restaurants/${restaurantId}/details`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch restaurant details: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching restaurant details:', error);
+      throw error;
+    }
+  }
+}
+
+// Export singleton instance
+export const restaurantApi = new RestaurantApiService();

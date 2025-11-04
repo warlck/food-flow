@@ -25,6 +25,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/menu" element={<Menu />} />
+            <Route path="/menu/:restaurantId" element={<Menu />} />
             <Route path="/mobile-menu" element={<MobileMenu />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
@@ -38,3 +39,4 @@ const App = () => (
 );
 
 export default App;
+

@@ -1,19 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import MenuGrid from '@/components/MenuGrid';
 import RestaurantInfo from '@/components/RestaurantInfo';
 import { mockMenuItems, mockRestaurant, mockCategories } from '@/data/mockData';
+import { useRestaurantDetails } from '@/hooks/useRestaurantDetails';
+import { transformApiRestaurant, transformApiMenuItems } from '@/lib/transformers';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCart } from '@/context/CartContext';
 import CartItemComponent from '@/components/CartItemComponent';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingBag, Loader2, AlertCircle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const Menu: React.FC = () => {
+  const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
+  const [searchParams] = useSearchParams();
+  const queryRestaurantId = searchParams.get('restaurant_id');
+  
+  // Use restaurant_id from URL path, query param, or default
+  const restaurantId = urlRestaurantId || queryRestaurantId || 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d';
+  
+  // Fetch restaurant details from API
+  const { data: apiData, isLoading, error } = useRestaurantDetails(restaurantId);
+  
   const { items, getTotalItems, getTotalPrice, hasItems } = useCart();
   const isMobile = useIsMobile();
   const menuSectionRef = useRef<HTMLElement>(null);
+  
+  // Transform API data or use mock data as fallback
+  const restaurant = apiData ? transformApiRestaurant(apiData) : mockRestaurant;
+  const { items: menuItems, categories } = apiData 
+    ? transformApiMenuItems(apiData) 
+    : { items: mockMenuItems, categories: mockCategories };
   
   useEffect(() => {
     if (menuSectionRef.current) {
@@ -60,10 +80,46 @@ const Menu: React.FC = () => {
     </div>
   );
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[50vh]">
+          <div className="text-center">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-food-primary" />
+            <h2 className="text-xl font-semibold">Loading restaurant details...</h2>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error loading restaurant</AlertTitle>
+            <AlertDescription>
+              {error.message || 'Failed to load restaurant details. Please try again later.'}
+            </AlertDescription>
+          </Alert>
+          <div className="mt-6">
+            <Button onClick={() => window.location.reload()}>
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       {/* Restaurant Info */}
-      <RestaurantInfo restaurant={mockRestaurant} />
+      <RestaurantInfo restaurant={restaurant} />
       
       {/* Menu Grid with persistent side cart */}
       <section ref={menuSectionRef} className="container mx-auto px-4 py-8 relative">
@@ -74,7 +130,7 @@ const Menu: React.FC = () => {
         <div className="flex gap-4">
           {/* Main menu content */}
           <div className="flex-1 pr-0 lg:pr-4">
-            <MenuGrid items={mockMenuItems} categories={mockCategories} />
+            <MenuGrid items={menuItems} categories={categories} />
           </div>
           
           {/* Persistent side cart for desktop */}
@@ -104,4 +160,3 @@ const Menu: React.FC = () => {
 };
 
 export default Menu;
-
