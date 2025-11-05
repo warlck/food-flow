@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { MenuItem as MenuItemType } from '@/types';
-import { Plus, Clock, Tag, ShoppingBag } from 'lucide-react';
+import { Plus, Tag, ShoppingBag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
 
@@ -100,16 +100,12 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, onCartUpdate }) => {
         <CardDescription className="text-sm text-gray-600 line-clamp-3">{item.description}</CardDescription>
       </CardContent>
       
-      <CardFooter className="flex justify-between items-center pt-2">
-        <div className="flex items-center text-xs text-gray-500">
-          <Clock className="h-3 w-3 mr-1" />
-          <span>{item.preparationTime} min</span>
-        </div>
+      <CardFooter className="pt-2">
         <Button
           onClick={handleAddToCart}
           disabled={!item.available}
           size="sm"
-          className="bg-food-primary hover:bg-food-accent text-white"
+          className="w-full bg-food-primary hover:bg-food-accent text-white"
         >
           <Plus className="mr-1 h-4 w-4" /> Add to Cart
         </Button>

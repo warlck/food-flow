@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
-import { ShoppingCart, Menu, X, Home, Book, ChefHat, LogIn } from 'lucide-react';
+import { ShoppingCart, Menu, X, Book, ChefHat, LogIn } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { getTotalItems } = useCart();
@@ -25,10 +25,6 @@ const Header: React.FC = () => {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-6">
-          <Link to="/" className="text-gray-700 hover:text-food-primary transition-colors flex items-center">
-            <Home className="mr-1" size={18} />
-            <span>Home</span>
-          </Link>
           <Link to="/menu" className="text-gray-700 hover:text-food-primary transition-colors flex items-center">
             <Book className="mr-1" size={18} />
             <span>Menu</span>
@@ -66,14 +62,6 @@ const Header: React.FC = () => {
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-t py-4 px-4 shadow-lg animate-fade-in">
           <nav className="flex flex-col space-y-4">
-            <Link 
-              to="/" 
-              className="text-gray-700 hover:text-food-primary transition-colors flex items-center p-2"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <Home className="mr-2" size={18} />
-              <span>Home</span>
-            </Link>
             <Link 
               to="/menu" 
               className="text-gray-700 hover:text-food-primary transition-colors flex items-center p-2"

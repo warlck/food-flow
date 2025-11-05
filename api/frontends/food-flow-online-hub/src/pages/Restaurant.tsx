@@ -54,10 +54,14 @@ const Menu: React.FC = () => {
     : { items: mockMenuItems, categories: mockCategories };
   
   useEffect(() => {
-    if (menuSectionRef.current) {
-      menuSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+    // Scroll to menu section after data is loaded and component is rendered
+    if (menuSectionRef.current && !isLoading) {
+      const timer = setTimeout(() => {
+        menuSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, []);
+  }, [isLoading]);
 
   const CartComponent = () => (
     <div className="flex flex-col h-full">
