@@ -10,7 +10,7 @@ import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
-import MobileMenu from "./pages/MobileMenu";
+import MobileRestaurant from "./pages/MobileRestaurant";
 
 const queryClient = new QueryClient();
 
@@ -23,7 +23,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/restaurant/:restaurantId" element={<Restaurant />} />
-            <Route path="/mobile-menu" element={<MobileMenu />} />
+            <Route path="/mobile-restaurant/:restaurantId" element={<MobileRestaurant />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/login" element={<Login />} />

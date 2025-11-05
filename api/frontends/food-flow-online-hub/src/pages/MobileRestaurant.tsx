@@ -1,17 +1,80 @@
 
 import React, { useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useCart } from '@/context/CartContext';
 import { mockMenuItems, mockCategories, mockRestaurant } from '@/data/mockData';
+import { useRestaurantDetails } from '@/hooks/useRestaurantDetails';
+import { transformApiRestaurant, transformApiMenuItems } from '@/lib/transformers';
 import { MenuItem as MenuItemType } from '@/types';
-import { Plus, Minus, ShoppingCart, Clock, Star, ArrowUp } from 'lucide-react';
+import { Plus, Minus, ShoppingCart, Clock, Star, ArrowUp, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 const MobileMenu: React.FC = () => {
+  const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
+  const [searchParams] = useSearchParams();
+  const queryRestaurantId = searchParams.get('restaurant_id');
+  
+  // Use restaurant_id from URL path or query param - no default
+  const restaurantId = urlRestaurantId || queryRestaurantId;
+  
+  // Fetch restaurant details from API only if restaurantId is provided
+  const { data: apiData, isLoading, error } = useRestaurantDetails(restaurantId || '');
+  
   const [selectedCategory, setSelectedCategory] = useState('All');
   const { addToCart, updateQuantity, removeFromCart, items, getTotalItems, getTotalPrice } = useCart();
+
+  // Check if restaurant ID is missing
+  if (!restaurantId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center p-4">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Restaurant ID Required</AlertTitle>
+          <AlertDescription>
+            Please provide a valid restaurant ID in the URL. 
+            The URL should be in the format: /mobile-restaurant/[restaurant-id]
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-food-primary" />
+          <h2 className="text-xl font-semibold">Loading restaurant...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center p-4">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error loading restaurant</AlertTitle>
+          <AlertDescription>
+            {error.message || 'Failed to load restaurant details. Please try again later.'}
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // Transform API data or use mock data as fallback
+  const restaurant = apiData ? transformApiRestaurant(apiData) : mockRestaurant;
+  const { items: menuItems, categories } = apiData 
+    ? transformApiMenuItems(apiData) 
+    : { items: mockMenuItems, categories: mockCategories };
 
   const getItemQuantity = (itemId: string) => {
     const cartItem = items.find(item => item.menuItem.id === itemId);
@@ -35,11 +98,11 @@ const MobileMenu: React.FC = () => {
     }
   };
 
-  const filteredItems = mockMenuItems.filter(item => 
+  const filteredItems = menuItems.filter(item => 
     selectedCategory === 'All' || item.category === selectedCategory
   );
 
-  const categoriesWithAll = ['All', ...mockCategories];
+  const categoriesWithAll = ['All', ...categories];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
@@ -55,7 +118,7 @@ const MobileMenu: React.FC = () => {
                   <Star className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold">{mockRestaurant.name}</h1>
+                  <h1 className="text-xl font-bold">{restaurant.name}</h1>
                   <div className="flex items-center space-x-2 text-white/90 text-sm">
                     <Clock className="w-4 h-4" />
                     <span>25-35 min</span>
@@ -65,12 +128,12 @@ const MobileMenu: React.FC = () => {
               <div className="text-right">
                 <div className="flex items-center space-x-1 text-sm">
                   <Star className="w-4 h-4 fill-current" />
-                  <span className="font-semibold">4.8</span>
+                  <span className="font-semibold">{restaurant.rating}</span>
                 </div>
                 <p className="text-white/80 text-xs">Pick Up</p>
               </div>
             </div>
-            <p className="text-white/90 text-sm">{mockRestaurant.address}</p>
+            <p className="text-white/90 text-sm">{restaurant.address}</p>
           </div>
         </div>
 
