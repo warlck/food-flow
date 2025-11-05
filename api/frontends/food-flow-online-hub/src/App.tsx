@@ -6,11 +6,13 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/context/CartContext";
 
 import Restaurant from "./pages/Restaurant";
-import Cart from "./pages/Cart";
-import Checkout from "./pages/Checkout";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import MobileRestaurant from "./pages/MobileRestaurant";
+import CartMobile from "./pages/CartMobile";
+import CartDesktop from "./pages/CartDesktop";
+import CheckoutMobile from "./pages/CheckoutMobile";
+import CheckoutDesktop from "./pages/CheckoutDesktop";
 
 const queryClient = new QueryClient();
 
@@ -24,8 +26,10 @@ const App = () => (
           <Routes>
             <Route path="/restaurant/:restaurantId" element={<Restaurant />} />
             <Route path="/mobile-restaurant/:restaurantId" element={<MobileRestaurant />} />
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/cart" element={<CartDesktop />} />
+            <Route path="/mobile-cart" element={<CartMobile />} />
+            <Route path="/checkout" element={<CheckoutDesktop />} />
+            <Route path="/mobile-checkout" element={<CheckoutMobile />} />
             <Route path="/login" element={<Login />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

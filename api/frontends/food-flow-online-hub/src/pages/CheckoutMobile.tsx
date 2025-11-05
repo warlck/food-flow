@@ -47,7 +47,7 @@ const paymentFormSchema = z.object({
   cardCvc: z.string().optional(),
 });
 
-const Checkout: React.FC = () => {
+const CheckoutMobile: React.FC = () => {
   const navigate = useNavigate();
   const { items, getTotalPrice, clearCart, orderType } = useCart();
   const [step, setStep] = useState(1);
@@ -109,7 +109,7 @@ const Checkout: React.FC = () => {
     setTimeout(() => {
       clearCart();
       toast.success("Order placed successfully!");
-      navigate("/");
+      navigate("/mobile-restaurant/a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d");
       setIsSubmitting(false);
     }, 2000);
   };
@@ -139,7 +139,7 @@ const Checkout: React.FC = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => navigate("/cart")}
+                  onClick={() => navigate("/mobile-cart")}
                   className="text-white hover:bg-white/20 p-2 rounded-full"
                 >
                   <ArrowLeft className="w-5 h-5" />
@@ -567,4 +567,4 @@ const Checkout: React.FC = () => {
   );
 };
 
-export default Checkout;
+export default CheckoutMobile;

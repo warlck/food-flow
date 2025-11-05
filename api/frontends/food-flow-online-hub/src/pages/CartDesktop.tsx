@@ -1,0 +1,286 @@
+
+import React, { useState } from 'react';
+import { useCart } from '@/context/CartContext';
+import CartItemComponent from '@/components/CartItemComponent';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Layout from '@/components/Layout';
+import { mockRestaurant } from '@/data/mockData';
+import { AlertCircle, ShoppingCart, ArrowRight, Package, MapPin, Truck, Tag } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from '@/components/ui/use-toast';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+
+const CartDesktop: React.FC = () => {
+  const { items, getTotalPrice, hasItems, clearCart, orderType, setOrderType } = useCart();
+  const [promoCode, setPromoCode] = useState('');
+  const [isApplying, setIsApplying] = useState(false);
+  const navigate = useNavigate();
+
+  const subtotal = getTotalPrice();
+  const deliveryFee = orderType === 'delivery' ? mockRestaurant.deliveryFee : 0;
+  const tax = subtotal * 0.1; // 10% tax
+  const total = subtotal + deliveryFee + tax;
+
+  const handleApplyPromo = () => {
+    setIsApplying(true);
+    setTimeout(() => {
+      setIsApplying(false);
+      if (promoCode.toLowerCase() === 'discount20') {
+        toast({
+          title: "Promo code applied!",
+          description: "You received 20% discount on your order.",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Invalid promo code",
+          description: "Please try a different code.",
+          variant: "destructive",
+        });
+      }
+    }, 1000);
+  };
+
+  const handleCheckout = () => {
+    if (subtotal < mockRestaurant.minimumOrder) {
+      toast({
+        title: "Minimum order not met",
+        description: `Please add more items to meet the minimum order amount of $${mockRestaurant.minimumOrder.toFixed(2)}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    navigate('/checkout');
+  };
+
+  const getEstimatedTime = () => {
+    if (orderType === 'delivery') {
+      return `${mockRestaurant.estimatedDeliveryTime.min}-${mockRestaurant.estimatedDeliveryTime.max} minutes`;
+    } else {
+      return `${mockRestaurant.estimatedPickupTime?.min || 15}-${mockRestaurant.estimatedPickupTime?.max || 25} minutes`;
+    }
+  };
+
+  return (
+    <Layout>
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Your Cart</h1>
+          <p className="text-gray-600 mt-2">{items.length} items in your cart</p>
+        </div>
+
+        {hasItems() ? (
+          <div className="grid grid-cols-3 gap-8">
+            
+            {/* Left Column: Cart Items */}
+            <div className="col-span-2 space-y-6">
+              
+              {/* Cart Items */}
+              <Card className="overflow-hidden border shadow-md">
+                <CardHeader className="bg-gray-50 border-b">
+                  <CardTitle className="text-xl font-semibold flex items-center justify-between">
+                    <div className="flex items-center">
+                      <ShoppingCart className="w-6 h-6 mr-3 text-food-primary" />
+                      Order Items
+                    </div>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={clearCart}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      Clear All
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="divide-y divide-gray-200">
+                    {items.map((item) => (
+                      <div key={item.menuItem.id} className="p-6">
+                        <CartItemComponent item={item} />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-6 bg-gray-50 border-t">
+                    <Link to="/restaurant/a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d">
+                      <Button variant="outline" className="w-full border-dashed border-2 border-food-primary text-food-primary hover:bg-food-primary/10">
+                        + Add More Items
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Order Type Selection */}
+              <Card className="overflow-hidden border shadow-md">
+                <CardHeader className="bg-gray-50 border-b">
+                  <CardTitle className="text-xl font-semibold flex items-center">
+                    <Truck className="w-6 h-6 mr-3 text-food-primary" />
+                    Order Type
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <RadioGroup 
+                    value={orderType} 
+                    onValueChange={(value) => setOrderType(value as 'delivery' | 'pickup')}
+                    className="grid grid-cols-2 gap-4"
+                  >
+                    <div className={`flex items-center space-x-3 border-2 rounded-lg p-4 transition-all cursor-pointer ${
+                      orderType === 'delivery' 
+                        ? 'border-food-primary bg-food-primary/5' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}>
+                      <RadioGroupItem value="delivery" id="delivery-desktop" className="text-food-primary" />
+                      <label htmlFor="delivery-desktop" className="flex-1 cursor-pointer">
+                        <div className="flex items-center mb-2">
+                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                            <MapPin className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <p className="font-semibold text-gray-900">Delivery</p>
+                        </div>
+                        <p className="text-sm text-gray-500 ml-13">Delivered to your address</p>
+                        <p className="font-semibold text-gray-900 mt-2">${mockRestaurant.deliveryFee.toFixed(2)} fee</p>
+                      </label>
+                    </div>
+                    
+                    <div className={`flex items-center space-x-3 border-2 rounded-lg p-4 transition-all cursor-pointer ${
+                      orderType === 'pickup' 
+                        ? 'border-food-primary bg-food-primary/5' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}>
+                      <RadioGroupItem value="pickup" id="pickup-desktop" className="text-food-primary" />
+                      <label htmlFor="pickup-desktop" className="flex-1 cursor-pointer">
+                        <div className="flex items-center mb-2">
+                          <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mr-3">
+                            <Package className="h-5 w-5 text-green-600" />
+                          </div>
+                          <p className="font-semibold text-gray-900">Pickup</p>
+                        </div>
+                        <p className="text-sm text-gray-500 ml-13">Collect from restaurant</p>
+                        <p className="font-semibold text-green-600 mt-2">Free</p>
+                      </label>
+                    </div>
+                  </RadioGroup>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right Column: Order Summary */}
+            <div className="col-span-1">
+              <div className="sticky top-24 space-y-6">
+                
+                {/* Promo Code */}
+                <Card className="overflow-hidden border shadow-md">
+                  <CardContent className="p-6">
+                    <div className="flex items-center mb-4">
+                      <Tag className="w-5 h-5 mr-2 text-food-primary" />
+                      <h3 className="font-semibold text-gray-900">Promo Code</h3>
+                    </div>
+                    <div className="space-y-3">
+                      <Input
+                        placeholder="Enter promo code"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value)}
+                        className="border-gray-300 focus:border-food-primary"
+                      />
+                      <Button 
+                        variant="outline"
+                        onClick={handleApplyPromo}
+                        disabled={!promoCode || isApplying}
+                        className="w-full border-food-primary text-food-primary hover:bg-food-primary hover:text-white"
+                      >
+                        {isApplying ? 'Applying...' : 'Apply Code'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Order Summary */}
+                <Card className="overflow-hidden border shadow-md">
+                  <CardHeader className="bg-gray-50 border-b">
+                    <CardTitle className="text-xl font-semibold text-gray-900">Order Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Subtotal</span>
+                        <span className="font-semibold text-lg">${subtotal.toFixed(2)}</span>
+                      </div>
+                      {orderType === 'delivery' && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Delivery Fee</span>
+                          <span className="font-semibold text-lg">${deliveryFee.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Tax (10%)</span>
+                        <span className="font-semibold text-lg">${tax.toFixed(2)}</span>
+                      </div>
+                      
+                      <div className="border-t border-gray-200 pt-3 mt-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xl font-bold text-gray-900">Total</span>
+                          <span className="text-2xl font-bold text-food-primary">${total.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {subtotal < mockRestaurant.minimumOrder && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4">
+                        <div className="flex items-start gap-3">
+                          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold text-amber-800 text-sm">Minimum Order Required</p>
+                            <p className="text-amber-700 text-sm mt-1">
+                              Add ${(mockRestaurant.minimumOrder - subtotal).toFixed(2)} more to meet the minimum of ${mockRestaurant.minimumOrder.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <Button 
+                      className="w-full bg-food-primary hover:bg-food-accent text-white py-6 text-lg font-semibold rounded-lg mt-6 disabled:bg-gray-400"
+                      size="lg"
+                      onClick={handleCheckout}
+                      disabled={subtotal < mockRestaurant.minimumOrder}
+                    >
+                      Proceed to Checkout
+                      <ArrowRight className="w-5 h-5 ml-2" />
+                    </Button>
+
+                    <p className="text-center text-sm text-gray-500 mt-3">
+                      Estimated {orderType === 'delivery' ? 'delivery' : 'pickup'}: {getEstimatedTime()}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mb-6">
+              <ShoppingCart className="w-16 h-16 text-gray-400" />
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">Your cart is empty</h2>
+            <p className="text-gray-600 mb-8 max-w-md text-lg">Discover delicious meals from our menu and start building your perfect order!</p>
+            <Link to="/restaurant/a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d">
+              <Button 
+                size="lg" 
+                className="bg-food-primary hover:bg-food-accent text-white px-10 py-6 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all"
+              >
+                Browse Menu
+                <ArrowRight className="w-6 h-6 ml-2" />
+              </Button>
+            </Link>
+          </div>
+        )}
+      </div>
+    </Layout>
+  );
+};
+
+export default CartDesktop;

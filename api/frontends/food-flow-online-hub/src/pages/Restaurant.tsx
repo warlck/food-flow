@@ -88,7 +88,7 @@ const Menu: React.FC = () => {
               <span>${getTotalPrice().toFixed(2)}</span>
             </div>
             <Button className="w-full" size="lg" asChild>
-              <a href="/checkout">Proceed to Checkout</a>
+              <a href="/cart">Proceed to Checkout</a>
             </Button>
           </div>
         </>

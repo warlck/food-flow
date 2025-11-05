@@ -251,7 +251,7 @@ const MobileMenu: React.FC = () => {
           <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 w-full max-w-md px-4">
             <Button
               className="w-full bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white py-4 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 border-0"
-              onClick={() => window.location.href = '/cart'}
+              onClick={() => window.location.href = '/mobile-cart'}
             >
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center space-x-3">
