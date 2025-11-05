@@ -19,15 +19,33 @@ const Menu: React.FC = () => {
   const [searchParams] = useSearchParams();
   const queryRestaurantId = searchParams.get('restaurant_id');
   
-  // Use restaurant_id from URL path, query param, or default
-  const restaurantId = urlRestaurantId || queryRestaurantId || 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d';
+  // Use restaurant_id from URL path or query param - no default
+  const restaurantId = urlRestaurantId || queryRestaurantId;
   
-  // Fetch restaurant details from API
-  const { data: apiData, isLoading, error } = useRestaurantDetails(restaurantId);
+  // Fetch restaurant details from API only if restaurantId is provided
+  const { data: apiData, isLoading, error } = useRestaurantDetails(restaurantId || '');
   
   const { items, getTotalItems, getTotalPrice, hasItems } = useCart();
   const isMobile = useIsMobile();
   const menuSectionRef = useRef<HTMLElement>(null);
+  
+  // Check if restaurant ID is missing
+  if (!restaurantId) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Restaurant ID Required</AlertTitle>
+            <AlertDescription>
+              Please provide a valid restaurant ID in the URL. 
+              The URL should be in the format: /restaurant/[restaurant-id]
+            </AlertDescription>
+          </Alert>
+        </div>
+      </Layout>
+    );
+  }
   
   // Transform API data or use mock data as fallback
   const restaurant = apiData ? transformApiRestaurant(apiData) : mockRestaurant;
