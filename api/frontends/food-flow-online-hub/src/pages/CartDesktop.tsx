@@ -13,7 +13,7 @@ import { toast } from '@/components/ui/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const CartDesktop: React.FC = () => {
-  const { items, getTotalPrice, hasItems, clearCart, orderType, setOrderType } = useCart();
+  const { items, getTotalPrice, hasItems, clearCart, orderType, setOrderType, restaurantId } = useCart();
   const [promoCode, setPromoCode] = useState('');
   const [isApplying, setIsApplying] = useState(false);
   const navigate = useNavigate();
@@ -105,11 +105,13 @@ const CartDesktop: React.FC = () => {
                     ))}
                   </div>
                   <div className="p-6 bg-gray-50 border-t">
-                    <Link to="/restaurant/a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d">
-                      <Button variant="outline" className="w-full border-dashed border-2 border-food-primary text-food-primary hover:bg-food-primary/10">
-                        + Add More Items
-                      </Button>
-                    </Link>
+                    {restaurantId && (
+                      <Link to={`/restaurant/${restaurantId}`}>
+                        <Button variant="outline" className="w-full border-dashed border-2 border-food-primary text-food-primary hover:bg-food-primary/10">
+                          + Add More Items
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -267,15 +269,17 @@ const CartDesktop: React.FC = () => {
             </div>
             <h2 className="text-3xl font-bold text-gray-900 mb-3">Your cart is empty</h2>
             <p className="text-gray-600 mb-8 max-w-md text-lg">Discover delicious meals from our menu and start building your perfect order!</p>
-            <Link to="/restaurant/a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d">
-              <Button 
-                size="lg" 
-                className="bg-food-primary hover:bg-food-accent text-white px-10 py-6 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all"
-              >
-                Browse Menu
-                <ArrowRight className="w-6 h-6 ml-2" />
-              </Button>
-            </Link>
+            {restaurantId && (
+              <Link to={`/restaurant/${restaurantId}`}>
+                <Button 
+                  size="lg" 
+                  className="bg-food-primary hover:bg-food-accent text-white px-10 py-6 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all"
+                >
+                  Browse Menu
+                  <ArrowRight className="w-6 h-6 ml-2" />
+                </Button>
+              </Link>
+            )}
           </div>
         )}
       </div>

@@ -12,7 +12,7 @@ import { toast } from '@/components/ui/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const CartMobile: React.FC = () => {
-  const { items, getTotalPrice, hasItems, clearCart, orderType, setOrderType } = useCart();
+  const { items, getTotalPrice, hasItems, clearCart, orderType, setOrderType, restaurantId } = useCart();
   const [promoCode, setPromoCode] = useState('');
   const [isApplying, setIsApplying] = useState(false);
   const navigate = useNavigate();
@@ -73,15 +73,17 @@ const CartMobile: React.FC = () => {
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <Link to="/mobile-restaurant/a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-white hover:bg-white/20 p-2 rounded-full"
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                  </Button>
-                </Link>
+                {restaurantId && (
+                  <Link to={`/mobile-restaurant/${restaurantId}`}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-white hover:bg-white/20 p-2 rounded-full"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </Button>
+                  </Link>
+                )}
                 <div>
                   <h1 className="text-xl font-bold">Your Cart</h1>
                   <p className="text-white/90 text-sm">{items.length} items</p>
@@ -128,11 +130,13 @@ const CartMobile: React.FC = () => {
                   ))}
                 </div>
                 <div className="p-4 bg-gray-50 border-t">
-                  <Link to="/mobile-menu">
-                    <Button variant="outline" className="w-full border-dashed border-2 border-food-primary text-food-primary hover:bg-food-primary/10">
-                      + Add More Items
-                    </Button>
-                  </Link>
+                  {restaurantId && (
+                    <Link to={`/mobile-restaurant/${restaurantId}`}>
+                      <Button variant="outline" className="w-full border-dashed border-2 border-food-primary text-food-primary hover:bg-food-primary/10">
+                        + Add More Items
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -279,15 +283,17 @@ const CartMobile: React.FC = () => {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Your cart is empty</h2>
             <p className="text-gray-600 mb-8 max-w-sm">Discover delicious meals from our menu and start building your perfect order!</p>
-            <Link to="/mobile-restaurant/a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d">
-              <Button 
-                size="lg" 
-                className="bg-gradient-to-r from-food-primary to-food-accent text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all"
-              >
-                Browse Menu
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </Link>
+            {restaurantId && (
+              <Link to={`/mobile-restaurant/${restaurantId}`}>
+                <Button 
+                  size="lg" 
+                  className="bg-gradient-to-r from-food-primary to-food-accent text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all"
+                >
+                  Browse Menu
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </Link>
+            )}
           </div>
         )}
 

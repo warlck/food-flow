@@ -25,9 +25,16 @@ const Menu: React.FC = () => {
   // Fetch restaurant details from API only if restaurantId is provided
   const { data: apiData, isLoading, error } = useRestaurantDetails(restaurantId || '');
   
-  const { items, getTotalItems, getTotalPrice, hasItems } = useCart();
+  const { items, getTotalItems, getTotalPrice, hasItems, setRestaurantId } = useCart();
   const isMobile = useIsMobile();
   const menuSectionRef = useRef<HTMLElement>(null);
+  
+  // Set restaurant ID in cart context when component mounts or restaurantId changes
+  useEffect(() => {
+    if (restaurantId) {
+      setRestaurantId(restaurantId);
+    }
+  }, [restaurantId, setRestaurantId]);
   
   // Check if restaurant ID is missing
   if (!restaurantId) {

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,7 +25,14 @@ const MobileMenu: React.FC = () => {
   const { data: apiData, isLoading, error } = useRestaurantDetails(restaurantId || '');
   
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const { addToCart, updateQuantity, removeFromCart, items, getTotalItems, getTotalPrice } = useCart();
+  const { addToCart, updateQuantity, removeFromCart, items, getTotalItems, getTotalPrice, setRestaurantId } = useCart();
+
+  // Set restaurant ID in cart context when component mounts or restaurantId changes
+  useEffect(() => {
+    if (restaurantId) {
+      setRestaurantId(restaurantId);
+    }
+  }, [restaurantId, setRestaurantId]);
 
   // Check if restaurant ID is missing
   if (!restaurantId) {

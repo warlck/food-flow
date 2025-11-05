@@ -5,6 +5,7 @@ import { toast } from '@/components/ui/use-toast';
 interface CartContextType {
   items: CartItem[];
   orderType: OrderType;
+  restaurantId: string | null;
   addToCart: (item: MenuItem, quantity?: number) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   removeFromCart: (itemId: string) => void;
@@ -14,6 +15,7 @@ interface CartContextType {
   hasItems: () => boolean;
   updateSpecialInstructions: (itemId: string, instructions: string) => void;
   setOrderType: (type: OrderType) => void;
+  setRestaurantId: (id: string) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -21,11 +23,13 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [orderType, setOrderType] = useState<OrderType>('delivery');
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
 
   // Load cart from localStorage on initial render
   useEffect(() => {
     const savedCart = localStorage.getItem('foodFlowCart');
     const savedOrderType = localStorage.getItem('foodFlowOrderType');
+    const savedRestaurantId = localStorage.getItem('foodFlowRestaurantId');
     
     if (savedCart) {
       try {
@@ -44,6 +48,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem('foodFlowOrderType');
       }
     }
+    
+    if (savedRestaurantId) {
+      setRestaurantId(savedRestaurantId);
+    }
   }, []);
 
   // Save cart and order type to localStorage whenever they change
@@ -54,6 +62,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     localStorage.setItem('foodFlowOrderType', orderType);
   }, [orderType]);
+  
+  useEffect(() => {
+    if (restaurantId) {
+      localStorage.setItem('foodFlowRestaurantId', restaurantId);
+    }
+  }, [restaurantId]);
 
   const addToCart = (menuItem: MenuItem, quantity: number = 1) => {
     setItems(prevItems => {
@@ -149,6 +163,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         items,
         orderType,
+        restaurantId,
         addToCart,
         updateQuantity,
         removeFromCart,
@@ -157,7 +172,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         getTotalPrice,
         hasItems,
         updateSpecialInstructions,
-        setOrderType
+        setOrderType,
+        setRestaurantId
       }}
     >
       {children}

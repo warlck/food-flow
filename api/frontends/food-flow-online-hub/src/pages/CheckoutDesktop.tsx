@@ -50,7 +50,7 @@ const paymentFormSchema = z.object({
 
 const CheckoutDesktop: React.FC = () => {
   const navigate = useNavigate();
-  const { items, getTotalPrice, clearCart, orderType } = useCart();
+  const { items, getTotalPrice, clearCart, orderType, restaurantId } = useCart();
   const [step, setStep] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<"creditCard" | "payAtLocation">("creditCard");
   const [orderDetails, setOrderDetails] = useState<any>({});
@@ -110,7 +110,11 @@ const CheckoutDesktop: React.FC = () => {
     setTimeout(() => {
       clearCart();
       toast.success("Order placed successfully!");
-      navigate("/restaurant/a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d");
+      if (restaurantId) {
+        navigate(`/restaurant/${restaurantId}`);
+      } else {
+        navigate("/");
+      }
       setIsSubmitting(false);
     }, 2000);
   };
