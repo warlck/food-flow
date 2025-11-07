@@ -35,12 +35,12 @@ func TestNewMenuItems(n int, categoryID, restaurantID uuid.UUID) []NewMenuItem {
 }
 
 // TestSeedMenuItems is a helper method for testing.
-func TestSeedMenuItems(ctx context.Context, n int, categoryID, restaurantID uuid.UUID, api *Business) ([]MenuItem, error) {
+func TestSeedMenuItems(ctx context.Context, n int, categoryID, restaurantID uuid.UUID, bus *Business) ([]MenuItem, error) {
 	newItems := TestNewMenuItems(n, categoryID, restaurantID)
 
 	items := make([]MenuItem, len(newItems))
 	for i, ni := range newItems {
-		item, err := api.Create(ctx, ni)
+		item, err := bus.Create(ctx, ni)
 		if err != nil {
 			return nil, fmt.Errorf("seeding menu item: idx: %d : %w", i, err)
 		}

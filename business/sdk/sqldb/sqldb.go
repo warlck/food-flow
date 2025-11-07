@@ -171,7 +171,7 @@ func namedQuerySlice[T any](ctx context.Context, log *logger.Logger, db sqlx.Ext
 
 	defer func() {
 		if err != nil {
-			log.Infoc(ctx, 6, "database.NamedQuerySlice", "query", q, "ERROR", err)
+			log.Infoc(ctx, 6, "database.namedQuerySlice", "query", q, "ERROR", err)
 		}
 	}()
 

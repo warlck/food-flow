@@ -32,12 +32,12 @@ func TestNewRestaurants(n int) []NewRestaurant {
 }
 
 // TestSeedRestaurants is a helper method for testing.
-func TestSeedRestaurants(ctx context.Context, n int, api *Business) ([]Restaurant, error) {
+func TestSeedRestaurants(ctx context.Context, n int, bus *Business) ([]Restaurant, error) {
 	newRests := TestNewRestaurants(n)
 
 	rests := make([]Restaurant, len(newRests))
 	for i, nr := range newRests {
-		rest, err := api.Create(ctx, nr)
+		rest, err := bus.Create(ctx, nr)
 		if err != nil {
 			return nil, fmt.Errorf("seeding restaurant: idx: %d : %w", i, err)
 		}
