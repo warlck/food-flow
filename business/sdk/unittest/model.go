@@ -5,6 +5,7 @@ import (
 
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
+	"github.com/warlck/food-flow/business/domain/orderbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
 )
@@ -29,6 +30,11 @@ type MenuItem struct {
 	menuitembus.MenuItem
 }
 
+// Order represents an order specified for the test.
+type Order struct {
+	orderbus.Order
+}
+
 // SeedData represents data that was seeded for the test.
 type SeedData struct {
 	Users       []User
@@ -36,6 +42,7 @@ type SeedData struct {
 	Restaurants []Restaurant
 	Categories  []Category
 	MenuItems   []MenuItem
+	Orders      []Order
 }
 
 // Table represent fields needed for running an unit test.

@@ -6,6 +6,8 @@ import (
 	"github.com/warlck/food-flow/business/domain/categorybus/stores/categorydb"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/menuitembus/stores/menuitemdb"
+	"github.com/warlck/food-flow/business/domain/orderbus"
+	"github.com/warlck/food-flow/business/domain/orderbus/stores/orderdb"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus/stores/restaurantdb"
 	"github.com/warlck/food-flow/business/domain/userbus"
@@ -19,6 +21,7 @@ type BusDomain struct {
 	Restaurant *restaurantbus.Business
 	Category   *categorybus.Business
 	MenuItem   *menuitembus.Business
+	Order      *orderbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -35,10 +38,14 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	menuItemStorage := menuitemdb.NewStore(log, db)
 	menuItemBus := menuitembus.NewBusiness(log, menuItemStorage)
 
+	orderStorage := orderdb.NewStore(log, db)
+	orderBus := orderbus.NewBusiness(log, orderStorage, menuItemBus, restaurantBus)
+
 	return BusDomain{
 		User:       userBus,
 		Restaurant: restaurantBus,
 		Category:   categoryBus,
 		MenuItem:   menuItemBus,
+		Order:      orderBus,
 	}
 }

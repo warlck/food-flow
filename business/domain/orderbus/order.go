@@ -10,7 +10,7 @@ const (
 	OrderByStatus      = "order_status"
 )
 
-var defaultOrderBy = order.NewBy(OrderByDateCreated, order.DESC)
+var DefaultOrderBy = order.NewBy(OrderByDateCreated, order.DESC)
 
 // Map of valid order by fields
 var orderByFields = map[string]string{
