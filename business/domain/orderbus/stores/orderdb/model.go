@@ -11,8 +11,8 @@ import (
 
 // dbOrder represents the database row for an order.
 type dbOrder struct {
-	ID                    string    `db:"order_id"`
-	RestaurantID          string    `db:"restaurant_id"`
+	ID                    uuid.UUID `db:"order_id"`
+	RestaurantID          uuid.UUID `db:"restaurant_id"`
 	CustomerName          string    `db:"customer_name"`
 	CustomerEmail         string    `db:"customer_email"`
 	CustomerPhone         string    `db:"customer_phone"`
@@ -32,9 +32,9 @@ type dbOrder struct {
 
 // dbOrderItem represents the database row for an order item.
 type dbOrderItem struct {
-	ID                  string    `db:"order_item_id"`
-	OrderID             string    `db:"order_id"`
-	MenuItemID          string    `db:"menu_item_id"`
+	ID                  uuid.UUID `db:"order_item_id"`
+	OrderID             uuid.UUID `db:"order_id"`
+	MenuItemID          uuid.UUID `db:"menu_item_id"`
 	MenuItemName        string    `db:"menu_item_name"`
 	MenuItemPrice       float64   `db:"menu_item_price"`
 	Quantity            int       `db:"quantity"`
@@ -44,8 +44,8 @@ type dbOrderItem struct {
 
 // dbDeliveryAddress represents the database row for a delivery address.
 type dbDeliveryAddress struct {
-	ID                   string    `db:"address_id"`
-	OrderID              string    `db:"order_id"`
+	ID                   uuid.UUID `db:"address_id"`
+	OrderID              uuid.UUID `db:"order_id"`
 	Street               string    `db:"street"`
 	City                 string    `db:"city"`
 	State                string    `db:"state"`
@@ -58,8 +58,8 @@ type dbDeliveryAddress struct {
 
 func toDBOrder(bus orderbus.Order) dbOrder {
 	return dbOrder{
-		ID:                    bus.ID.String(),
-		RestaurantID:          bus.RestaurantID.String(),
+		ID:                    bus.ID,
+		RestaurantID:          bus.RestaurantID,
 		CustomerName:          bus.CustomerName,
 		CustomerEmail:         bus.CustomerEmail,
 		CustomerPhone:         bus.CustomerPhone,
@@ -79,9 +79,6 @@ func toDBOrder(bus orderbus.Order) dbOrder {
 }
 
 func toBusOrder(dbo dbOrder, items []dbOrderItem, addr *dbDeliveryAddress) (orderbus.Order, error) {
-	orderID := uuid.MustParse(dbo.ID)
-	restaurantID := uuid.MustParse(dbo.RestaurantID)
-
 	subtotal, err := money.Parse(dbo.Subtotal)
 	if err != nil {
 		return orderbus.Order{}, fmt.Errorf("parse subtotal: %w", err)
@@ -103,8 +100,8 @@ func toBusOrder(dbo dbOrder, items []dbOrderItem, addr *dbDeliveryAddress) (orde
 	}
 
 	order := orderbus.Order{
-		ID:                    orderID,
-		RestaurantID:          restaurantID,
+		ID:                    dbo.ID,
+		RestaurantID:          dbo.RestaurantID,
 		CustomerName:          dbo.CustomerName,
 		CustomerEmail:         dbo.CustomerEmail,
 		CustomerPhone:         dbo.CustomerPhone,
@@ -128,7 +125,7 @@ func toBusOrder(dbo dbOrder, items []dbOrderItem, addr *dbDeliveryAddress) (orde
 	}
 
 	if addr != nil {
-		da := toBusDeliveryAddress(*addr, orderID)
+		da := toBusDeliveryAddress(*addr, dbo.ID)
 		order.DeliveryAddress = &da
 	}
 
@@ -137,9 +134,9 @@ func toBusOrder(dbo dbOrder, items []dbOrderItem, addr *dbDeliveryAddress) (orde
 
 func toDBOrderItem(bus orderbus.OrderItem, orderID uuid.UUID) dbOrderItem {
 	return dbOrderItem{
-		ID:                  bus.ID.String(),
-		OrderID:             orderID.String(),
-		MenuItemID:          bus.MenuItemID.String(),
+		ID:                  bus.ID,
+		OrderID:             orderID,
+		MenuItemID:          bus.MenuItemID,
 		MenuItemName:        bus.MenuItemName,
 		MenuItemPrice:       bus.MenuItemPrice.Value(),
 		Quantity:            bus.Quantity,
@@ -157,9 +154,9 @@ func toBusOrderItem(dbo dbOrderItem) orderbus.OrderItem {
 	}
 
 	return orderbus.OrderItem{
-		ID:                  uuid.MustParse(dbo.ID),
-		OrderID:             uuid.MustParse(dbo.OrderID),
-		MenuItemID:          uuid.MustParse(dbo.MenuItemID),
+		ID:                  dbo.ID,
+		OrderID:             dbo.OrderID,
+		MenuItemID:          dbo.MenuItemID,
 		MenuItemName:        dbo.MenuItemName,
 		MenuItemPrice:       price,
 		Quantity:            dbo.Quantity,
@@ -170,8 +167,8 @@ func toBusOrderItem(dbo dbOrderItem) orderbus.OrderItem {
 
 func toDBDeliveryAddress(bus orderbus.DeliveryAddress, orderID uuid.UUID) dbDeliveryAddress {
 	return dbDeliveryAddress{
-		ID:                   bus.ID.String(),
-		OrderID:              orderID.String(),
+		ID:                   bus.ID,
+		OrderID:              orderID,
 		Street:               bus.Street,
 		City:                 bus.City,
 		State:                bus.State,
@@ -183,7 +180,7 @@ func toDBDeliveryAddress(bus orderbus.DeliveryAddress, orderID uuid.UUID) dbDeli
 
 func toBusDeliveryAddress(dbo dbDeliveryAddress, orderID uuid.UUID) orderbus.DeliveryAddress {
 	return orderbus.DeliveryAddress{
-		ID:                   uuid.MustParse(dbo.ID),
+		ID:                   dbo.ID,
 		OrderID:              orderID,
 		Street:               dbo.Street,
 		City:                 dbo.City,

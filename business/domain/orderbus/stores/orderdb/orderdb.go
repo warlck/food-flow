@@ -119,9 +119,9 @@ func (s *Store) Update(ctx context.Context, order orderbus.Order) error {
 // Delete removes an order from the database (soft delete by setting status to cancelled).
 func (s *Store) Delete(ctx context.Context, orderID uuid.UUID) error {
 	data := struct {
-		ID string `db:"order_id"`
+		ID uuid.UUID `db:"order_id"`
 	}{
-		ID: orderID.String(),
+		ID: orderID,
 	}
 
 	const q = `
@@ -175,13 +175,8 @@ func (s *Store) Query(ctx context.Context, filter orderbus.QueryFilter, orderBy 
 	// Load order items and delivery addresses for each order
 	orders := make([]orderbus.Order, len(dbOrders))
 	for i, dbo := range dbOrders {
-		orderID, err := uuid.Parse(dbo.ID)
-		if err != nil {
-			return nil, fmt.Errorf("parse order id: %w", err)
-		}
-
 		// Load items
-		items, err := s.queryOrderItems(ctx, orderID)
+		items, err := s.queryOrderItems(ctx, dbo.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -189,7 +184,7 @@ func (s *Store) Query(ctx context.Context, filter orderbus.QueryFilter, orderBy 
 		// Load delivery address if delivery order
 		var addr *dbDeliveryAddress
 		if dbo.OrderType == orderbus.OrderTypeDelivery {
-			a, err := s.queryDeliveryAddress(ctx, orderID)
+			a, err := s.queryDeliveryAddress(ctx, dbo.ID)
 			if err != nil && !errors.Is(err, sqldb.ErrDBNotFound) {
 				return nil, err
 			}
@@ -234,9 +229,9 @@ func (s *Store) Count(ctx context.Context, filter orderbus.QueryFilter) (int, er
 // QueryByID gets the specified order from the database.
 func (s *Store) QueryByID(ctx context.Context, orderID uuid.UUID) (orderbus.Order, error) {
 	data := struct {
-		ID string `db:"order_id"`
+		ID uuid.UUID `db:"order_id"`
 	}{
-		ID: orderID.String(),
+		ID: orderID,
 	}
 
 	const q = `
@@ -284,9 +279,9 @@ func (s *Store) QueryByID(ctx context.Context, orderID uuid.UUID) (orderbus.Orde
 // queryOrderItems retrieves all items for an order.
 func (s *Store) queryOrderItems(ctx context.Context, orderID uuid.UUID) ([]dbOrderItem, error) {
 	data := struct {
-		OrderID string `db:"order_id"`
+		OrderID uuid.UUID `db:"order_id"`
 	}{
-		OrderID: orderID.String(),
+		OrderID: orderID,
 	}
 
 	const q = `
@@ -311,9 +306,9 @@ func (s *Store) queryOrderItems(ctx context.Context, orderID uuid.UUID) ([]dbOrd
 // queryDeliveryAddress retrieves the delivery address for an order.
 func (s *Store) queryDeliveryAddress(ctx context.Context, orderID uuid.UUID) (dbDeliveryAddress, error) {
 	data := struct {
-		OrderID string `db:"order_id"`
+		OrderID uuid.UUID `db:"order_id"`
 	}{
-		OrderID: orderID.String(),
+		OrderID: orderID,
 	}
 
 	const q = `
