@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/warlck/food-flow/business/types/money"
 )
 
 // Order statuses - lifecycle of an order
@@ -50,10 +51,10 @@ type Order struct {
 	OrderStatus           string           // Current order status
 	PaymentStatus         string           // Current payment status
 	PaymentMethod         string           // How customer will pay
-	Subtotal              float64          // Sum of all items before fees/tax
-	DeliveryFee           float64          // Delivery fee (0 for pickup)
-	Tax                   float64          // Tax amount
-	Total                 float64          // Final total amount
+	Subtotal              money.Money      // Sum of all items before fees/tax
+	DeliveryFee           money.Money      // Delivery fee (0 for pickup)
+	Tax                   money.Money      // Tax amount
+	Total                 money.Money      // Final total amount
 	SpecialInstructions   string           // Order-level instructions
 	StripePaymentIntentID string           // Stripe PaymentIntent ID
 	Items                 []OrderItem      // Items in the order
@@ -64,14 +65,14 @@ type Order struct {
 
 // OrderItem represents a menu item within an order
 type OrderItem struct {
-	ID                  uuid.UUID // Unique order item identifier
-	OrderID             uuid.UUID // Parent order ID
-	MenuItemID          uuid.UUID // Reference to menu item
-	MenuItemName        string    // Snapshot of item name
-	MenuItemPrice       float64   // Snapshot of item price
-	Quantity            int       // Quantity ordered
-	SpecialInstructions string    // Item-specific instructions
-	DateCreated         time.Time // When item was added
+	ID                  uuid.UUID   // Unique order item identifier
+	OrderID             uuid.UUID   // Parent order ID
+	MenuItemID          uuid.UUID   // Reference to menu item
+	MenuItemName        string      // Snapshot of item name
+	MenuItemPrice       money.Money // Snapshot of item price
+	Quantity            int         // Quantity ordered
+	SpecialInstructions string      // Item-specific instructions
+	DateCreated         time.Time   // When item was added
 }
 
 // DeliveryAddress represents a delivery address for an order

@@ -3,6 +3,7 @@ package orderbus
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,6 +11,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/order"
 	"github.com/warlck/food-flow/business/sdk/page"
+	"github.com/warlck/food-flow/business/types/money"
 	"github.com/warlck/food-flow/foundation/logger"
 )
 
@@ -78,7 +80,7 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 			ID:                  uuid.New(),
 			MenuItemID:          menuItemID,
 			MenuItemName:        menuItem.Name.String(),
-			MenuItemPrice:       menuItem.Price.Value(),
+			MenuItemPrice:       menuItem.Price,
 			Quantity:            newItem.Quantity,
 			SpecialInstructions: newItem.SpecialInstructions,
 			DateCreated:         now,
@@ -87,17 +89,37 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		subtotal += menuItem.Price.Value() * float64(newItem.Quantity)
 	}
 
+	// Round subtotal to 2 decimal places to avoid precision errors
+	subtotal = roundToTwoDecimals(subtotal)
+
 	// Calculate delivery fee
 	var deliveryFee float64
 	if no.OrderType == OrderTypeDelivery {
 		deliveryFee = 5.00 // Fixed delivery fee for now
 	}
 
-	// Calculate tax (example: 8%)
-	tax := subtotal * 0.08
+	// Calculate tax (example: 8%) and round to 2 decimal places
+	tax := roundToTwoDecimals(subtotal * 0.08)
 
-	// Calculate total
-	total := subtotal + deliveryFee + tax
+	// Calculate total and round to 2 decimal places
+	total := roundToTwoDecimals(subtotal + deliveryFee + tax)
+
+	subtotalFee, err := money.Parse(subtotal)
+	if err != nil {
+		return Order{}, err
+	}
+	deliveryFeeM, err := money.Parse(deliveryFee)
+	if err != nil {
+		return Order{}, err
+	}
+	taxFee, err := money.Parse(tax)
+	if err != nil {
+		return Order{}, err
+	}
+	totalFee, err := money.Parse(total)
+	if err != nil {
+		return Order{}, err
+	}
 
 	// Create delivery address if provided
 	var deliveryAddress *DeliveryAddress
@@ -124,10 +146,10 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		OrderStatus:         OrderStatusPending,
 		PaymentStatus:       PaymentStatusPending,
 		PaymentMethod:       no.PaymentMethod,
-		Subtotal:            subtotal,
-		DeliveryFee:         deliveryFee,
-		Tax:                 tax,
-		Total:               total,
+		Subtotal:            subtotalFee,
+		DeliveryFee:         deliveryFeeM,
+		Tax:                 taxFee,
+		Total:               totalFee,
 		SpecialInstructions: no.SpecialInstructions,
 		Items:               items,
 		DeliveryAddress:     deliveryAddress,
@@ -237,4 +259,9 @@ func (b *Business) Cancel(ctx context.Context, orderID uuid.UUID) error {
 	}
 
 	return nil
+}
+
+// roundToTwoDecimals rounds a float64 to two decimal places.
+func roundToTwoDecimals(value float64) float64 {
+	return math.Round(value*100) / 100
 }

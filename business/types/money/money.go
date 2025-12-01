@@ -44,6 +44,7 @@ func Parse(value float64) (Money, error) {
 
 // MustParse parses the string value and returns a money if the value
 // complies with the rules for a money. If an error occurs the function panics.
+// Used only in tests
 func MustParse(value float64) Money {
 	money, err := Parse(value)
 	if err != nil {

@@ -1,10 +1,12 @@
 package orderdb
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/business/domain/orderbus"
+	"github.com/warlck/food-flow/business/types/money"
 )
 
 // dbOrder represents the database row for an order.
@@ -65,10 +67,10 @@ func toDBOrder(bus orderbus.Order) dbOrder {
 		OrderStatus:           bus.OrderStatus,
 		PaymentStatus:         bus.PaymentStatus,
 		PaymentMethod:         bus.PaymentMethod,
-		Subtotal:              bus.Subtotal,
-		DeliveryFee:           bus.DeliveryFee,
-		Tax:                   bus.Tax,
-		Total:                 bus.Total,
+		Subtotal:              bus.Subtotal.Value(),
+		DeliveryFee:           bus.DeliveryFee.Value(),
+		Tax:                   bus.Tax.Value(),
+		Total:                 bus.Total.Value(),
 		SpecialInstructions:   bus.SpecialInstructions,
 		StripePaymentIntentID: bus.StripePaymentIntentID,
 		DateCreated:           bus.DateCreated.UTC(),
@@ -76,9 +78,29 @@ func toDBOrder(bus orderbus.Order) dbOrder {
 	}
 }
 
-func toBusOrder(dbo dbOrder, items []dbOrderItem, addr *dbDeliveryAddress) orderbus.Order {
+func toBusOrder(dbo dbOrder, items []dbOrderItem, addr *dbDeliveryAddress) (orderbus.Order, error) {
 	orderID := uuid.MustParse(dbo.ID)
 	restaurantID := uuid.MustParse(dbo.RestaurantID)
+
+	subtotal, err := money.Parse(dbo.Subtotal)
+	if err != nil {
+		return orderbus.Order{}, fmt.Errorf("parse subtotal: %w", err)
+	}
+
+	deliveryFee, err := money.Parse(dbo.DeliveryFee)
+	if err != nil {
+		return orderbus.Order{}, fmt.Errorf("parse delivery fee: %w", err)
+	}
+
+	tax, err := money.Parse(dbo.Tax)
+	if err != nil {
+		return orderbus.Order{}, fmt.Errorf("parse tax: %w", err)
+	}
+
+	total, err := money.Parse(dbo.Total)
+	if err != nil {
+		return orderbus.Order{}, fmt.Errorf("parse total: %w", err)
+	}
 
 	order := orderbus.Order{
 		ID:                    orderID,
@@ -90,10 +112,10 @@ func toBusOrder(dbo dbOrder, items []dbOrderItem, addr *dbDeliveryAddress) order
 		OrderStatus:           dbo.OrderStatus,
 		PaymentStatus:         dbo.PaymentStatus,
 		PaymentMethod:         dbo.PaymentMethod,
-		Subtotal:              dbo.Subtotal,
-		DeliveryFee:           dbo.DeliveryFee,
-		Tax:                   dbo.Tax,
-		Total:                 dbo.Total,
+		Subtotal:              subtotal,
+		DeliveryFee:           deliveryFee,
+		Tax:                   tax,
+		Total:                 total,
 		SpecialInstructions:   dbo.SpecialInstructions,
 		StripePaymentIntentID: dbo.StripePaymentIntentID,
 		DateCreated:           dbo.DateCreated.In(time.Local),
@@ -110,7 +132,7 @@ func toBusOrder(dbo dbOrder, items []dbOrderItem, addr *dbDeliveryAddress) order
 		order.DeliveryAddress = &da
 	}
 
-	return order
+	return order, nil
 }
 
 func toDBOrderItem(bus orderbus.OrderItem, orderID uuid.UUID) dbOrderItem {
@@ -119,7 +141,7 @@ func toDBOrderItem(bus orderbus.OrderItem, orderID uuid.UUID) dbOrderItem {
 		OrderID:             orderID.String(),
 		MenuItemID:          bus.MenuItemID.String(),
 		MenuItemName:        bus.MenuItemName,
-		MenuItemPrice:       bus.MenuItemPrice,
+		MenuItemPrice:       bus.MenuItemPrice.Value(),
 		Quantity:            bus.Quantity,
 		SpecialInstructions: bus.SpecialInstructions,
 		DateCreated:         bus.DateCreated.UTC(),
@@ -127,12 +149,19 @@ func toDBOrderItem(bus orderbus.OrderItem, orderID uuid.UUID) dbOrderItem {
 }
 
 func toBusOrderItem(dbo dbOrderItem) orderbus.OrderItem {
+	price, err := money.Parse(dbo.MenuItemPrice)
+	if err != nil {
+		// This should never happen with valid database data
+		// but we need to handle it gracefully
+		price = money.Money{}
+	}
+
 	return orderbus.OrderItem{
 		ID:                  uuid.MustParse(dbo.ID),
 		OrderID:             uuid.MustParse(dbo.OrderID),
 		MenuItemID:          uuid.MustParse(dbo.MenuItemID),
 		MenuItemName:        dbo.MenuItemName,
-		MenuItemPrice:       dbo.MenuItemPrice,
+		MenuItemPrice:       price,
 		Quantity:            dbo.Quantity,
 		SpecialInstructions: dbo.SpecialInstructions,
 		DateCreated:         dbo.DateCreated.In(time.Local),

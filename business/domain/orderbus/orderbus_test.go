@@ -15,6 +15,7 @@ import (
 	"github.com/warlck/food-flow/business/sdk/dbtest"
 	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/business/sdk/unittest"
+	"github.com/warlck/food-flow/business/types/money"
 )
 
 func Test_Order(t *testing.T) {
@@ -30,9 +31,9 @@ func Test_Order(t *testing.T) {
 	// -------------------------------------------------------------------------
 
 	unittest.Run(t, query(db.BusDomain, sd), "query")
-	// unittest.Run(t, create(db.BusDomain, sd), "create")
-	// unittest.Run(t, updateStatus(db.BusDomain, sd), "update-status")
-	// unittest.Run(t, cancel(db.BusDomain, sd), "cancel")
+	unittest.Run(t, create(db.BusDomain, sd), "create")
+	unittest.Run(t, updateStatus(db.BusDomain, sd), "update-status")
+	unittest.Run(t, cancel(db.BusDomain, sd), "cancel")
 }
 
 // =============================================================================
@@ -155,11 +156,6 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 						expResp[i].DateUpdated = gotResp[i].DateUpdated
 					}
 
-					// // Normalize monetary values from database (rounded to 2 decimals)
-					// expResp[i].Subtotal = gotResp[i].Subtotal
-					// expResp[i].Tax = gotResp[i].Tax
-					// expResp[i].Total = gotResp[i].Total
-
 					// Normalize item timestamps and OrderIDs
 					for j := range gotResp[i].Items {
 						if j < len(expResp[i].Items) {
@@ -244,6 +240,7 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 }
 
 func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
+
 	table := []unittest.Table{
 		{
 			Name: "pickup-order",
@@ -256,7 +253,7 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				OrderStatus:     orderbus.OrderStatusPending,
 				PaymentStatus:   orderbus.PaymentStatusPending,
 				PaymentMethod:   orderbus.PaymentMethodCreditCard,
-				DeliveryFee:     0,
+				DeliveryFee:     money.MustParse(0),
 				DeliveryAddress: nil,
 			},
 			ExcFunc: func(ctx context.Context) any {
@@ -316,7 +313,7 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				OrderStatus:   orderbus.OrderStatusPending,
 				PaymentStatus: orderbus.PaymentStatusPending,
 				PaymentMethod: orderbus.PaymentMethodCreditCard,
-				DeliveryFee:   5.00,
+				DeliveryFee:   money.MustParse(5.00),
 			},
 			ExcFunc: func(ctx context.Context) any {
 				no := orderbus.NewOrder{

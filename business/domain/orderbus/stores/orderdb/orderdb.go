@@ -198,7 +198,11 @@ func (s *Store) Query(ctx context.Context, filter orderbus.QueryFilter, orderBy 
 			}
 		}
 
-		orders[i] = toBusOrder(dbo, items, addr)
+		order, err := toBusOrder(dbo, items, addr)
+		if err != nil {
+			return nil, fmt.Errorf("tobusorder: %w", err)
+		}
+		orders[i] = order
 	}
 
 	return orders, nil
@@ -269,7 +273,12 @@ func (s *Store) QueryByID(ctx context.Context, orderID uuid.UUID) (orderbus.Orde
 		}
 	}
 
-	return toBusOrder(dbo, items, addr), nil
+	order, err := toBusOrder(dbo, items, addr)
+	if err != nil {
+		return orderbus.Order{}, fmt.Errorf("tobusorder: %w", err)
+	}
+
+	return order, nil
 }
 
 // queryOrderItems retrieves all items for an order.

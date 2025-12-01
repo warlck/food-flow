@@ -11,11 +11,3 @@ const (
 )
 
 var DefaultOrderBy = order.NewBy(OrderByDateCreated, order.DESC)
-
-// Map of valid order by fields
-var orderByFields = map[string]string{
-	OrderByID:          OrderByID,
-	OrderByDateCreated: OrderByDateCreated,
-	OrderByTotal:       OrderByTotal,
-	OrderByStatus:      OrderByStatus,
-}
