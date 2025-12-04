@@ -18,6 +18,10 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, onCartUpdate }) => {
   const [imageError, setImageError] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  const handlePrimaryClick = () => {
+    setIsDialogOpen(true);
+  };
+
   const handleAddToCart = () => {
     addToCart(item, 1);
     toast({
@@ -33,7 +37,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, onCartUpdate }) => {
   const handleOpenDialog = () => {
     setIsDialogOpen(true);
   };
-
+  
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     if (onCartUpdate) {
@@ -127,14 +131,14 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, onCartUpdate }) => {
           <Button
             onClick={(e) => {
               e.stopPropagation();
-              handleAddToCart();
+              handlePrimaryClick(); // open addon dialog
             }}
             disabled={!item.available}
             size="sm"
             className="w-full bg-food-primary hover:bg-food-accent text-white"
-          >
+            >
             <Plus className="mr-1 h-4 w-4" /> Add to Cart
-          </Button>
+        </Button>
         </CardFooter>
       </Card>
 

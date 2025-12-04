@@ -28,7 +28,8 @@ func (n Name) MarshalText() ([]byte, error) {
 
 // =============================================================================
 
-var nameRegEx = regexp.MustCompile("^[a-zA-Z0-9' -]{3,100}$")
+// Updated regex to allow Unicode letters (including accented characters like ñ, é, ü, etc.)
+var nameRegEx = regexp.MustCompile(`^[\p{L}\p{N}' -]{3,100}$`)
 
 // Parse parses the string value and returns a name if the value complies
 // with the rules for a name.

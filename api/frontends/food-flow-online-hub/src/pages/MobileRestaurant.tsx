@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -12,6 +11,7 @@ import { transformApiRestaurant, transformApiMenuItems } from '@/lib/transformer
 import { MenuItem as MenuItemType } from '@/types';
 import { Plus, Minus, ShoppingCart, Clock, Star, ArrowUp, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import MenuItemDialog from '@/components/MenuItemDialog';
 
 const MobileMenu: React.FC = () => {
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
@@ -25,6 +25,8 @@ const MobileMenu: React.FC = () => {
   const { data: apiData, isLoading, error } = useRestaurantDetails(restaurantId || '');
   
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedItem, setSelectedItem] = useState<MenuItemType | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { addToCart, updateQuantity, removeFromCart, items, getTotalItems, getTotalPrice, setRestaurantId } = useCart();
 
   // Set restaurant ID in cart context when component mounts or restaurantId changes
@@ -214,7 +216,10 @@ const MobileMenu: React.FC = () => {
                           <div className="flex items-center">
                             {quantity === 0 ? (
                               <Button
-                                onClick={() => handleAddItem(item)}
+                                onClick={() => {
+                                  setSelectedItem(item);
+                                  setIsDialogOpen(true);
+                                }}
                                 disabled={!item.available}
                                 className="bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white px-6 py-2 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                               >
@@ -276,6 +281,12 @@ const MobileMenu: React.FC = () => {
           </div>
         )}
       </div>
+      {/* Menu Item Dialog */}
+      <MenuItemDialog
+        item={selectedItem}
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+      />
     </div>
   );
 };
