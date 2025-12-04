@@ -1,15 +1,19 @@
-
 import React, { useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import CartItemComponent from '@/components/CartItemComponent';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockRestaurant } from '@/data/mockData';
 import { AlertCircle, ShoppingCart, ArrowRight, Package, MapPin, ArrowLeft, Truck, Clock, Tag } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+
+// Default values for restaurant settings
+const DEFAULT_DELIVERY_FEE = 3.99;
+const DEFAULT_MINIMUM_ORDER = 15.00;
+const DEFAULT_DELIVERY_TIME = { min: 30, max: 45 };
+const DEFAULT_PICKUP_TIME = { min: 15, max: 25 };
 
 const CartMobile: React.FC = () => {
   const { items, getTotalPrice, hasItems, clearCart, orderType, setOrderType, restaurantId } = useCart();
@@ -18,7 +22,7 @@ const CartMobile: React.FC = () => {
   const navigate = useNavigate();
 
   const subtotal = getTotalPrice();
-  const deliveryFee = orderType === 'delivery' ? mockRestaurant.deliveryFee : 0;
+  const deliveryFee = orderType === 'delivery' ? DEFAULT_DELIVERY_FEE : 0;
   const tax = subtotal * 0.1; // 10% tax
   const total = subtotal + deliveryFee + tax;
 
@@ -43,10 +47,10 @@ const CartMobile: React.FC = () => {
   };
 
   const handleCheckout = () => {
-    if (subtotal < mockRestaurant.minimumOrder) {
+    if (subtotal < DEFAULT_MINIMUM_ORDER) {
       toast({
         title: "Minimum order not met",
-        description: `Please add more items to meet the minimum order amount of $${mockRestaurant.minimumOrder.toFixed(2)}`,
+        description: `Please add more items to meet the minimum order amount of $${DEFAULT_MINIMUM_ORDER.toFixed(2)}`,
         variant: "destructive",
       });
       return;
@@ -57,9 +61,9 @@ const CartMobile: React.FC = () => {
 
   const getEstimatedTime = () => {
     if (orderType === 'delivery') {
-      return `${mockRestaurant.estimatedDeliveryTime.min}-${mockRestaurant.estimatedDeliveryTime.max} minutes`;
+      return `${DEFAULT_DELIVERY_TIME.min}-${DEFAULT_DELIVERY_TIME.max} minutes`;
     } else {
-      return `${mockRestaurant.estimatedPickupTime?.min || 15}-${mockRestaurant.estimatedPickupTime?.max || 25} minutes`;
+      return `${DEFAULT_PICKUP_TIME.min}-${DEFAULT_PICKUP_TIME.max} minutes`;
     }
   };
 
@@ -90,7 +94,7 @@ const CartMobile: React.FC = () => {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-white/90 text-xs">{mockRestaurant.name}</p>
+                <p className="text-white/90 text-xs">Restaurant</p>
                 <div className="flex items-center text-white/80 text-xs">
                   <Clock className="w-3 h-3 mr-1" />
                   <span>{getEstimatedTime()}</span>
@@ -123,8 +127,8 @@ const CartMobile: React.FC = () => {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-gray-100">
-                  {items.map((item, index) => (
-                    <div key={item.menuItem.id} className="p-4">
+                  {items.map((item) => (
+                    <div key={item.cartItemId} className="p-4">
                       <CartItemComponent item={item} />
                     </div>
                   ))}
@@ -172,7 +176,7 @@ const CartMobile: React.FC = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-gray-900">${mockRestaurant.deliveryFee.toFixed(2)}</p>
+                        <p className="font-semibold text-gray-900">${DEFAULT_DELIVERY_FEE.toFixed(2)}</p>
                         <p className="text-xs text-gray-500">+ fee</p>
                       </div>
                     </label>
@@ -260,14 +264,14 @@ const CartMobile: React.FC = () => {
                   </div>
                 </div>
                 
-                {subtotal < mockRestaurant.minimumOrder && (
+                {subtotal < DEFAULT_MINIMUM_ORDER && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-4">
                     <div className="flex items-start gap-3">
                       <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="font-semibold text-amber-800 text-sm">Minimum Order Required</p>
                         <p className="text-amber-700 text-sm mt-1">
-                          Add ${(mockRestaurant.minimumOrder - subtotal).toFixed(2)} more to meet the minimum order of ${mockRestaurant.minimumOrder.toFixed(2)}
+                          Add ${(DEFAULT_MINIMUM_ORDER - subtotal).toFixed(2)} more to meet the minimum order of ${DEFAULT_MINIMUM_ORDER.toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -304,7 +308,7 @@ const CartMobile: React.FC = () => {
               className="w-full bg-gradient-to-r from-food-primary to-food-accent text-white py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all disabled:from-gray-300 disabled:to-gray-400"
               size="lg"
               onClick={handleCheckout}
-              disabled={subtotal < mockRestaurant.minimumOrder}
+              disabled={subtotal < DEFAULT_MINIMUM_ORDER}
             >
               <div className="flex items-center justify-between w-full">
                 <span>Proceed to Checkout</span>

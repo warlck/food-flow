@@ -2,8 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { CartItem } from '@/types';
-import { Trash2, Minus, Plus, ChevronDown, ChevronUp } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
+import { Trash2, Minus, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 interface CartItemProps {
@@ -11,11 +10,8 @@ interface CartItemProps {
 }
 
 const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
-  const { updateQuantity, removeFromCart, updateSpecialInstructions } = useCart();
-  const { menuItem, quantity, specialInstructions, selectedAddons } = item;
-  const [isEditingInstructions, setIsEditingInstructions] = useState(false);
-  const [instructions, setInstructions] = useState(specialInstructions || '');
-  const [expanded, setExpanded] = useState(false);
+  const { updateQuantity, removeFromCart } = useCart();
+  const { cartItemId, menuItem, quantity, selectedAddons } = item;
 
   // Calculate total price including addons
   const itemTotalPrice = useMemo(() => {
@@ -29,20 +25,11 @@ const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
   }, [menuItem.price, quantity, selectedAddons]);
 
   const handleQuantityChange = (newQuantity: number) => {
-    updateQuantity(menuItem.id, newQuantity);
+    updateQuantity(cartItemId, newQuantity);
   };
 
   const handleRemove = () => {
-    removeFromCart(menuItem.id);
-  };
-
-  const handleInstructionsSave = () => {
-    updateSpecialInstructions(menuItem.id, instructions);
-    setIsEditingInstructions(false);
-  };
-
-  const toggleExpanded = () => {
-    setExpanded(!expanded);
+    removeFromCart(cartItemId);
   };
 
   return (
@@ -122,85 +109,15 @@ const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
               ))}
             </div>
           )}
-          
-          {/* Expandable section toggle */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleExpanded}
-            className="p-0 h-6 text-xs text-gray-500 flex items-center mt-1 hover:bg-transparent"
-          >
-            {expanded ? (
-              <>Show less <ChevronUp size={14} className="ml-1" /></>
-            ) : (
-              <>
-                {specialInstructions ? "Instructions" : "Add instructions"} 
-                <ChevronDown size={14} className="ml-1" />
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
 
-      {/* Expandable content */}
-      {expanded && (
-        <div className="mt-2 pl-16">
-          {/* Special Instructions */}
-          {isEditingInstructions ? (
-            <div className="mb-2">
-              <Textarea
-                placeholder="Add special instructions..."
-                value={instructions}
-                onChange={(e) => setInstructions(e.target.value)}
-                className="text-xs resize-none"
-              />
-              <div className="flex justify-end mt-1 gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => setIsEditingInstructions(false)}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  variant="default" 
-                  size="sm"
-                  className="h-7 text-xs bg-food-primary hover:bg-food-accent"
-                  onClick={handleInstructionsSave}
-                >
-                  Save
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div>
-              {specialInstructions ? (
-                <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                  <span className="font-medium">Instructions:</span> {specialInstructions}
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="p-0 h-auto text-xs text-food-primary ml-1"
-                    onClick={() => setIsEditingInstructions(true)}
-                  >
-                    Edit
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="p-0 h-auto text-xs text-food-primary"
-                  onClick={() => setIsEditingInstructions(true)}
-                >
-                  Add special instructions
-                </Button>
-              )}
+          {/* Special Instructions Display */}
+          {item.specialInstructions && (
+            <div className="mt-1 text-xs text-gray-500 italic border-t pt-1">
+              Note: {item.specialInstructions}
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

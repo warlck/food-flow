@@ -19,6 +19,8 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, onCartUpdate }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handlePrimaryClick = () => {
+    console.log('MenuItem primary click:', item.name);
+    // Always open dialog to allow quantity selection and addon selection
     setIsDialogOpen(true);
   };
 
@@ -35,6 +37,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, onCartUpdate }) => {
   };
 
   const handleOpenDialog = () => {
+    console.log('MenuItem card click:', item.name);
     setIsDialogOpen(true);
   };
   

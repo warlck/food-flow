@@ -55,6 +55,7 @@ export interface Restaurant {
 }
 
 export interface CartItem {
+  cartItemId: string; // Unique identifier for this cart entry
   menuItem: MenuItem;
   quantity: number;
   specialInstructions?: string;

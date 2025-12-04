@@ -9,4 +9,4 @@ patches:
 images:
   - name: auth-image
     newName: localhost/food-flow/auth
-    newTag: 0.0.1
+    newTag: 0.0.5

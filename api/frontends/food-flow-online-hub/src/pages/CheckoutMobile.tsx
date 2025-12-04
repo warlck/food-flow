@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { MapPin, Clock, CreditCard, ArrowLeft, CheckCircle, User, Phone, Mail, Home, MapPinCheck } from "lucide-react";
+import { MapPin, Clock, CreditCard, ArrowLeft, CheckCircle, User, Phone, Mail, Home, MapPinCheck, ShoppingBag } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/context/CartContext";
 import { Label } from "@/components/ui/label";
-import { mockRestaurant } from "@/data/mockData";
 import {
   Form,
   FormControl,
@@ -21,6 +20,12 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+
+// Default values for restaurant settings
+const DEFAULT_DELIVERY_FEE = 3.99;
+const DEFAULT_DELIVERY_TIME = { min: 30, max: 45 };
+const DEFAULT_PICKUP_TIME = { min: 15, max: 25 };
+const DEFAULT_RESTAURANT_ADDRESS = "123 Main Street, City, State 12345";
 
 // Form schemas
 const deliveryFormSchema = z.object({
@@ -57,7 +62,7 @@ const CheckoutMobile: React.FC = () => {
   
   // Calculate totals
   const subtotal = getTotalPrice();
-  const deliveryFee = orderType === "delivery" ? mockRestaurant.deliveryFee : 0;
+  const deliveryFee = orderType === "delivery" ? DEFAULT_DELIVERY_FEE : 0;
   const tax = subtotal * 0.1; // 10% tax
   const total = subtotal + deliveryFee + tax;
 
@@ -124,9 +129,9 @@ const CheckoutMobile: React.FC = () => {
 
   const getEstimatedTime = () => {
     if (orderType === "delivery") {
-      return `${mockRestaurant.estimatedDeliveryTime.min}-${mockRestaurant.estimatedDeliveryTime.max} minutes`;
+      return `${DEFAULT_DELIVERY_TIME.min}-${DEFAULT_DELIVERY_TIME.max} minutes`;
     } else {
-      return `${mockRestaurant.estimatedPickupTime?.min || 15}-${mockRestaurant.estimatedPickupTime?.max || 25} minutes`;
+      return `${DEFAULT_PICKUP_TIME.min}-${DEFAULT_PICKUP_TIME.max} minutes`;
     }
   };
 
@@ -195,7 +200,65 @@ const CheckoutMobile: React.FC = () => {
         </div>
 
         {/* Content */}
-        <div className="px-6 py-6 pb-32">
+        <div className="px-6 py-6 pb-72">
+          {/* Order Items Summary */}
+          <Card className="border-0 shadow-lg mb-6">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center space-x-2 text-lg">
+                <ShoppingBag className="w-5 h-5 text-food-primary" />
+                <span>Order Items ({items.length})</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="divide-y divide-gray-100">
+                {items.map((item) => {
+                  // Calculate item total including addons
+                  let itemTotal = item.menuItem.price * item.quantity;
+                  if (item.selectedAddons) {
+                    item.selectedAddons.forEach(({ addon, quantity: addonQty }) => {
+                      itemTotal += addon.price * addonQty * item.quantity;
+                    });
+                  }
+                  
+                  return (
+                    <div key={item.cartItemId} className="py-3">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm">{item.quantity}x</span>
+                            <span className="font-medium text-sm">{item.menuItem.name}</span>
+                          </div>
+                          
+                          {/* Addons */}
+                          {item.selectedAddons && item.selectedAddons.length > 0 && (
+                            <div className="ml-6 mt-1 space-y-0.5">
+                              {item.selectedAddons.map(({ addon, quantity: addonQty }) => (
+                                <div key={addon.id} className="flex justify-between text-xs text-gray-600">
+                                  <span>+ {addon.name} x{addonQty}</span>
+                                  <span className="text-food-primary">+${(addon.price * addonQty).toFixed(2)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {/* Special Instructions */}
+                          {item.specialInstructions && (
+                            <div className="ml-6 mt-1 text-xs text-gray-500 italic">
+                              Note: {item.specialInstructions}
+                            </div>
+                          )}
+                        </div>
+                        <span className="font-semibold text-sm text-food-primary ml-2">
+                          ${itemTotal.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
           {step === 1 && (
             <Card className="border-0 shadow-lg">
               <CardHeader className="pb-4">
@@ -402,7 +465,7 @@ const CheckoutMobile: React.FC = () => {
 
                       <div className="bg-gray-50 p-4 rounded-xl">
                         <h4 className="font-semibold text-gray-900 mb-2">Pickup Location</h4>
-                        <p className="text-gray-600 text-sm">{mockRestaurant.address}</p>
+                        <p className="text-gray-600 text-sm">{DEFAULT_RESTAURANT_ADDRESS}</p>
                         <p className="text-gray-600 text-sm mt-1">Estimated pickup time: {getEstimatedTime()}</p>
                       </div>
 

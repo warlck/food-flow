@@ -8,4 +8,4 @@ patches:
 images:
   - name: frontend-image
     newName: localhost/food-flow/frontend
-    newTag: 0.0.1
+    newTag: 0.0.5

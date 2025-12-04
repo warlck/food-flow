@@ -9,5 +9,5 @@ patches:
 images:
   - name: sales-image
     newName: localhost/food-flow/sales
-    newTag: 0.0.1
+    newTag: 0.0.5
 

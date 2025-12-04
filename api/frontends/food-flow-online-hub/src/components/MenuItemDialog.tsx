@@ -13,6 +13,7 @@ import { MenuItem as MenuItemType, Addon, SelectedAddon } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { Plus, Minus, Tag, ShoppingCart } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 
 interface MenuItemDialogProps {
   item: MenuItemType | null;
@@ -21,9 +22,11 @@ interface MenuItemDialogProps {
 }
 
 const MenuItemDialog: React.FC<MenuItemDialogProps> = ({ item, isOpen, onClose }) => {
+  console.log('MenuItemDialog render:', { item: item?.name, isOpen });
   const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [addonQuantities, setAddonQuantities] = useState<Record<string, number>>({});
+  const [specialInstructions, setSpecialInstructions] = useState('');
   const [imageError, setImageError] = useState(false);
 
   // Reset state when dialog opens with new item
@@ -31,6 +34,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({ item, isOpen, onClose }
     if (isOpen && item) {
       setQuantity(1);
       setAddonQuantities({});
+      setSpecialInstructions('');
       setImageError(false);
     }
   }, [isOpen, item?.id]);
@@ -76,7 +80,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({ item, isOpen, onClose }
 
   const handleAddToCart = () => {
     if (!item) return;
-    addToCart(item, quantity, selectedAddons.length > 0 ? selectedAddons : undefined);
+    addToCart(item, quantity, selectedAddons.length > 0 ? selectedAddons : undefined, specialInstructions);
     onClose();
   };
 
@@ -184,6 +188,18 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({ item, isOpen, onClose }
             </div>
           </div>
         )}
+
+        {/* Special Instructions Section */}
+        <div className="mt-4">
+          <Separator className="mb-4" />
+          <h3 className="font-semibold text-lg mb-3">Special Instructions</h3>
+          <Textarea
+            placeholder="Add a note for the kitchen (e.g. no onions, extra spicy)..."
+            value={specialInstructions}
+            onChange={(e) => setSpecialInstructions(e.target.value)}
+            className="resize-none"
+          />
+        </div>
 
         {/* Quantity Section */}
         <div className="mt-4">

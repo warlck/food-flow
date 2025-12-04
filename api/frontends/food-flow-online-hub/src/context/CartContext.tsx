@@ -2,18 +2,21 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, MenuItem, OrderType, SelectedAddon } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 
+// Generate a unique ID for cart items
+const generateCartItemId = () => `cart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
 interface CartContextType {
   items: CartItem[];
   orderType: OrderType;
   restaurantId: string | null;
-  addToCart: (item: MenuItem, quantity?: number, selectedAddons?: SelectedAddon[]) => void;
-  updateQuantity: (itemId: string, quantity: number) => void;
-  removeFromCart: (itemId: string) => void;
+  addToCart: (item: MenuItem, quantity?: number, selectedAddons?: SelectedAddon[], specialInstructions?: string) => void;
+  updateQuantity: (cartItemId: string, quantity: number) => void;
+  removeFromCart: (cartItemId: string) => void;
   clearCart: () => void;
   getTotalItems: () => number;
   getTotalPrice: () => number;
   hasItems: () => boolean;
-  updateSpecialInstructions: (itemId: string, instructions: string) => void;
+  updateSpecialInstructions: (cartItemId: string, instructions: string) => void;
   setOrderType: (type: OrderType) => void;
   setRestaurantId: (id: string) => void;
 }
@@ -33,7 +36,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (savedCart) {
       try {
-        setItems(JSON.parse(savedCart));
+        const parsedCart = JSON.parse(savedCart);
+        // Ensure all items have cartItemId (for backward compatibility)
+        const cartWithIds = parsedCart.map((item: CartItem) => ({
+          ...item,
+          cartItemId: item.cartItemId || generateCartItemId()
+        }));
+        setItems(cartWithIds);
       } catch (error) {
         console.error('Failed to parse saved cart:', error);
         localStorage.removeItem('foodFlowCart');
@@ -69,20 +78,28 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [restaurantId]);
 
-  const addToCart = (menuItem: MenuItem, quantity: number = 1, selectedAddons?: SelectedAddon[]) => {
+  const addToCart = (menuItem: MenuItem, quantity: number = 1, selectedAddons?: SelectedAddon[], specialInstructions?: string) => {
     setItems(prevItems => {
-      // When addons are provided, always add as new item (different addon selections = different items)
-      if (selectedAddons && selectedAddons.length > 0) {
+      // When addons or special instructions are provided, always add as new item
+      if ((selectedAddons && selectedAddons.length > 0) || (specialInstructions && specialInstructions.length > 0)) {
         toast({
           description: `Added ${menuItem.name} to cart`,
           variant: "default",
         });
-        return [...prevItems, { menuItem, quantity, selectedAddons }];
+        return [...prevItems, { 
+          cartItemId: generateCartItemId(),
+          menuItem, 
+          quantity, 
+          selectedAddons, 
+          specialInstructions 
+        }];
       }
 
-      // Check if item is already in cart (without addons)
+      // Check if item is already in cart (without addons and without special instructions)
       const existingItemIndex = prevItems.findIndex(
-        item => item.menuItem.id === menuItem.id && (!item.selectedAddons || item.selectedAddons.length === 0)
+        item => item.menuItem.id === menuItem.id && 
+        (!item.selectedAddons || item.selectedAddons.length === 0) && 
+        (!item.specialInstructions || item.specialInstructions.length === 0)
       );
 
       if (existingItemIndex >= 0) {
@@ -103,34 +120,38 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: `Added ${menuItem.name} to cart`,
           variant: "default",
         });
-        return [...prevItems, { menuItem, quantity }];
+        return [...prevItems, { 
+          cartItemId: generateCartItemId(),
+          menuItem, 
+          quantity 
+        }];
       }
     });
   };
 
-  const updateQuantity = (itemId: string, quantity: number) => {
+  const updateQuantity = (cartItemId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(itemId);
+      removeFromCart(cartItemId);
       return;
     }
 
     setItems(prevItems =>
       prevItems.map(item =>
-        item.menuItem.id === itemId ? { ...item, quantity } : item
+        item.cartItemId === cartItemId ? { ...item, quantity } : item
       )
     );
   };
 
-  const removeFromCart = (itemId: string) => {
+  const removeFromCart = (cartItemId: string) => {
     setItems(prevItems => {
-      const itemToRemove = prevItems.find(item => item.menuItem.id === itemId);
+      const itemToRemove = prevItems.find(item => item.cartItemId === cartItemId);
       if (itemToRemove) {
         toast({
           description: `Removed ${itemToRemove.menuItem.name} from cart`,
           variant: "default",
         });
       }
-      return prevItems.filter(item => item.menuItem.id !== itemId);
+      return prevItems.filter(item => item.cartItemId !== cartItemId);
     });
   };
 
@@ -165,10 +186,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return items.length > 0;
   };
 
-  const updateSpecialInstructions = (itemId: string, instructions: string) => {
+  const updateSpecialInstructions = (cartItemId: string, instructions: string) => {
     setItems(prevItems =>
       prevItems.map(item =>
-        item.menuItem.id === itemId
+        item.cartItemId === cartItemId
           ? { ...item, specialInstructions: instructions }
           : item
       )

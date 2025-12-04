@@ -1,12 +1,12 @@
-
 import React, { useState } from "react";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { MapPin, Clock, CreditCard, ArrowLeft, CheckCircle, User, Phone, Mail, Home, MapPinCheck } from "lucide-react";
+import { MapPin, Clock, CreditCard, ArrowLeft, CheckCircle, User, Phone, Mail, Home, MapPinCheck, Package } from "lucide-react";
 
+import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/context/CartContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { mockRestaurant } from "@/data/mockData";
 import {
   Form,
   FormControl,
@@ -23,6 +22,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+
+// Default values for restaurant settings
+const DEFAULT_DELIVERY_FEE = 3.99;
+const DEFAULT_DELIVERY_TIME = { min: 30, max: 45 };
+const DEFAULT_PICKUP_TIME = { min: 15, max: 25 };
+const DEFAULT_RESTAURANT_NAME = "Restaurant";
+const DEFAULT_RESTAURANT_ADDRESS = "123 Main Street, City, State 12345";
+const DEFAULT_RESTAURANT_PHONE = "(555) 123-4567";
 
 // Form schemas
 const deliveryFormSchema = z.object({
@@ -55,25 +62,10 @@ const Checkout: React.FC = () => {
   const [step, setStep] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<"creditCard" | "payAtLocation">("creditCard");
   const [orderDetails, setOrderDetails] = useState<any>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Calculate totals
   const subtotal = getTotalPrice();
-  const deliveryFee = orderType === "delivery" ? mockRestaurant.deliveryFee : 0;
-  const tax = subtotal * 0.1; // 10% tax
-  const total = subtotal + deliveryFee + tax;
-});
-
-const Checkout: React.FC = () => {
-  const navigate = useNavigate();
-  const { items, getTotalPrice, clearCart, orderType } = useCart();
-  const [step, setStep] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState<"creditCard" | "payAtLocation">("creditCard");
-  const [orderDetails, setOrderDetails] = useState<any>({});
-  
-  // Calculate totals
-  const subtotal = getTotalPrice();
-  const deliveryFee = orderType === "delivery" ? mockRestaurant.deliveryFee : 0;
+  const deliveryFee = orderType === "delivery" ? DEFAULT_DELIVERY_FEE : 0;
   const tax = subtotal * 0.1; // 10% tax
   const total = subtotal + deliveryFee + tax;
 
@@ -137,9 +129,9 @@ const Checkout: React.FC = () => {
   // Show estimated time for either delivery or pickup
   const getEstimatedTime = () => {
     if (orderType === "delivery") {
-      return `${mockRestaurant.estimatedDeliveryTime.min}-${mockRestaurant.estimatedDeliveryTime.max} minutes`;
+      return `${DEFAULT_DELIVERY_TIME.min}-${DEFAULT_DELIVERY_TIME.max} minutes`;
     } else {
-      return `${mockRestaurant.estimatedPickupTime?.min || 15}-${mockRestaurant.estimatedPickupTime?.max || 25} minutes`;
+      return `${DEFAULT_PICKUP_TIME.min}-${DEFAULT_PICKUP_TIME.max} minutes`;
     }
   };
 
@@ -383,9 +375,9 @@ const Checkout: React.FC = () => {
                             Pickup Location
                           </h3>
                           <div className="bg-gray-50 p-4 mt-3 rounded-lg">
-                            <p className="font-medium">{mockRestaurant.name}</p>
-                            <p className="text-gray-600">{mockRestaurant.address}</p>
-                            <p className="text-gray-600">{mockRestaurant.phone}</p>
+                            <p className="font-medium">{DEFAULT_RESTAURANT_NAME}</p>
+                            <p className="text-gray-600">{DEFAULT_RESTAURANT_ADDRESS}</p>
+                            <p className="text-gray-600">{DEFAULT_RESTAURANT_PHONE}</p>
                           </div>
                           <div className="mt-4 flex items-center text-gray-600">
                             <Clock size={16} className="mr-2" />

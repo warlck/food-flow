@@ -13,7 +13,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/context/CartContext";
 import { Label } from "@/components/ui/label";
-import { mockRestaurant } from "@/data/mockData";
 import {
   Form,
   FormControl,
@@ -48,6 +47,11 @@ const paymentFormSchema = z.object({
   cardCvc: z.string().optional(),
 });
 
+const DEFAULT_DELIVERY_FEE = 3.99;
+const DEFAULT_DELIVERY_TIME = { min: 30, max: 45 };
+const DEFAULT_PICKUP_TIME = { min: 15, max: 25 };
+const DEFAULT_RESTAURANT_ADDRESS = "123 Main Street, City, State 12345";
+
 const CheckoutDesktop: React.FC = () => {
   const navigate = useNavigate();
   const { items, getTotalPrice, clearCart, orderType, restaurantId } = useCart();
@@ -58,7 +62,7 @@ const CheckoutDesktop: React.FC = () => {
   
   // Calculate totals
   const subtotal = getTotalPrice();
-  const deliveryFee = orderType === "delivery" ? mockRestaurant.deliveryFee : 0;
+  const deliveryFee = orderType === "delivery" ? DEFAULT_DELIVERY_FEE : 0;
   const tax = subtotal * 0.1; // 10% tax
   const total = subtotal + deliveryFee + tax;
 
@@ -125,9 +129,9 @@ const CheckoutDesktop: React.FC = () => {
 
   const getEstimatedTime = () => {
     if (orderType === "delivery") {
-      return `${mockRestaurant.estimatedDeliveryTime.min}-${mockRestaurant.estimatedDeliveryTime.max} minutes`;
+      return `${DEFAULT_DELIVERY_TIME.min}-${DEFAULT_DELIVERY_TIME.max} minutes`;
     } else {
-      return `${mockRestaurant.estimatedPickupTime?.min || 15}-${mockRestaurant.estimatedPickupTime?.max || 25} minutes`;
+      return `${DEFAULT_PICKUP_TIME.min}-${DEFAULT_PICKUP_TIME.max} minutes`;
     }
   };
 
@@ -387,7 +391,7 @@ const CheckoutDesktop: React.FC = () => {
                               <MapPinCheck className="w-5 h-5 mr-2 text-food-primary" />
                               Pickup Location
                             </h4>
-                            <p className="text-gray-600">{mockRestaurant.address}</p>
+                            <p className="text-gray-600">{DEFAULT_RESTAURANT_ADDRESS}</p>
                             <p className="text-gray-600 mt-2 flex items-center">
                               <Clock className="w-4 h-4 mr-2 text-food-primary" />
                               Estimated pickup time: {getEstimatedTime()}

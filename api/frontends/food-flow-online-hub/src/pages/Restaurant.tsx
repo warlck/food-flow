@@ -3,7 +3,6 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import MenuGrid from '@/components/MenuGrid';
 import RestaurantInfo from '@/components/RestaurantInfo';
-import { mockMenuItems, mockRestaurant, mockCategories } from '@/data/mockData';
 import { useRestaurantDetails } from '@/hooks/useRestaurantDetails';
 import { transformApiRestaurant, transformApiMenuItems } from '@/lib/transformers';
 import { Button } from '@/components/ui/button';
@@ -53,12 +52,6 @@ const Menu: React.FC = () => {
       </Layout>
     );
   }
-  
-  // Transform API data or use mock data as fallback
-  const restaurant = apiData ? transformApiRestaurant(apiData) : mockRestaurant;
-  const { items: menuItems, categories } = apiData 
-    ? transformApiMenuItems(apiData) 
-    : { items: mockMenuItems, categories: mockCategories };
   
   useEffect(() => {
     // Scroll to menu section after data is loaded and component is rendered
@@ -145,6 +138,27 @@ const Menu: React.FC = () => {
     );
   }
 
+  // Require API data - no fallback to mock
+  if (!apiData) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>No data available</AlertTitle>
+            <AlertDescription>
+              Unable to load restaurant data. Please try again later.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Transform API data
+  const restaurant = transformApiRestaurant(apiData);
+  const { items: menuItems, categories } = transformApiMenuItems(apiData);
+  
   return (
     <Layout>
       {/* Restaurant Info */}

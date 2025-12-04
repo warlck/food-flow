@@ -5,7 +5,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useCart } from '@/context/CartContext';
-import { mockMenuItems, mockCategories, mockRestaurant } from '@/data/mockData';
 import { useRestaurantDetails } from '@/hooks/useRestaurantDetails';
 import { transformApiRestaurant, transformApiMenuItems } from '@/lib/transformers';
 import { MenuItem as MenuItemType } from '@/types';
@@ -79,11 +78,24 @@ const MobileMenu: React.FC = () => {
     );
   }
 
-  // Transform API data or use mock data as fallback
-  const restaurant = apiData ? transformApiRestaurant(apiData) : mockRestaurant;
-  const { items: menuItems, categories } = apiData 
-    ? transformApiMenuItems(apiData) 
-    : { items: mockMenuItems, categories: mockCategories };
+  // Require API data - no fallback to mock
+  if (!apiData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center p-4">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>No data available</AlertTitle>
+          <AlertDescription>
+            Unable to load restaurant data. Please try again later.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // Transform API data
+  const restaurant = transformApiRestaurant(apiData);
+  const { items: menuItems, categories } = transformApiMenuItems(apiData);
 
   const getItemQuantity = (itemId: string) => {
     const cartItem = items.find(item => item.menuItem.id === itemId);
@@ -127,7 +139,7 @@ const MobileMenu: React.FC = () => {
                   <Star className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold">{restaurant.name}</h1>
+                  <h1 className="text-xl font-bold">{restaurant.name} (v0.0.4)</h1>
                   <div className="flex items-center space-x-2 text-white/90 text-sm">
                     <Clock className="w-4 h-4" />
                     <span>25-35 min</span>
@@ -173,7 +185,15 @@ const MobileMenu: React.FC = () => {
             {filteredItems.map((item) => {
               const quantity = getItemQuantity(item.id);
               return (
-                <Card key={item.id} className="overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-md">
+                <Card 
+                  key={item.id} 
+                  className="overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-md cursor-pointer"
+                  onClick={() => {
+                    console.log('Card clicked:', item.name);
+                    setSelectedItem(item);
+                    setIsDialogOpen(true);
+                  }}
+                >
                   <CardContent className="p-0">
                     <div className="relative">
                       {/* Item Image */}
@@ -216,7 +236,9 @@ const MobileMenu: React.FC = () => {
                           <div className="flex items-center">
                             {quantity === 0 ? (
                               <Button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  console.log('Add button clicked:', item.name);
                                   setSelectedItem(item);
                                   setIsDialogOpen(true);
                                 }}
@@ -229,7 +251,10 @@ const MobileMenu: React.FC = () => {
                             ) : (
                               <div className="flex items-center space-x-3 bg-gray-50 rounded-full p-2 border-2 border-food-primary/20">
                                 <Button
-                                  onClick={() => handleUpdateQuantity(item, quantity - 1)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUpdateQuantity(item, quantity - 1);
+                                  }}
                                   size="sm"
                                   variant="ghost"
                                   className="w-8 h-8 rounded-full p-0 hover:bg-food-primary hover:text-white transition-colors"
@@ -238,7 +263,10 @@ const MobileMenu: React.FC = () => {
                                 </Button>
                                 <span className="w-8 text-center font-bold text-food-primary text-lg">{quantity}</span>
                                 <Button
-                                  onClick={() => handleUpdateQuantity(item, quantity + 1)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUpdateQuantity(item, quantity + 1);
+                                  }}
                                   size="sm"
                                   variant="ghost"
                                   className="w-8 h-8 rounded-full p-0 hover:bg-food-primary hover:text-white transition-colors"
