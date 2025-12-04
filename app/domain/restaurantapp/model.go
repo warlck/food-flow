@@ -152,6 +152,17 @@ func toBusUpdateRestaurant(app UpdateRestaurant) (restaurantbus.UpdateRestaurant
 
 // =============================================================================
 
+// Addon represents information about an addon that is included with menu items
+// in the restaurant API response
+type Addon struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Price       float64 `json:"price"`
+	Available   bool    `json:"available"`
+	MaxQuantity int     `json:"maxQuantity"`
+}
+
 // MenuItem represents information about a menu items embedded with restaurant categories
 // that are included in the restaurant API response
 type MenuItem struct {
@@ -161,6 +172,7 @@ type MenuItem struct {
 	Price       float64 `json:"price"`
 	ImageURL    string  `json:"imageUrl"`
 	Available   bool    `json:"available"`
+	Addons      []Addon `json:"addons"`
 }
 
 // Category represents information about a category that is included with restaurant

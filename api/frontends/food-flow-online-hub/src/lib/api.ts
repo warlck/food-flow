@@ -4,6 +4,15 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 // API Types based on backend response
+export interface ApiAddon {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  available: boolean;
+  maxQuantity: number;
+}
+
 export interface ApiMenuItem {
   id: string;
   name: string;
@@ -11,6 +20,7 @@ export interface ApiMenuItem {
   price: number;
   imageUrl: string;
   available: boolean;
+  addons: ApiAddon[];
 }
 
 export interface ApiCategory {

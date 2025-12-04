@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/app/sdk/query"
+	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
@@ -21,14 +22,16 @@ type app struct {
 	restaurantBus *restaurantbus.Business
 	categoryBus   *categorybus.Business
 	menuItemBus   *menuitembus.Business
+	addonBus      *addonbus.Business
 }
 
 // newApp constructs a handlers for route access.
-func newApp(restaurantBus *restaurantbus.Business, categoryBus *categorybus.Business, menuItemBus *menuitembus.Business) *app {
+func newApp(restaurantBus *restaurantbus.Business, categoryBus *categorybus.Business, menuItemBus *menuitembus.Business, addonBus *addonbus.Business) *app {
 	return &app{
 		restaurantBus: restaurantBus,
 		categoryBus:   categoryBus,
 		menuItemBus:   menuItemBus,
+		addonBus:      addonBus,
 	}
 }
 
@@ -167,8 +170,29 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 			return fmt.Errorf("query menu items: categoryID[%s]: %w", cat.ID, err)
 		}
 
-		// Convert menu items
+		// Convert menu items and fetch addons for each
 		for _, item := range menuItems {
+			// Fetch addons for this menu item
+			addons, err := a.addonBus.QueryByMenuItemID(ctx, item.ID)
+			if err != nil {
+				return fmt.Errorf("query addons: menuItemID[%s]: %w", item.ID, err)
+			}
+
+			// Convert addons to app layer
+			appAddons := make([]Addon, 0, len(addons))
+			for _, addon := range addons {
+				if addon.Available {
+					appAddons = append(appAddons, Addon{
+						ID:          addon.ID.String(),
+						Name:        addon.Name.String(),
+						Description: addon.Description,
+						Price:       addon.Price.Value(),
+						Available:   addon.Available,
+						MaxQuantity: addon.MaxQuantity,
+					})
+				}
+			}
+
 			appMenuItem := MenuItem{
 				ID:          item.ID.String(),
 				Name:        item.Name.String(),
@@ -176,6 +200,7 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 				Price:       item.Price.Value(),
 				ImageURL:    item.ImageURL,
 				Available:   item.Available,
+				Addons:      appAddons,
 			}
 			appCategory.MenuItems = append(appCategory.MenuItems, appMenuItem)
 		}

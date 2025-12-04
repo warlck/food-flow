@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { CartItem, MenuItem, OrderType } from '@/types';
+import { CartItem, MenuItem, OrderType, SelectedAddon } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 
 interface CartContextType {
   items: CartItem[];
   orderType: OrderType;
   restaurantId: string | null;
-  addToCart: (item: MenuItem, quantity?: number) => void;
+  addToCart: (item: MenuItem, quantity?: number, selectedAddons?: SelectedAddon[]) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   removeFromCart: (itemId: string) => void;
   clearCart: () => void;
@@ -69,11 +69,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [restaurantId]);
 
-  const addToCart = (menuItem: MenuItem, quantity: number = 1) => {
+  const addToCart = (menuItem: MenuItem, quantity: number = 1, selectedAddons?: SelectedAddon[]) => {
     setItems(prevItems => {
-      // Check if item is already in cart
+      // When addons are provided, always add as new item (different addon selections = different items)
+      if (selectedAddons && selectedAddons.length > 0) {
+        toast({
+          description: `Added ${menuItem.name} to cart`,
+          variant: "default",
+        });
+        return [...prevItems, { menuItem, quantity, selectedAddons }];
+      }
+
+      // Check if item is already in cart (without addons)
       const existingItemIndex = prevItems.findIndex(
-        item => item.menuItem.id === menuItem.id
+        item => item.menuItem.id === menuItem.id && (!item.selectedAddons || item.selectedAddons.length === 0)
       );
 
       if (existingItemIndex >= 0) {
@@ -138,10 +147,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getTotalPrice = () => {
-    return items.reduce(
-      (total, item) => total + item.menuItem.price * item.quantity,
-      0
-    );
+    return items.reduce((total, item) => {
+      let itemTotal = item.menuItem.price * item.quantity;
+      
+      // Add addon prices
+      if (item.selectedAddons) {
+        item.selectedAddons.forEach(selectedAddon => {
+          itemTotal += selectedAddon.addon.price * selectedAddon.quantity * item.quantity;
+        });
+      }
+      
+      return total + itemTotal;
+    }, 0);
   };
 
   const hasItems = () => {

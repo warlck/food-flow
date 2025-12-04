@@ -41,6 +41,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		RestaurantBus: cfg.RestaurantBus,
 		CategoryBus:   cfg.CategoryBus,
 		MenuItemBus:   cfg.MenuItemBus,
+		AddonBus:      cfg.AddonBus,
 		Log:           cfg.Log,
 	})
 

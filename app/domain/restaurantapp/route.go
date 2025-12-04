@@ -6,6 +6,7 @@ import (
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/app/sdk/authclient"
 	"github.com/warlck/food-flow/app/sdk/mid"
+	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
@@ -21,6 +22,7 @@ type Config struct {
 	RestaurantBus *restaurantbus.Business
 	CategoryBus   *categorybus.Business
 	MenuItemBus   *menuitembus.Business
+	AddonBus      *addonbus.Business
 }
 
 // Routes adds specific routes for this group.
@@ -30,7 +32,7 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 	ruleAdmin := mid.Authorize(cfg.AuthClient, auth.RuleAdminOnly)
 
-	api := newApp(cfg.RestaurantBus, cfg.CategoryBus, cfg.MenuItemBus)
+	api := newApp(cfg.RestaurantBus, cfg.CategoryBus, cfg.MenuItemBus, cfg.AddonBus)
 	app.HandleFunc(http.MethodGet, version, "/restaurants", api.query, authen)
 	app.HandleFunc(http.MethodGet, version, "/restaurants/{restaurant_id}", api.queryByID, authen)
 	app.HandleFunc(http.MethodGet, version, "/restaurants/{restaurant_id}/details", api.queryByIDWithDetails)

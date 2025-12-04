@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { CartItem } from '@/types';
@@ -13,10 +12,21 @@ interface CartItemProps {
 
 const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
   const { updateQuantity, removeFromCart, updateSpecialInstructions } = useCart();
-  const { menuItem, quantity, specialInstructions } = item;
+  const { menuItem, quantity, specialInstructions, selectedAddons } = item;
   const [isEditingInstructions, setIsEditingInstructions] = useState(false);
   const [instructions, setInstructions] = useState(specialInstructions || '');
   const [expanded, setExpanded] = useState(false);
+
+  // Calculate total price including addons
+  const itemTotalPrice = useMemo(() => {
+    let total = menuItem.price * quantity;
+    if (selectedAddons) {
+      selectedAddons.forEach(({ addon, quantity: addonQty }) => {
+        total += addon.price * addonQty * quantity;
+      });
+    }
+    return total;
+  }, [menuItem.price, quantity, selectedAddons]);
 
   const handleQuantityChange = (newQuantity: number) => {
     updateQuantity(menuItem.id, newQuantity);
@@ -52,7 +62,7 @@ const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
           <div className="flex justify-between items-start">
             <h3 className="font-medium text-sm truncate">{menuItem.name}</h3>
             <p className="font-semibold text-food-primary text-sm whitespace-nowrap">
-              ${(menuItem.price * quantity).toFixed(2)}
+              ${itemTotalPrice.toFixed(2)}
             </p>
           </div>
 
@@ -100,6 +110,18 @@ const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
               Remove
             </Button>
           </div>
+
+          {/* Selected Addons Display */}
+          {selectedAddons && selectedAddons.length > 0 && (
+            <div className="mt-1 text-xs text-gray-600">
+              {selectedAddons.map(({ addon, quantity: addonQty }) => (
+                <div key={addon.id} className="flex justify-between">
+                  <span>+ {addon.name} x{addonQty}</span>
+                  <span className="text-food-primary">+${(addon.price * addonQty).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
           
           {/* Expandable section toggle */}
           <Button

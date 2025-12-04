@@ -3,6 +3,7 @@ package unittest
 import (
 	"context"
 
+	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
@@ -35,6 +36,11 @@ type Order struct {
 	orderbus.Order
 }
 
+// Addon represents an addon specified for the test.
+type Addon struct {
+	addonbus.Addon
+}
+
 // SeedData represents data that was seeded for the test.
 type SeedData struct {
 	Users       []User
@@ -43,6 +49,7 @@ type SeedData struct {
 	Categories  []Category
 	MenuItems   []MenuItem
 	Orders      []Order
+	Addons      []Addon
 }
 
 // Table represent fields needed for running an unit test.

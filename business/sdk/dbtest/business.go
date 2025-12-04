@@ -2,6 +2,8 @@ package dbtest
 
 import (
 	"github.com/jmoiron/sqlx"
+	"github.com/warlck/food-flow/business/domain/addonbus"
+	"github.com/warlck/food-flow/business/domain/addonbus/stores/addondb"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/categorybus/stores/categorydb"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
@@ -22,6 +24,7 @@ type BusDomain struct {
 	Category   *categorybus.Business
 	MenuItem   *menuitembus.Business
 	Order      *orderbus.Business
+	Addon      *addonbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -41,11 +44,15 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	orderStorage := orderdb.NewStore(log, db)
 	orderBus := orderbus.NewBusiness(log, orderStorage, menuItemBus, restaurantBus)
 
+	addonStorage := addondb.NewStore(log, db)
+	addonBus := addonbus.NewBusiness(log, addonStorage)
+
 	return BusDomain{
 		User:       userBus,
 		Restaurant: restaurantBus,
 		Category:   categoryBus,
 		MenuItem:   menuItemBus,
 		Order:      orderBus,
+		Addon:      addonBus,
 	}
 }

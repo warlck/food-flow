@@ -155,3 +155,44 @@ CREATE INDEX idx_order_items_order_id ON order_items(order_id);
 CREATE INDEX idx_delivery_addresses_order_id ON delivery_addresses(order_id);
 CREATE INDEX idx_payment_transactions_order_id ON payment_transactions(order_id);
 CREATE INDEX idx_payment_transactions_stripe_id ON payment_transactions(stripe_payment_intent_id);
+
+-- Version: 1.10
+-- Description: Create table addons for menu item addons
+CREATE TABLE addons (
+    addon_id      UUID           NOT NULL,
+    menu_item_id  UUID           NOT NULL,
+    restaurant_id UUID           NOT NULL,
+    name          TEXT           NOT NULL,
+    description   TEXT           NULL,
+    price         NUMERIC(10, 2) NOT NULL,
+    available     BOOLEAN        NOT NULL DEFAULT true,
+    max_quantity  INT            NOT NULL DEFAULT 10,
+    date_created  TIMESTAMP      NOT NULL,
+    date_updated  TIMESTAMP      NOT NULL,
+
+    PRIMARY KEY (addon_id),
+    FOREIGN KEY (menu_item_id) REFERENCES menu_items(menu_item_id) ON DELETE CASCADE,
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants(restaurant_id) ON DELETE CASCADE
+);
+
+-- Version: 1.11
+-- Description: Create table order_item_addons for tracking addons in orders
+CREATE TABLE order_item_addons (
+    order_item_addon_id UUID           NOT NULL,
+    order_item_id       UUID           NOT NULL,
+    addon_id            UUID           NOT NULL,
+    addon_name          TEXT           NOT NULL,
+    addon_price         NUMERIC(10, 2) NOT NULL,
+    quantity            INT            NOT NULL,
+    date_created        TIMESTAMP      NOT NULL,
+
+    PRIMARY KEY (order_item_addon_id),
+    FOREIGN KEY (order_item_id) REFERENCES order_items(order_item_id) ON DELETE CASCADE,
+    FOREIGN KEY (addon_id) REFERENCES addons(addon_id)
+);
+
+-- Version: 1.12
+-- Description: Create indexes for addons
+CREATE INDEX idx_addons_menu_item_id ON addons(menu_item_id);
+CREATE INDEX idx_addons_restaurant_id ON addons(restaurant_id);
+CREATE INDEX idx_order_item_addons_order_item_id ON order_item_addons(order_item_id);

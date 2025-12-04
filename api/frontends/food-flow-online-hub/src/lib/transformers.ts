@@ -1,5 +1,5 @@
-import { ApiRestaurantDetails, ApiCategory, ApiMenuItem } from '@/lib/api';
-import { MenuItem, Restaurant } from '@/types';
+import { ApiRestaurantDetails, ApiCategory, ApiMenuItem, ApiAddon } from '@/lib/api';
+import { MenuItem, Restaurant, Addon } from '@/types';
 
 /**
  * Transform API restaurant data to frontend Restaurant type
@@ -51,6 +51,16 @@ export function transformApiMenuItems(
       categoriesSet.add(category.name);
       
       category.mentuItems.forEach((apiItem: ApiMenuItem) => {
+        // Transform addons if they exist
+        const addons: Addon[] = apiItem.addons?.map((apiAddon: ApiAddon) => ({
+          id: apiAddon.id,
+          name: apiAddon.name,
+          description: apiAddon.description,
+          price: apiAddon.price,
+          available: apiAddon.available,
+          maxQuantity: apiAddon.maxQuantity,
+        })) || [];
+
         items.push({
           id: apiItem.id,
           name: apiItem.name,
@@ -62,6 +72,7 @@ export function transformApiMenuItems(
           preparationTime: 15, // Default value since not in API
           restaurantId: apiData.id,
           tags: [],
+          addons: addons.length > 0 ? addons : undefined,
         });
       });
     }

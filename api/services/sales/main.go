@@ -17,6 +17,8 @@ import (
 	"github.com/warlck/food-flow/app/sdk/authclient"
 	"github.com/warlck/food-flow/app/sdk/debug"
 	"github.com/warlck/food-flow/app/sdk/mux"
+	"github.com/warlck/food-flow/business/domain/addonbus"
+	"github.com/warlck/food-flow/business/domain/addonbus/stores/addondb"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/categorybus/stores/categorydb"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
@@ -162,6 +164,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 	menuitemstore := menuitemdb.NewStore(log, db)
 	menuitemBus := menuitembus.NewBusiness(log, menuitemstore)
 
+	addonstore := addondb.NewStore(log, db)
+	addonBus := addonbus.NewBusiness(log, addonstore)
+
 	orderstore := orderdb.NewStore(log, db)
 	orderBus := orderbus.NewBusiness(log, orderstore, menuitemBus, restaurantBus)
 
@@ -204,6 +209,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 				CategoryBus:   categoryBus,
 				MenuItemBus:   menuitemBus,
 				OrderBus:      orderBus,
+				AddonBus:      addonBus,
 			},
 		}, all.Routes()),
 		ReadTimeout:  cfg.Web.ReadTimeout,

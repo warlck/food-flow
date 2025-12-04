@@ -1,4 +1,3 @@
-
 export interface MenuItem {
   id: string;
   name: string;
@@ -10,6 +9,21 @@ export interface MenuItem {
   preparationTime: number; // in minutes
   restaurantId: string;
   tags?: string[];
+  addons?: Addon[];
+}
+
+export interface Addon {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  available: boolean;
+  maxQuantity: number;
+}
+
+export interface SelectedAddon {
+  addon: Addon;
+  quantity: number;
 }
 
 export interface Restaurant {
@@ -44,6 +58,7 @@ export interface CartItem {
   menuItem: MenuItem;
   quantity: number;
   specialInstructions?: string;
+  selectedAddons?: SelectedAddon[];
 }
 
 export type OrderType = 'delivery' | 'pickup';

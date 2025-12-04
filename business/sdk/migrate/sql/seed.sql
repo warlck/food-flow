@@ -107,3 +107,53 @@ INSERT INTO menu_items (menu_item_id, name, description, price, category_id, res
 	('a1b2c3d4-0001-0000-0000-000000000049', 'Mineral Water', 'Bottled mineral water', 1.50, 'c1000000-0000-0000-0000-000000000011', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/1484899931_42MineralWater1.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
 	('a1b2c3d4-0001-0000-0000-000000000050', 'Soft Drinks', 'Assorted carbonated beverages', 3.00, 'c1000000-0000-0000-0000-000000000011', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/272684694_43SoftDrinks2.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00')
 ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- Addons
+-- ============================================================================
+INSERT INTO addons (addon_id, menu_item_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated) VALUES
+	-- Addons for Chicken Kebab Roll
+	('b1000000-0001-0000-0000-000000000001', 'a1b2c3d4-0001-0000-0000-000000000001', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Cheese', 'Additional melted cheese', 2.00, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0001-0000-0000-000000000002', 'a1b2c3d4-0001-0000-0000-000000000001', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Meat', 'Additional portion of chicken', 4.00, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0001-0000-0000-000000000003', 'a1b2c3d4-0001-0000-0000-000000000001', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Garlic Sauce', 'Extra garlic sauce on the side', 1.00, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0001-0000-0000-000000000004', 'a1b2c3d4-0001-0000-0000-000000000001', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Spicy Sauce', 'Hot chili sauce', 1.00, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	
+	-- Addons for Beef Kebab Roll
+	('b1000000-0002-0000-0000-000000000001', 'a1b2c3d4-0001-0000-0000-000000000002', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Cheese', 'Additional melted cheese', 2.00, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0002-0000-0000-000000000002', 'a1b2c3d4-0001-0000-0000-000000000002', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Meat', 'Additional portion of beef', 4.50, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0002-0000-0000-000000000003', 'a1b2c3d4-0001-0000-0000-000000000002', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Jalapeños', 'Spicy jalapeño peppers', 1.50, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0002-0000-0000-000000000004', 'a1b2c3d4-0001-0000-0000-000000000002', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Garlic Sauce', 'Extra garlic sauce on the side', 1.00, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	
+	-- Addons for Mix Kebab Roll
+	('b1000000-0003-0000-0000-000000000001', 'a1b2c3d4-0001-0000-0000-000000000003', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Cheese', 'Additional melted cheese', 2.00, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0003-0000-0000-000000000002', 'a1b2c3d4-0001-0000-0000-000000000003', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Meat', 'Additional portion of mixed meat', 4.50, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0003-0000-0000-000000000003', 'a1b2c3d4-0001-0000-0000-000000000003', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Feta Cheese', 'Crumbled feta cheese', 2.50, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0003-0000-0000-000000000004', 'a1b2c3d4-0001-0000-0000-000000000003', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Garlic Sauce', 'Extra garlic sauce on the side', 1.00, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	
+	-- Addons for Chicken Kebab Rice
+	('b1000000-0010-0000-0000-000000000001', 'a1b2c3d4-0001-0000-0000-000000000010', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Meat', 'Additional portion of chicken', 4.00, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0010-0000-0000-000000000002', 'a1b2c3d4-0001-0000-0000-000000000010', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Hummus', 'Side of creamy hummus', 3.00, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0010-0000-0000-000000000003', 'a1b2c3d4-0001-0000-0000-000000000010', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Grilled Vegetables', 'Assorted grilled vegetables', 3.50, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0010-0000-0000-000000000004', 'a1b2c3d4-0001-0000-0000-000000000010', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Spicy Sauce', 'Hot chili sauce', 1.00, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	
+	-- Addons for Beef Kebab Rice
+	('b1000000-0011-0000-0000-000000000001', 'a1b2c3d4-0001-0000-0000-000000000011', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Meat', 'Additional portion of beef', 4.50, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0011-0000-0000-000000000002', 'a1b2c3d4-0001-0000-0000-000000000011', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Hummus', 'Side of creamy hummus', 3.00, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0011-0000-0000-000000000003', 'a1b2c3d4-0001-0000-0000-000000000011', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Grilled Vegetables', 'Assorted grilled vegetables', 3.50, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0011-0000-0000-000000000004', 'a1b2c3d4-0001-0000-0000-000000000011', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Spicy Sauce', 'Hot chili sauce', 1.00, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	
+	-- Addons for Chicken Pide
+	('b1000000-0022-0000-0000-000000000001', 'a1b2c3d4-0001-0000-0000-000000000022', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Cheese', 'Additional melted cheese', 2.00, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0022-0000-0000-000000000002', 'a1b2c3d4-0001-0000-0000-000000000022', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Meat', 'Additional portion of chicken', 4.00, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0022-0000-0000-000000000003', 'a1b2c3d4-0001-0000-0000-000000000022', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Mushrooms', 'Sautéed mushrooms', 2.00, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	
+	-- Addons for Beef Pide
+	('b1000000-0023-0000-0000-000000000001', 'a1b2c3d4-0001-0000-0000-000000000023', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Cheese', 'Additional melted cheese', 2.00, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0023-0000-0000-000000000002', 'a1b2c3d4-0001-0000-0000-000000000023', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Meat', 'Additional portion of beef', 4.50, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0023-0000-0000-000000000003', 'a1b2c3d4-0001-0000-0000-000000000023', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Mushrooms', 'Sautéed mushrooms', 2.00, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	
+	-- Addons for Falafel Plate
+	('b1000000-0033-0000-0000-000000000001', 'a1b2c3d4-0001-0000-0000-000000000033', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Falafel', 'Additional falafel pieces (4 pcs)', 3.00, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0033-0000-0000-000000000002', 'a1b2c3d4-0001-0000-0000-000000000033', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Hummus', 'Additional portion of hummus', 2.50, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('b1000000-0033-0000-0000-000000000003', 'a1b2c3d4-0001-0000-0000-000000000033', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Pita Bread', 'Additional pita bread', 1.50, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00')
+ON CONFLICT DO NOTHING;
