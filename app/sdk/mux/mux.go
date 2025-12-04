@@ -7,6 +7,7 @@ import (
 	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
+	"github.com/warlck/food-flow/business/domain/orderbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/foundation/logger"
@@ -18,6 +19,7 @@ type BusConfig struct {
 	RestaurantBus *restaurantbus.Business
 	CategoryBus   *categorybus.Business
 	MenuItemBus   *menuitembus.Business
+	OrderBus      *orderbus.Business
 }
 
 // Config contains all the mandatory systems required by handlers.

@@ -3,6 +3,7 @@ package apitest
 import (
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
+	"github.com/warlck/food-flow/business/domain/orderbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
 )
@@ -28,6 +29,11 @@ type MenuItem struct {
 	menuitembus.MenuItem
 }
 
+// Order extends the orderbus.Order for api test support.
+type Order struct {
+	orderbus.Order
+}
+
 // SeedData represents data for api tests.
 type SeedData struct {
 	Users       []User
@@ -35,6 +41,7 @@ type SeedData struct {
 	Restaurants []Restaurant
 	Categories  []Category
 	MenuItems   []MenuItem
+	Orders      []Order
 }
 
 // Table represent fields needed for running an api test.

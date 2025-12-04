@@ -5,6 +5,7 @@ import (
 	categoryapi "github.com/warlck/food-flow/app/domain/categoryapp"
 	checkapi "github.com/warlck/food-flow/app/domain/checkapp"
 	menuitemapi "github.com/warlck/food-flow/app/domain/menuitemapp"
+	orderapi "github.com/warlck/food-flow/app/domain/orderapp"
 	restaurantapi "github.com/warlck/food-flow/app/domain/restaurantapp"
 	userapi "github.com/warlck/food-flow/app/domain/userapp"
 	"github.com/warlck/food-flow/app/sdk/mux"
@@ -53,5 +54,12 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:  cfg.AuthClient,
 		MenuItemBus: cfg.MenuItemBus,
 		Log:         cfg.Log,
+	})
+
+	orderapi.Routes(app, orderapi.Config{
+		Build:      cfg.Build,
+		Log:        cfg.Log,
+		AuthClient: cfg.AuthClient,
+		OrderBus:   cfg.OrderBus,
 	})
 }

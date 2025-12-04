@@ -21,6 +21,8 @@ import (
 	"github.com/warlck/food-flow/business/domain/categorybus/stores/categorydb"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/menuitembus/stores/menuitemdb"
+	"github.com/warlck/food-flow/business/domain/orderbus"
+	"github.com/warlck/food-flow/business/domain/orderbus/stores/orderdb"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus/stores/restaurantdb"
 	"github.com/warlck/food-flow/business/domain/userbus"
@@ -160,6 +162,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 	menuitemstore := menuitemdb.NewStore(log, db)
 	menuitemBus := menuitembus.NewBusiness(log, menuitemstore)
 
+	orderstore := orderdb.NewStore(log, db)
+	orderBus := orderbus.NewBusiness(log, orderstore, menuitemBus, restaurantBus)
+
 	// -------------------------------------------------------------------------
 	// Initialize authentication support
 
@@ -198,6 +203,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 				RestaurantBus: restaurantBus,
 				CategoryBus:   categoryBus,
 				MenuItemBus:   menuitemBus,
+				OrderBus:      orderBus,
 			},
 		}, all.Routes()),
 		ReadTimeout:  cfg.Web.ReadTimeout,
