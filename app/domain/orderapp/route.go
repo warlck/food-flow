@@ -3,6 +3,7 @@ package orderapp
 import (
 	"net/http"
 
+	"github.com/stripe/stripe-go/v80"
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/app/sdk/authclient"
 	"github.com/warlck/food-flow/app/sdk/mid"
@@ -13,15 +14,22 @@ import (
 
 // Config contains all the mandatory systems required by handlers.
 type Config struct {
-	Build      string
-	Log        *logger.Logger
-	AuthClient *authclient.Client
-	OrderBus   *orderbus.Business
+	Build               string
+	Log                 *logger.Logger
+	AuthClient          *authclient.Client
+	OrderBus            *orderbus.Business
+	StripeSecretKey     string
+	StripeWebhookSecret string
 }
 
 // Routes adds specific routes for this group.
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
+
+	// Initialize Stripe with the secret key
+	if cfg.StripeSecretKey != "" {
+		stripe.Key = cfg.StripeSecretKey
+	}
 
 	authen := mid.Authenticate(cfg.AuthClient)
 	ruleAdmin := mid.Authorize(cfg.AuthClient, auth.RuleAdminOnly)
@@ -41,4 +49,14 @@ func Routes(app *web.App, cfg Config) {
 
 	// Cancel order (admin only)
 	app.HandleFunc(http.MethodPost, version, "/orders/{order_id}/cancel", api.cancel, authen, ruleAdmin)
+
+	// Payment endpoints (authenticated users)
+	app.HandleFunc(http.MethodPost, version, "/orders/{order_id}/payment/intent", api.createPaymentIntent, authen, ruleUserOnly)
+	app.HandleFunc(http.MethodPost, version, "/orders/{order_id}/payment/confirm", api.confirmPayment, authen, ruleUserOnly)
+
+	// Stripe webhook (no authentication - Stripe signs the payload)
+	if cfg.StripeWebhookSecret != "" {
+		webhookAPI := newWebhookApp(cfg.OrderBus, cfg.StripeWebhookSecret)
+		app.HandleFunc(http.MethodPost, version, "/webhooks/stripe", webhookAPI.handleStripeWebhook)
+	}
 }

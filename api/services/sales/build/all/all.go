@@ -58,9 +58,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	orderapi.Routes(app, orderapi.Config{
-		Build:      cfg.Build,
-		Log:        cfg.Log,
-		AuthClient: cfg.AuthClient,
-		OrderBus:   cfg.OrderBus,
+		Build:               cfg.Build,
+		Log:                 cfg.Log,
+		AuthClient:          cfg.AuthClient,
+		OrderBus:            cfg.OrderBus,
+		StripeSecretKey:     cfg.StripeSecretKey,
+		StripeWebhookSecret: cfg.StripeWebhookSecret,
 	})
 }

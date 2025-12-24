@@ -97,6 +97,11 @@ func run(ctx context.Context, log *logger.Logger) error {
 			MaxOpenConns int    `conf:"default:0"`
 			DisableTLS   bool   `conf:"default:true"`
 		}
+
+		Stripe struct {
+			SecretKey     string `conf:"default:",mask"`
+			WebhookSecret string `conf:"default:",mask"`
+		}
 	}{
 		Version: conf.Version{
 			Build: build,
@@ -204,12 +209,14 @@ func run(ctx context.Context, log *logger.Logger) error {
 			AuthClient: authClient,
 			DB:         db,
 			BusConfig: mux.BusConfig{
-				UserBus:       userBus,
-				RestaurantBus: restaurantBus,
-				CategoryBus:   categoryBus,
-				MenuItemBus:   menuitemBus,
-				OrderBus:      orderBus,
-				AddonBus:      addonBus,
+				UserBus:             userBus,
+				RestaurantBus:       restaurantBus,
+				CategoryBus:         categoryBus,
+				MenuItemBus:         menuitemBus,
+				OrderBus:            orderBus,
+				AddonBus:            addonBus,
+				StripeSecretKey:     cfg.Stripe.SecretKey,
+				StripeWebhookSecret: cfg.Stripe.WebhookSecret,
 			},
 		}, all.Routes()),
 		ReadTimeout:  cfg.Web.ReadTimeout,
