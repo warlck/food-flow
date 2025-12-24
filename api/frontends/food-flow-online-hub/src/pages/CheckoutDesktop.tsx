@@ -4,7 +4,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { MapPin, Clock, CreditCard, CheckCircle, User, Phone, Mail, Home, MapPinCheck, Package } from "lucide-react";
+import { MapPin, Clock, CreditCard, CheckCircle, User, Phone, Mail, Home, MapPinCheck, Package, Loader2 } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
 
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -21,6 +23,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { orderService, Order } from "@/services/orderService";
+import StripePaymentForm from "@/components/StripePaymentForm";
+
+// Initialize Stripe
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
 
 // Form schemas
 const deliveryFormSchema = z.object({
@@ -59,6 +66,11 @@ const CheckoutDesktop: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<"creditCard" | "payAtLocation">("creditCard");
   const [orderDetails, setOrderDetails] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Stripe-related state
+  const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   
   // Calculate totals
   const subtotal = getTotalPrice();
@@ -101,30 +113,87 @@ const CheckoutDesktop: React.FC = () => {
   });
 
   // Submit handlers
-  const onSubmitCustomerInfo = (data: any) => {
+  const onSubmitCustomerInfo = async (data: any) => {
     setOrderDetails({ ...orderDetails, ...data });
-    setStep(2);
+    setIsCreatingOrder(true);
+
+    try {
+      // Create the order
+      const order = await orderService.createOrder({
+        restaurantId: restaurantId || "",
+        customerName: data.name,
+        customerEmail: data.email,
+        customerPhone: data.phone,
+        orderType: orderType as "delivery" | "pickup",
+        paymentMethod: paymentMethod === "creditCard" ? "creditCard" : "cash",
+        items: items.map((item) => ({
+          menuItemId: item.menuItem.id,
+          quantity: item.quantity,
+          specialInstructions: item.specialInstructions,
+        })),
+        deliveryAddress: orderType === "delivery" ? {
+          street: data.street,
+          city: data.city,
+          state: data.state,
+          postalCode: data.postalCode,
+          deliveryInstructions: data.deliveryInstructions,
+        } : undefined,
+      });
+
+      setCurrentOrder(order);
+
+      if (paymentMethod === "creditCard") {
+        // Create payment intent for credit card payment
+        const paymentIntent = await orderService.createPaymentIntent(order.id);
+        setClientSecret(paymentIntent.clientSecret);
+      }
+
+      setStep(2);
+    } catch (error) {
+      console.error("Failed to create order:", error);
+      toast.error("Failed to create order. Please try again.");
+    } finally {
+      setIsCreatingOrder(false);
+    }
   };
 
-  const onSubmitPayment = async (data: any) => {
+  const onSubmitPayAtLocation = async () => {
     setIsSubmitting(true);
-    setOrderDetails({ ...orderDetails, ...data });
-    
-    // Simulate order submission
-    setTimeout(() => {
+
+    try {
+      // For pay at location, confirm the order directly
+      if (currentOrder) {
+        await orderService.confirmPayment(currentOrder.id);
+      }
       clearCart();
       toast.success("Order placed successfully!");
-      if (restaurantId) {
-        navigate(`/restaurant/${restaurantId}`);
-      } else {
-        navigate("/");
-      }
+      navigate(`/order-confirmation/${currentOrder?.id}`);
+    } catch (error) {
+      console.error("Failed to place order:", error);
+      toast.error("Failed to place order. Please try again.");
+    } finally {
       setIsSubmitting(false);
-    }, 2000);
+    }
+  };
+
+  const handlePaymentSuccess = () => {
+    clearCart();
+    toast.success("Payment successful!");
+    navigate(`/order-confirmation/${currentOrder?.id}`);
+  };
+
+  const handlePaymentError = (error: Error) => {
+    console.error("Payment error:", error);
+    // Keep user on payment page to retry
   };
 
   const handleBackStep = () => {
     setStep(step - 1);
+    // Reset order and payment state if going back
+    if (step === 2) {
+      setCurrentOrder(null);
+      setClientSecret(null);
+    }
   };
 
   const getEstimatedTime = () => {
@@ -325,8 +394,19 @@ const CheckoutDesktop: React.FC = () => {
                             )}
                           />
 
-                          <Button type="submit" className="w-full bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white py-4 rounded-xl font-semibold text-lg">
-                            Continue to Payment
+                          <Button 
+                            type="submit" 
+                            disabled={isCreatingOrder}
+                            className="w-full bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white py-4 rounded-xl font-semibold text-lg disabled:opacity-50"
+                          >
+                            {isCreatingOrder ? (
+                              <span className="flex items-center justify-center">
+                                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                Creating Order...
+                              </span>
+                            ) : (
+                              "Continue to Payment"
+                            )}
                           </Button>
                         </form>
                       </Form>
@@ -398,8 +478,19 @@ const CheckoutDesktop: React.FC = () => {
                             </p>
                           </div>
 
-                          <Button type="submit" className="w-full bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white py-4 rounded-xl font-semibold text-lg">
-                            Continue to Payment
+                          <Button 
+                            type="submit" 
+                            disabled={isCreatingOrder}
+                            className="w-full bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white py-4 rounded-xl font-semibold text-lg disabled:opacity-50"
+                          >
+                            {isCreatingOrder ? (
+                              <span className="flex items-center justify-center">
+                                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                Creating Order...
+                              </span>
+                            ) : (
+                              "Continue to Payment"
+                            )}
                           </Button>
                         </form>
                       </Form>
@@ -414,7 +505,7 @@ const CheckoutDesktop: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center space-x-2 text-xl">
                         <CreditCard className="w-6 h-6 text-food-primary" />
-                        <span>Payment Method</span>
+                        <span>Payment</span>
                       </CardTitle>
                       <Button variant="outline" size="sm" onClick={handleBackStep} className="text-food-primary border-food-primary hover:bg-food-primary/10">
                         ← Back
@@ -422,107 +513,51 @@ const CheckoutDesktop: React.FC = () => {
                     </div>
                   </CardHeader>
                   <CardContent className="p-6">
-                    <Form {...paymentForm}>
-                      <form onSubmit={paymentForm.handleSubmit(onSubmitPayment)} className="space-y-8">
-                        
-                        {/* Payment Method Selection */}
-                        <div className="space-y-4">
-                          <Label className="text-lg font-semibold">Choose Payment Method</Label>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div 
-                              className={`p-6 border-2 rounded-xl cursor-pointer transition-all ${
-                                paymentMethod === "creditCard" ? 'border-food-primary bg-food-primary/5 shadow-md' : 'border-gray-200 hover:border-gray-300'
-                              }`}
-                              onClick={() => setPaymentMethod("creditCard")}
-                            >
-                              <div className="flex flex-col items-center space-y-3">
-                                <CreditCard className="w-8 h-8 text-food-primary" />
-                                <span className="font-medium text-base">Credit Card</span>
-                                <div className={`w-5 h-5 rounded-full border-2 ${
-                                  paymentMethod === "creditCard" ? 'border-food-primary bg-food-primary' : 'border-gray-300'
-                                }`}>
-                                  {paymentMethod === "creditCard" && <div className="w-3 h-3 bg-white rounded-full m-0.5" />}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div 
-                              className={`p-6 border-2 rounded-xl cursor-pointer transition-all ${
-                                paymentMethod === "payAtLocation" ? 'border-food-primary bg-food-primary/5 shadow-md' : 'border-gray-200 hover:border-gray-300'
-                              }`}
-                              onClick={() => setPaymentMethod("payAtLocation")}
-                            >
-                              <div className="flex flex-col items-center space-y-3">
-                                <MapPin className="w-8 h-8 text-food-primary" />
-                                <span className="font-medium text-base">Pay at {orderType === "delivery" ? "Door" : "Pickup"}</span>
-                                <div className={`w-5 h-5 rounded-full border-2 ${
-                                  paymentMethod === "payAtLocation" ? 'border-food-primary bg-food-primary' : 'border-gray-300'
-                                }`}>
-                                  {paymentMethod === "payAtLocation" && <div className="w-3 h-3 bg-white rounded-full m-0.5" />}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+                    {paymentMethod === "creditCard" && clientSecret ? (
+                      <Elements 
+                        stripe={stripePromise} 
+                        options={{ 
+                          clientSecret,
+                          appearance: {
+                            theme: 'stripe',
+                            variables: {
+                              colorPrimary: '#f97316',
+                            },
+                          },
+                        }}
+                      >
+                        <StripePaymentForm
+                          orderId={currentOrder?.id || ""}
+                          total={currentOrder?.total || total}
+                          onSuccess={handlePaymentSuccess}
+                          onError={handlePaymentError}
+                        />
+                      </Elements>
+                    ) : (
+                      <div className="space-y-6">
+                        <div className="bg-gray-50 p-6 rounded-xl border text-center">
+                          <MapPin className="w-12 h-12 text-food-primary mx-auto mb-4" />
+                          <h3 className="text-lg font-semibold mb-2">Pay at {orderType === "delivery" ? "Delivery" : "Pickup"}</h3>
+                          <p className="text-gray-600 mb-4">
+                            You'll pay ${(currentOrder?.total || total).toFixed(2)} when you receive your order.
+                          </p>
                         </div>
-
-                        {/* Credit Card Fields */}
-                        {paymentMethod === "creditCard" && (
-                          <div className="space-y-6">
-                            <FormField
-                              control={paymentForm.control}
-                              name="cardNumber"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-base">Card Number</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="1234 5678 9012 3456" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-
-                            <div className="grid grid-cols-2 gap-6">
-                              <FormField
-                                control={paymentForm.control}
-                                name="cardExpiry"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel className="text-base">Expiry Date</FormLabel>
-                                    <FormControl>
-                                      <Input placeholder="MM/YY" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-
-                              <FormField
-                                control={paymentForm.control}
-                                name="cardCvc"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel className="text-base">CVC</FormLabel>
-                                    <FormControl>
-                                      <Input placeholder="123" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                          </div>
-                        )}
-
                         <Button 
-                          type="submit" 
+                          onClick={onSubmitPayAtLocation}
                           disabled={isSubmitting}
                           className="w-full bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white py-4 rounded-xl font-semibold text-lg disabled:opacity-50"
                         >
-                          {isSubmitting ? "Processing..." : `Place Order • $${total.toFixed(2)}`}
+                          {isSubmitting ? (
+                            <span className="flex items-center justify-center">
+                              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                              Placing Order...
+                            </span>
+                          ) : (
+                            `Place Order • $${(currentOrder?.total || total).toFixed(2)}`
+                          )}
                         </Button>
-                      </form>
-                    </Form>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}

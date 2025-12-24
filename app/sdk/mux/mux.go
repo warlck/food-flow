@@ -16,12 +16,14 @@ import (
 )
 
 type BusConfig struct {
-	UserBus       *userbus.Business
-	RestaurantBus *restaurantbus.Business
-	CategoryBus   *categorybus.Business
-	MenuItemBus   *menuitembus.Business
-	OrderBus      *orderbus.Business
-	AddonBus      *addonbus.Business
+	UserBus            *userbus.Business
+	RestaurantBus      *restaurantbus.Business
+	CategoryBus        *categorybus.Business
+	MenuItemBus        *menuitembus.Business
+	OrderBus           *orderbus.Business
+	AddonBus           *addonbus.Business
+	StripeSecretKey    string
+	StripeWebhookSecret string
 }
 
 // Config contains all the mandatory systems required by handlers.
