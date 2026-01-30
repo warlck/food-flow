@@ -8,6 +8,16 @@ SHELL = $(if $(wildcard $(SHELL_PATH)),/bin/ash,/bin/bash)
 # 	$ openssl genpkey -algorithm RSA -out private.pem -pkeyopt rsa_keygen_bits:2048
 # 	$ openssl rsa -pubout -in private.pem -out public.pem
 # ==============================================================================
+
+.PHONY: \
+	build sales auth frontend \
+	run help version \
+	curl-live curl-ready curl-test-error load-test curl-auth curl-create-user \
+	admin-genkey pgcli \
+	debug-statsviz metrics \
+	dev-up dev-down dev-load-db dev-load dev-apply dev-restart dev-run dev-update dev-update-apply \
+	dev-logs dev-logs-auth dev-logs-frontend dev-describe-deployment dev-describe-sales dev-describe-auth dev-describe-frontend dev-logs-db
+
 # Define dependencies
 
 KIND_CLUSTER    := food-flow-cluster
@@ -156,9 +166,16 @@ dev-apply:
 	kustomize build infra/k8s/dev/sales | kubectl apply -f -
 	kustomize build infra/k8s/dev/auth | kubectl apply -f -
 	kustomize build infra/k8s/dev/frontend | kubectl apply -f -
-	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(SALES_APP) --timeout=120s --for=condition=Ready
-	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(AUTH_APP) --timeout=120s --for=condition=Ready
-	kubectl wait pods --namespace=$(NAMESPACE) --selector app=frontend --timeout=120s --for=condition=Ready
+	
+	# If image tags don't change (e.g. localhost/food-flow/frontend:0.0.5), Kubernetes won't update pods
+	# just because you rebuilt and re-loaded the image into kind. Force a restart to pick up the new image.
+	kubectl rollout restart deployment $(SALES_APP) --namespace=$(NAMESPACE)
+	kubectl rollout restart deployment $(AUTH_APP) --namespace=$(NAMESPACE)
+	kubectl rollout restart deployment frontend --namespace=$(NAMESPACE)
+	
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/$(SALES_APP)
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/$(AUTH_APP)
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/frontend
 
 
 dev-restart:
