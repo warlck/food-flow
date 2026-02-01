@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,14 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { MenuItem as MenuItemType, Addon, SelectedAddon } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { Plus, Minus, Tag, ShoppingCart } from 'lucide-react';
@@ -17,17 +25,52 @@ import { Textarea } from '@/components/ui/textarea';
 
 interface MenuItemDialogProps {
   item: MenuItemType | null;
+  categoryItems?: MenuItemType[];
   isOpen: boolean;
   onClose: () => void;
 }
 
-const MenuItemDialog: React.FC<MenuItemDialogProps> = ({ item, isOpen, onClose }) => {
-  console.log('MenuItemDialog render:', { item: item?.name, isOpen });
+const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
+  item,
+  categoryItems,
+  isOpen,
+  onClose,
+}) => {
   const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [addonQuantities, setAddonQuantities] = useState<Record<string, number>>({});
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [imageError, setImageError] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+
+  const itemsInCategory = useMemo(() => {
+    if (!item) return [];
+
+    const list = categoryItems && categoryItems.length > 0 ? categoryItems : [item];
+
+    // Ensure the triggering item is always present.
+    if (!list.some((mi) => mi.id === item.id)) {
+      return [item, ...list];
+    }
+
+    return list;
+  }, [categoryItems, item]);
+
+  // Backend sends category items sorted by price (cheapest first).
+  const cheapestItem = useMemo(() => {
+    if (itemsInCategory.length === 0) return null;
+    return itemsInCategory[0];
+  }, [itemsInCategory]);
+
+  const activeItem = useMemo(() => {
+    if (!item) return null;
+
+    if (!selectedItemId) {
+      return item;
+    }
+
+    return itemsInCategory.find((mi) => mi.id === selectedItemId) ?? item;
+  }, [item, itemsInCategory, selectedItemId]);
 
   // Reset state when dialog opens with new item
   React.useEffect(() => {
@@ -36,11 +79,19 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({ item, isOpen, onClose }
       setAddonQuantities({});
       setSpecialInstructions('');
       setImageError(false);
+      setSelectedItemId(item.id);
     }
-  }, [isOpen, item?.id]);
+  }, [isOpen, item]);
+
+  const handleSelectMenuItem = (menuItemId: string) => {
+    setSelectedItemId(menuItemId);
+    // Addons are menu-item specific, so reset when switching.
+    setAddonQuantities({});
+    setImageError(false);
+  };
 
   const handleAddonIncrement = (addon: Addon) => {
-    setAddonQuantities(prev => {
+    setAddonQuantities((prev) => {
       const current = prev[addon.id] || 0;
       if (current < addon.maxQuantity) {
         return { ...prev, [addon.id]: current + 1 };
@@ -50,7 +101,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({ item, isOpen, onClose }
   };
 
   const handleAddonDecrement = (addonId: string) => {
-    setAddonQuantities(prev => {
+    setAddonQuantities((prev) => {
       const current = prev[addonId] || 0;
       if (current > 0) {
         return { ...prev, [addonId]: current - 1 };
@@ -60,46 +111,59 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({ item, isOpen, onClose }
   };
 
   const selectedAddons: SelectedAddon[] = useMemo(() => {
-    if (!item?.addons) return [];
-    return item.addons
-      .filter(addon => (addonQuantities[addon.id] || 0) > 0)
-      .map(addon => ({
+    if (!activeItem?.addons) return [];
+    return activeItem.addons
+      .filter((addon) => (addonQuantities[addon.id] || 0) > 0)
+      .map((addon) => ({
         addon,
-        quantity: addonQuantities[addon.id]
+        quantity: addonQuantities[addon.id],
       }));
-  }, [item?.addons, addonQuantities]);
+  }, [activeItem?.addons, addonQuantities]);
 
   const totalPrice = useMemo(() => {
-    if (!item) return 0;
-    let total = item.price * quantity;
+    if (!activeItem) return 0;
+    let total = activeItem.price * quantity;
     selectedAddons.forEach(({ addon, quantity: addonQty }) => {
       total += addon.price * addonQty * quantity;
     });
     return total;
-  }, [item, quantity, selectedAddons]);
+  }, [activeItem, quantity, selectedAddons]);
 
   const handleAddToCart = () => {
-    if (!item) return;
-    addToCart(item, quantity, selectedAddons.length > 0 ? selectedAddons : undefined, specialInstructions);
+    if (!activeItem) return;
+    addToCart(
+      activeItem,
+      quantity,
+      selectedAddons.length > 0 ? selectedAddons : undefined,
+      specialInstructions
+    );
     onClose();
   };
 
   const getFallbackImage = () => {
-    if (!item) return '';
+    if (!activeItem) return '';
     const categoryImageMap: Record<string, string> = {
-      'Appetizers': 'https://images.unsplash.com/photo-1546241072-48010ad2862c?auto=format&fit=crop&q=80',
+      Appetizers: 'https://images.unsplash.com/photo-1546241072-48010ad2862c?auto=format&fit=crop&q=80',
       'Main Course': 'https://images.unsplash.com/photo-1574484284002-952d92456975?auto=format&fit=crop&q=80',
-      'Desserts': 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&q=80',
-      'Beverages': 'https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&q=80',
-      'Sides': 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&q=80',
-      'Pizza': 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80',
-      'Burgers': 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80',
-      'Pasta': 'https://images.unsplash.com/photo-1473093226795-af9932fe5856?auto=format&fit=crop&q=80',
+      Desserts: 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&q=80',
+      Beverages: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&q=80',
+      Sides: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&q=80',
+      Pizza: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80',
+      Burgers: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80',
+      Pasta: 'https://images.unsplash.com/photo-1473093226795-af9932fe5856?auto=format&fit=crop&q=80',
     };
-    return categoryImageMap[item.category] || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80';
+    return (
+      categoryImageMap[activeItem.category] ||
+      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80'
+    );
   };
 
-  if (!item) return null;
+  if (!item || !activeItem) return null;
+
+  const priceDeltaVsCheapest =
+    cheapestItem && activeItem.price > cheapestItem.price
+      ? activeItem.price - cheapestItem.price
+      : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -107,27 +171,27 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({ item, isOpen, onClose }
         <DialogHeader>
           <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-4 bg-muted">
             <img
-              src={imageError ? getFallbackImage() : item.image}
-              alt={item.name}
+              src={imageError ? getFallbackImage() : activeItem.image}
+              alt={activeItem.name}
               className="w-full h-full object-cover"
               onError={() => setImageError(true)}
             />
-            {!item.available && (
+            {!activeItem.available && (
               <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                 <span className="text-white font-semibold text-lg">Out of Stock</span>
               </div>
             )}
             <div className="absolute top-2 right-2">
-              <Badge className="bg-food-primary text-white">{item.category}</Badge>
+              <Badge className="bg-food-primary text-white">{activeItem.category}</Badge>
             </div>
           </div>
-          <DialogTitle className="text-xl font-bold">{item.name}</DialogTitle>
+          <DialogTitle className="text-xl font-bold">{activeItem.name}</DialogTitle>
           <DialogDescription className="text-base text-gray-600 mt-2">
-            {item.description}
+            {activeItem.description}
           </DialogDescription>
-          {item.tags && item.tags.length > 0 && (
+          {activeItem.tags && activeItem.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {item.tags.map(tag => (
+              {activeItem.tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="text-xs flex items-center">
                   <Tag size={10} className="mr-1" />
                   {tag}
@@ -135,18 +199,49 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({ item, isOpen, onClose }
               ))}
             </div>
           )}
-          <div className="text-xl font-bold text-food-primary mt-2">
-            ${item.price.toFixed(2)}
+
+          {itemsInCategory.length > 1 && cheapestItem && (
+            <div className="mt-4">
+              <Label htmlFor="menu-item-select" className="mb-2 block">
+                Choose an item
+              </Label>
+              <Select value={activeItem.id} onValueChange={handleSelectMenuItem}>
+                <SelectTrigger id="menu-item-select">
+                  <SelectValue placeholder="Select an item" />
+                </SelectTrigger>
+                <SelectContent>
+                  {itemsInCategory.map((mi) => {
+                    const delta = mi.price - cheapestItem.price;
+                    const deltaLabel = delta > 0 ? ` (+$${delta.toFixed(2)})` : '';
+                    const stockLabel = !mi.available ? ' (out of stock)' : '';
+                    return (
+                      <SelectItem key={mi.id} value={mi.id} disabled={!mi.available}>
+                        {mi.name} — ${mi.price.toFixed(2)}{deltaLabel}{stockLabel}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="text-xl font-bold text-food-primary mt-4">
+            ${activeItem.price.toFixed(2)}
           </div>
+          {priceDeltaVsCheapest > 0 && (
+            <div className="text-sm text-gray-500">
+              +${priceDeltaVsCheapest.toFixed(2)} vs. cheapest option
+            </div>
+          )}
         </DialogHeader>
 
         {/* Addons Section */}
-        {item.addons && item.addons.length > 0 && (
+        {activeItem.addons && activeItem.addons.length > 0 && (
           <div className="mt-4">
             <Separator className="mb-4" />
             <h3 className="font-semibold text-lg mb-3">Add-ons (Optional)</h3>
             <div className="space-y-3">
-              {item.addons.map(addon => (
+              {activeItem.addons.map((addon) => (
                 <div
                   key={addon.id}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
@@ -232,7 +327,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({ item, isOpen, onClose }
         <DialogFooter className="mt-6">
           <Button
             onClick={handleAddToCart}
-            disabled={!item.available}
+            disabled={!activeItem.available}
             className="w-full bg-food-primary hover:bg-food-accent text-white py-6 text-lg"
           >
             <ShoppingCart className="mr-2 h-5 w-5" />

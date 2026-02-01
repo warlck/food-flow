@@ -1,43 +1,34 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useCart } from '@/context/CartContext';
 import { MenuItem as MenuItemType } from '@/types';
 import { Plus, Tag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/components/ui/use-toast';
 import MenuItemDialog from './MenuItemDialog';
 
 interface MenuItemProps {
   item: MenuItemType;
+  categoryItems?: MenuItemType[];
   onCartUpdate?: () => void;
 }
 
-const MenuItem: React.FC<MenuItemProps> = ({ item, onCartUpdate }) => {
-  const { addToCart } = useCart();
+const MenuItem: React.FC<MenuItemProps> = ({ item, categoryItems, onCartUpdate }) => {
   const [imageError, setImageError] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handlePrimaryClick = () => {
-    console.log('MenuItem primary click:', item.name);
-    // Always open dialog to allow quantity selection and addon selection
+    // Always open dialog to allow item/quantity/addon selection.
     setIsDialogOpen(true);
   };
 
-  const handleAddToCart = () => {
-    addToCart(item, 1);
-    toast({
-      title: "Added to cart",
-      description: `${item.name} has been added to your cart.`,
-      duration: 2000,
-    });
-    if (onCartUpdate) {
-      onCartUpdate();
-    }
-  };
-
   const handleOpenDialog = () => {
-    console.log('MenuItem card click:', item.name);
     setIsDialogOpen(true);
   };
   
@@ -147,6 +138,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, onCartUpdate }) => {
 
       <MenuItemDialog
         item={item}
+        categoryItems={categoryItems}
         isOpen={isDialogOpen}
         onClose={handleCloseDialog}
       />

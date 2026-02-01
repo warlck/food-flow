@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,8 +8,7 @@ import { useCart } from '@/context/CartContext';
 import { useRestaurantDetails } from '@/hooks/useRestaurantDetails';
 import { transformApiRestaurant, transformApiMenuItems } from '@/lib/transformers';
 import { MenuItem as MenuItemType } from '@/types';
-import { Plus, Minus, ShoppingCart, Clock, Star, ArrowUp, Loader2, AlertCircle } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { Plus, ShoppingCart, Clock, Star, ArrowUp, Loader2, AlertCircle } from 'lucide-react';
 import MenuItemDialog from '@/components/MenuItemDialog';
 
 const MobileMenu: React.FC = () => {
@@ -26,7 +25,7 @@ const MobileMenu: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedItem, setSelectedItem] = useState<MenuItemType | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { addToCart, updateQuantity, removeFromCart, items, getTotalItems, getTotalPrice, setRestaurantId } = useCart();
+  const { getTotalItems, getTotalPrice, setRestaurantId } = useCart();
 
   // Set restaurant ID in cart context when component mounts or restaurantId changes
   useEffect(() => {
@@ -34,6 +33,41 @@ const MobileMenu: React.FC = () => {
       setRestaurantId(restaurantId);
     }
   }, [restaurantId, setRestaurantId]);
+
+  const { items: menuItems, categories } = useMemo(() => {
+    if (!apiData) return { items: [], categories: [] };
+    return transformApiMenuItems(apiData);
+  }, [apiData]);
+
+  const restaurant = useMemo(() => {
+    if (!apiData) return null;
+    return transformApiRestaurant(apiData);
+  }, [apiData]);
+
+  const categoriesWithAll = useMemo(() => ['All', ...categories], [categories]);
+
+  // Group items by category; backend provides items per category sorted by price (cheapest first).
+  const itemsByCategory = useMemo(() => {
+    const map = new Map<string, MenuItemType[]>();
+    menuItems.forEach((mi) => {
+      const existing = map.get(mi.category);
+      if (existing) {
+        existing.push(mi);
+      } else {
+        map.set(mi.category, [mi]);
+      }
+    });
+    return map;
+  }, [menuItems]);
+
+  const displayedItems = useMemo(() => {
+    if (selectedCategory === 'All') {
+      return Array.from(itemsByCategory.values()).map((categoryItems) => categoryItems[0]);
+    }
+
+    const categoryItems = itemsByCategory.get(selectedCategory);
+    return categoryItems && categoryItems.length > 0 ? [categoryItems[0]] : [];
+  }, [itemsByCategory, selectedCategory]);
 
   // Check if restaurant ID is missing
   if (!restaurantId) {
@@ -79,7 +113,7 @@ const MobileMenu: React.FC = () => {
   }
 
   // Require API data - no fallback to mock
-  if (!apiData) {
+  if (!apiData || !restaurant) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center p-4">
         <Alert variant="destructive" className="max-w-md">
@@ -92,38 +126,6 @@ const MobileMenu: React.FC = () => {
       </div>
     );
   }
-
-  // Transform API data
-  const restaurant = transformApiRestaurant(apiData);
-  const { items: menuItems, categories } = transformApiMenuItems(apiData);
-
-  const getItemQuantity = (itemId: string) => {
-    const cartItem = items.find(item => item.menuItem.id === itemId);
-    return cartItem ? cartItem.quantity : 0;
-  };
-
-  const handleAddItem = (item: MenuItemType) => {
-    addToCart(item, 1);
-    toast({
-      title: "Added to cart",
-      description: `${item.name} has been added to your cart.`,
-      duration: 1500,
-    });
-  };
-
-  const handleUpdateQuantity = (item: MenuItemType, newQuantity: number) => {
-    if (newQuantity === 0) {
-      removeFromCart(item.id);
-    } else {
-      updateQuantity(item.id, newQuantity);
-    }
-  };
-
-  const filteredItems = menuItems.filter(item => 
-    selectedCategory === 'All' || item.category === selectedCategory
-  );
-
-  const categoriesWithAll = ['All', ...categories];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
@@ -182,107 +184,78 @@ const MobileMenu: React.FC = () => {
         {/* Menu Items */}
         <div className="px-4 py-6 pb-32">
           <div className="space-y-4">
-            {filteredItems.map((item) => {
-              const quantity = getItemQuantity(item.id);
-              return (
-                <Card 
-                  key={item.id} 
-                  className="overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-md cursor-pointer"
-                  onClick={() => {
-                    console.log('Card clicked:', item.name);
-                    setSelectedItem(item);
-                    setIsDialogOpen(true);
-                  }}
-                >
-                  <CardContent className="p-0">
-                    <div className="relative">
-                      {/* Item Image */}
-                      <div className="relative w-full h-48 overflow-hidden">
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80';
-                          }}
-                        />
-                        <div className="absolute top-3 right-3">
-                          <Badge className="bg-white/90 text-food-primary border-0 font-semibold">
-                            {item.category}
-                          </Badge>
+            {displayedItems.map((item) => (
+              <Card
+                key={item.id}
+                className="overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-md cursor-pointer"
+                onClick={() => {
+                  setSelectedItem(item);
+                  setIsDialogOpen(true);
+                }}
+              >
+                <CardContent className="p-0">
+                  <div className="relative">
+                    {/* Item Image */}
+                    <div className="relative w-full h-48 overflow-hidden">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src =
+                            'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80';
+                        }}
+                      />
+                      <div className="absolute top-3 right-3">
+                        <Badge className="bg-white/90 text-food-primary border-0 font-semibold">
+                          {item.category}
+                        </Badge>
+                      </div>
+                      {!item.available && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <span className="text-white font-semibold">Not Available</span>
                         </div>
-                        {!item.available && (
-                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                            <span className="text-white font-semibold">Not Available</span>
-                          </div>
-                        )}
+                      )}
+                    </div>
+
+                    {/* Item Details */}
+                    <div className="p-4">
+                      <div className="mb-3">
+                        <h3 className="font-bold text-gray-900 text-lg leading-tight mb-2">
+                          {item.name}
+                        </h3>
+                        <p className="text-gray-600 text-sm leading-relaxed">
+                          {item.description}
+                        </p>
                       </div>
 
-                      {/* Item Details */}
-                      <div className="p-4">
-                        <div className="mb-3">
-                          <h3 className="font-bold text-gray-900 text-lg leading-tight mb-2">{item.name}</h3>
-                          <p className="text-gray-600 text-sm leading-relaxed">{item.description}</p>
+                      {/* Price and Controls */}
+                      <div className="flex items-center justify-between">
+                        <div className="text-food-primary font-bold text-xl">
+                          ${item.price.toFixed(2)}
                         </div>
 
-                        {/* Price and Controls */}
-                        <div className="flex items-center justify-between">
-                          <div className="text-food-primary font-bold text-xl">
-                            ${item.price.toFixed(2)}
-                          </div>
-
-                          {/* Quantity Controls */}
-                          <div className="flex items-center">
-                            {quantity === 0 ? (
-                              <Button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  console.log('Add button clicked:', item.name);
-                                  setSelectedItem(item);
-                                  setIsDialogOpen(true);
-                                }}
-                                disabled={!item.available}
-                                className="bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white px-6 py-2 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                              >
-                                <Plus className="w-4 h-4 mr-2" />
-                                Add
-                              </Button>
-                            ) : (
-                              <div className="flex items-center space-x-3 bg-gray-50 rounded-full p-2 border-2 border-food-primary/20">
-                                <Button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleUpdateQuantity(item, quantity - 1);
-                                  }}
-                                  size="sm"
-                                  variant="ghost"
-                                  className="w-8 h-8 rounded-full p-0 hover:bg-food-primary hover:text-white transition-colors"
-                                >
-                                  <Minus className="w-4 h-4" />
-                                </Button>
-                                <span className="w-8 text-center font-bold text-food-primary text-lg">{quantity}</span>
-                                <Button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleUpdateQuantity(item, quantity + 1);
-                                  }}
-                                  size="sm"
-                                  variant="ghost"
-                                  className="w-8 h-8 rounded-full p-0 hover:bg-food-primary hover:text-white transition-colors"
-                                >
-                                  <Plus className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
+                        <div className="flex items-center">
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedItem(item);
+                              setIsDialogOpen(true);
+                            }}
+                            disabled={!item.available}
+                            className="bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white px-6 py-2 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add
+                          </Button>
                         </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
 
@@ -312,6 +285,7 @@ const MobileMenu: React.FC = () => {
       {/* Menu Item Dialog */}
       <MenuItemDialog
         item={selectedItem}
+        categoryItems={selectedItem ? itemsByCategory.get(selectedItem.category) : undefined}
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
       />
