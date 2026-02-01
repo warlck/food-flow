@@ -10,13 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { MenuItem as MenuItemType, Addon, SelectedAddon } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { Plus, Minus, Tag, ShoppingCart } from 'lucide-react';
@@ -56,11 +50,6 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     return list;
   }, [categoryItems, item]);
 
-  // Backend sends category items sorted by price (cheapest first).
-  const cheapestItem = useMemo(() => {
-    if (itemsInCategory.length === 0) return null;
-    return itemsInCategory[0];
-  }, [itemsInCategory]);
 
   const activeItem = useMemo(() => {
     if (!item) return null;
@@ -160,10 +149,6 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
 
   if (!item || !activeItem) return null;
 
-  const priceDeltaVsCheapest =
-    cheapestItem && activeItem.price > cheapestItem.price
-      ? activeItem.price - cheapestItem.price
-      : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -200,39 +185,53 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
             </div>
           )}
 
-          {itemsInCategory.length > 1 && cheapestItem && (
+          {itemsInCategory.length > 1 && (
             <div className="mt-4">
-              <Label htmlFor="menu-item-select" className="mb-2 block">
-                Choose an item
-              </Label>
-              <Select value={activeItem.id} onValueChange={handleSelectMenuItem}>
-                <SelectTrigger id="menu-item-select">
-                  <SelectValue placeholder="Select an item" />
-                </SelectTrigger>
-                <SelectContent>
-                  {itemsInCategory.map((mi) => {
-                    const delta = mi.price - cheapestItem.price;
-                    const deltaLabel = delta > 0 ? ` (+$${delta.toFixed(2)})` : '';
-                    const stockLabel = !mi.available ? ' (out of stock)' : '';
-                    return (
-                      <SelectItem key={mi.id} value={mi.id} disabled={!mi.available}>
-                        {mi.name} — ${mi.price.toFixed(2)}{deltaLabel}{stockLabel}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+              <Label className="mb-2 block">Choose an item</Label>
+
+              <RadioGroup value={activeItem.id} onValueChange={handleSelectMenuItem}>
+                {itemsInCategory.map((mi) => {
+                  const id = `menu-item-${mi.id}`;
+                  const selected = mi.id === activeItem.id;
+
+                  return (
+                    <div
+                      key={mi.id}
+                      className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
+                        selected
+                          ? 'border-food-primary bg-food-primary/5'
+                          : 'border-gray-200 bg-white'
+                      } ${!mi.available ? 'opacity-60' : ''}`}
+                    >
+                      <RadioGroupItem
+                        id={id}
+                        value={mi.id}
+                        disabled={!mi.available}
+                        className="mt-1"
+                      />
+
+                      <Label
+                        htmlFor={id}
+                        className={`flex-1 cursor-pointer ${!mi.available ? 'cursor-not-allowed' : ''}`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-medium">{mi.name}</span>
+                          <span className="font-semibold text-food-primary">
+                            ${mi.price.toFixed(2)}
+                          </span>
+                        </div>
+
+                        {!mi.available && (
+                          <div className="mt-1 text-xs text-gray-500">Out of stock</div>
+                        )}
+                      </Label>
+                    </div>
+                  );
+                })}
+              </RadioGroup>
             </div>
           )}
 
-          <div className="text-xl font-bold text-food-primary mt-4">
-            ${activeItem.price.toFixed(2)}
-          </div>
-          {priceDeltaVsCheapest > 0 && (
-            <div className="text-sm text-gray-500">
-              +${priceDeltaVsCheapest.toFixed(2)} vs. cheapest option
-            </div>
-          )}
         </DialogHeader>
 
         {/* Addons Section */}
