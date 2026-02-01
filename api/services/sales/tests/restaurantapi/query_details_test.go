@@ -28,6 +28,7 @@ func queryByIDWithDetails200(sd apitest.SeedData) []apitest.Table {
 				Price:       sd.MenuItems[0].Price.Value(),
 				ImageURL:    sd.MenuItems[0].ImageURL,
 				Available:   sd.MenuItems[0].Available,
+				Addons:      []restaurantapi.Addon{},
 			},
 			{
 				ID:          sd.MenuItems[1].ID.String(),
@@ -36,6 +37,7 @@ func queryByIDWithDetails200(sd apitest.SeedData) []apitest.Table {
 				Price:       sd.MenuItems[1].Price.Value(),
 				ImageURL:    sd.MenuItems[1].ImageURL,
 				Available:   sd.MenuItems[1].Available,
+				Addons:      []restaurantapi.Addon{},
 			},
 			{
 				ID:          sd.MenuItems[2].ID.String(),
@@ -44,6 +46,7 @@ func queryByIDWithDetails200(sd apitest.SeedData) []apitest.Table {
 				Price:       sd.MenuItems[2].Price.Value(),
 				ImageURL:    sd.MenuItems[2].ImageURL,
 				Available:   sd.MenuItems[2].Available,
+				Addons:      []restaurantapi.Addon{},
 			},
 		},
 	}
@@ -62,6 +65,7 @@ func queryByIDWithDetails200(sd apitest.SeedData) []apitest.Table {
 				Price:       sd.MenuItems[3].Price.Value(),
 				ImageURL:    sd.MenuItems[3].ImageURL,
 				Available:   sd.MenuItems[3].Available,
+				Addons:      []restaurantapi.Addon{},
 			},
 			{
 				ID:          sd.MenuItems[4].ID.String(),
@@ -70,6 +74,7 @@ func queryByIDWithDetails200(sd apitest.SeedData) []apitest.Table {
 				Price:       sd.MenuItems[4].Price.Value(),
 				ImageURL:    sd.MenuItems[4].ImageURL,
 				Available:   sd.MenuItems[4].Available,
+				Addons:      []restaurantapi.Addon{},
 			},
 		},
 	}
@@ -110,15 +115,22 @@ func queryByIDWithDetails200(sd apitest.SeedData) []apitest.Table {
 			GotResp:    &restaurantapi.RestaurantWithMenuCategories{},
 			ExpResp:    expected,
 			CmpFunc: func(got any, exp any) string {
-				// Sort categories and menu items in the response for consistent comparison
 				gotResp := got.(*restaurantapi.RestaurantWithMenuCategories)
 
-				// Sort categories by ID
+				// Assert menu items are returned sorted by price (cheapest first) within each category.
+				for _, cat := range gotResp.Categories {
+					for i := 1; i < len(cat.MenuItems); i++ {
+						if cat.MenuItems[i-1].Price > cat.MenuItems[i].Price {
+							return fmt.Sprintf("menu items not sorted by price in category %s", cat.ID)
+						}
+					}
+				}
+
+				// Sort categories and menu items in the response for consistent comparison.
 				sort.Slice(gotResp.Categories, func(i, j int) bool {
 					return gotResp.Categories[i].ID < gotResp.Categories[j].ID
 				})
 
-				// Sort menu items within each category
 				for i := range gotResp.Categories {
 					sort.Slice(gotResp.Categories[i].MenuItems, func(a, b int) bool {
 						return gotResp.Categories[i].MenuItems[a].ID < gotResp.Categories[i].MenuItems[b].ID

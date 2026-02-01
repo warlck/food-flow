@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
@@ -164,7 +165,9 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 		menuItemFilter := menuitembus.QueryFilter{
 			CategoryID: &cat.ID,
 		}
-		menuItemOrderBy := order.NewBy(menuitembus.OrderByID, order.ASC)
+		// Sort menu items by price (cheapest first) so the frontend can render the default
+		// item per category without client-side sorting.
+		menuItemOrderBy := order.NewBy(menuitembus.OrderByPrice, order.ASC)
 		menuItems, err := a.menuItemBus.Query(ctx, menuItemFilter, menuItemOrderBy, pg)
 		if err != nil {
 			return fmt.Errorf("query menu items: categoryID[%s]: %w", cat.ID, err)
@@ -178,8 +181,8 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 				return fmt.Errorf("query addons: menuItemID[%s]: %w", item.ID, err)
 			}
 
-			// Convert addons to app layer
-			appAddons := make([]Addon, 0, len(addons))
+			// Convert addons to app layer (always return a non-nil slice in JSON).
+			appAddons := []Addon{}
 			for _, addon := range addons {
 				if addon.Available {
 					appAddons = append(appAddons, Addon{
@@ -204,6 +207,17 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 			}
 			appCategory.MenuItems = append(appCategory.MenuItems, appMenuItem)
 		}
+
+		// Make ordering deterministic (price asc, then name, then id).
+		sort.Slice(appCategory.MenuItems, func(i, j int) bool {
+			if appCategory.MenuItems[i].Price != appCategory.MenuItems[j].Price {
+				return appCategory.MenuItems[i].Price < appCategory.MenuItems[j].Price
+			}
+			if appCategory.MenuItems[i].Name != appCategory.MenuItems[j].Name {
+				return appCategory.MenuItems[i].Name < appCategory.MenuItems[j].Name
+			}
+			return appCategory.MenuItems[i].ID < appCategory.MenuItems[j].ID
+		})
 
 		appRestaurant.Categories = append(appRestaurant.Categories, appCategory)
 	}
