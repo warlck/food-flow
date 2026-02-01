@@ -62,12 +62,15 @@ const MobileMenu: React.FC = () => {
 
   const displayedItems = useMemo(() => {
     if (selectedCategory === 'All') {
-      return Array.from(itemsByCategory.values()).map((categoryItems) => categoryItems[0]);
+      // Preserve backend category order.
+      return categories
+        .map((category) => itemsByCategory.get(category)?.[0])
+        .filter(Boolean) as MenuItemType[];
     }
 
     const categoryItems = itemsByCategory.get(selectedCategory);
     return categoryItems && categoryItems.length > 0 ? [categoryItems[0]] : [];
-  }, [itemsByCategory, selectedCategory]);
+  }, [categories, itemsByCategory, selectedCategory]);
 
   // Check if restaurant ID is missing
   if (!restaurantId) {

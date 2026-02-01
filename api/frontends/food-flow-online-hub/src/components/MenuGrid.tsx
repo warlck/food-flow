@@ -38,34 +38,37 @@ const MenuGrid: React.FC<MenuGridProps> = ({ items, categories, onCartUpdate }) 
   const displayedItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    const categoryMatchesSearch = (categoryItems: MenuItemType[]) => {
+    const matchesQuery = (mi: MenuItemType) => {
       if (!query) return true;
-      return categoryItems.some((mi) => {
-        const name = mi.name.toLowerCase();
-        const description = mi.description.toLowerCase();
-        return name.includes(query) || description.includes(query);
-      });
+      return (
+        mi.name.toLowerCase().includes(query) ||
+        mi.description.toLowerCase().includes(query)
+      );
+    };
+
+    // Category items are already sorted by price (cheapest first), so `find` yields the cheapest match.
+    const pickForCategory = (categoryItems: MenuItemType[]) => {
+      if (categoryItems.length === 0) return null;
+      if (!query) return categoryItems[0];
+      return categoryItems.find(matchesQuery) ?? null;
     };
 
     if (selectedCategory !== 'All') {
       const categoryItems = itemsByCategory.get(selectedCategory) ?? [];
-      if (!categoryItems.length || !categoryMatchesSearch(categoryItems)) return [];
-
-      // Default rendered item is the cheapest one (index 0).
-      return [categoryItems[0]];
+      const picked = pickForCategory(categoryItems);
+      return picked ? [picked] : [];
     }
 
+    // Preserve backend category order.
     const out: MenuItemType[] = [];
-    for (const categoryItems of itemsByCategory.values()) {
-      if (!categoryItems.length) continue;
-      if (!categoryMatchesSearch(categoryItems)) continue;
-
-      // Default rendered item is the cheapest one (index 0).
-      out.push(categoryItems[0]);
+    for (const category of categories) {
+      const categoryItems = itemsByCategory.get(category) ?? [];
+      const picked = pickForCategory(categoryItems);
+      if (picked) out.push(picked);
     }
 
     return out;
-  }, [itemsByCategory, searchQuery, selectedCategory]);
+  }, [categories, itemsByCategory, searchQuery, selectedCategory]);
 
   return (
     <SidebarProvider>
