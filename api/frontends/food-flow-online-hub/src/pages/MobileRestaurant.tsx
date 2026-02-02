@@ -226,7 +226,7 @@ const MobileMenu: React.FC = () => {
                     <div className="p-4">
                       <div className="mb-3">
                         <h3 className="font-bold text-gray-900 text-lg leading-tight mb-2">
-                          {item.name}
+                          {item.category}
                         </h3>
                         <p className="text-gray-600 text-sm leading-relaxed">
                           {item.description}

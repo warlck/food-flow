@@ -197,10 +197,10 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                   return (
                     <div
                       key={mi.id}
-                      className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
+                      className={`flex items-start gap-3 rounded-lg p-3 transition-colors ${
                         selected
-                          ? 'border-food-primary bg-food-primary/5'
-                          : 'border-gray-200 bg-white'
+                          ? 'border border-food-primary bg-food-primary/5'
+                          : 'bg-white'
                       } ${!mi.available ? 'opacity-60' : ''}`}
                     >
                       <RadioGroupItem

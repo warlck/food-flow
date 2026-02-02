@@ -102,7 +102,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, categoryItems, onCartUpdate }
         
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start">
-            <CardTitle className="text-lg font-semibold line-clamp-2">{item.name}</CardTitle>
+            <CardTitle className="text-lg font-semibold line-clamp-2">{item.category}</CardTitle>
             <span className="font-bold text-food-primary">${item.price.toFixed(2)}</span>
           </div>
           {item.tags && item.tags.length > 0 && (
