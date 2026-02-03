@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   PaymentElement,
   useStripe,
@@ -25,6 +25,35 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isStripeReady, setIsStripeReady] = useState(false);
+  const [showStillLoadingHint, setShowStillLoadingHint] = useState(false);
+
+  useEffect(() => {
+    if (stripe && elements) {
+      setIsStripeReady(true);
+      return;
+    }
+
+    setIsStripeReady(false);
+
+    // If Stripe stays uninitialized for a while, show a helpful hint.
+    const t = window.setTimeout(() => setShowStillLoadingHint(true), 6000);
+    return () => window.clearTimeout(t);
+  }, [stripe, elements]);
+
+  useEffect(() => {
+    const onWindowError = (event: ErrorEvent) => {
+      const msg = event?.error?.message || event?.message || '';
+      if (msg.includes("Failed to execute 'observe' on 'MutationObserver'")) {
+        setErrorMessage(
+          'A browser extension is breaking Stripe Elements on this page (MutationObserver error). Disable extensions for this site (ad blockers/privacy tools/Dark Reader/password managers/Grammarly) or use an incognito window.'
+        );
+      }
+    };
+
+    window.addEventListener('error', onWindowError);
+    return () => window.removeEventListener('error', onWindowError);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,14 +105,29 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {!isStripeReady && (
+        <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+          <div className="flex items-center">
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Loading Stripe payment form...
+          </div>
+          {showStillLoadingHint && (
+            <div className="mt-2 text-xs text-gray-600">
+              Still loading? Check if an ad blocker/privacy extension is blocking Stripe, and confirm
+              that <code className="px-1">js.stripe.com</code> is reachable.
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="p-4 border-2 rounded-xl bg-white">
-        <PaymentElement 
+        <PaymentElement
           options={{
             layout: 'tabs',
           }}
         />
       </div>
-      
+
       {errorMessage && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
           {errorMessage}

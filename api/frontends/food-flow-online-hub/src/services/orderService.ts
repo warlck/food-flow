@@ -1,4 +1,7 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// Prefer same-origin in production (nginx proxies /v1 -> sales-service in k8s).
+// In local dev (vite), default to talking to the backend directly.
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3000' : '');
 
 // Helper to get auth token
 const getAuthHeaders = (): HeadersInit => {
@@ -98,8 +101,12 @@ export const orderService = {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Failed to create order' }));
-      throw new Error(error.error || 'Failed to create order');
+      const error = await response
+        .json()
+        .catch(() => ({ message: 'Failed to create order' }));
+
+      // Backend uses {code, message}; older code paths may use {error}.
+      throw new Error(error.message || error.error || 'Failed to create order');
     }
 
     return response.json();
@@ -113,8 +120,10 @@ export const orderService = {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Failed to fetch order' }));
-      throw new Error(error.error || 'Failed to fetch order');
+      const error = await response
+        .json()
+        .catch(() => ({ message: 'Failed to fetch order' }));
+      throw new Error(error.message || error.error || 'Failed to fetch order');
     }
 
     return response.json();
@@ -128,8 +137,10 @@ export const orderService = {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Failed to create payment intent' }));
-      throw new Error(error.error || 'Failed to create payment intent');
+      const error = await response
+        .json()
+        .catch(() => ({ message: 'Failed to create payment intent' }));
+      throw new Error(error.message || error.error || 'Failed to create payment intent');
     }
 
     return response.json();
@@ -143,8 +154,10 @@ export const orderService = {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Failed to confirm payment' }));
-      throw new Error(error.error || 'Failed to confirm payment');
+      const error = await response
+        .json()
+        .catch(() => ({ message: 'Failed to confirm payment' }));
+      throw new Error(error.message || error.error || 'Failed to confirm payment');
     }
 
     return response.json();

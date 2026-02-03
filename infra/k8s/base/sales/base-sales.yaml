@@ -138,6 +138,20 @@ spec:
                 name: app-config
                 key: db_disabletls
                 optional: true
+
+          # Stripe configuration (optional in dev).
+          - name: SALES_STRIPE_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: stripe-secrets
+                key: stripe_secret_key
+                optional: true
+          - name: SALES_STRIPE_WEBHOOK_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: stripe-secrets
+                key: stripe_webhook_secret
+                optional: true
         
 
 

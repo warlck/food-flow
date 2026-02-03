@@ -33,16 +33,17 @@ func Routes(app *web.App, cfg Config) {
 
 	authen := mid.Authenticate(cfg.AuthClient)
 	ruleAdmin := mid.Authorize(cfg.AuthClient, auth.RuleAdminOnly)
-	ruleUserOnly := mid.Authorize(cfg.AuthClient, auth.RuleUserOnly)
 
 	api := newApp(cfg.OrderBus)
 
 	// Public order creation (customers can create orders)
-	app.HandleFunc(http.MethodPost, version, "/orders", api.create, authen, ruleUserOnly)
+	// NOTE: This route is unauthenticated as the ordering needs to stay public
+	app.HandleFunc(http.MethodPost, version, "/orders", api.create)
 
-	// Order queries (customers can view their own, admins can view all)
+	// Order queries
+	// NOTE: Order confirmation page fetches order by id without auth in dev.
 	app.HandleFunc(http.MethodGet, version, "/orders", api.query, authen)
-	app.HandleFunc(http.MethodGet, version, "/orders/{order_id}", api.queryByID, authen)
+	app.HandleFunc(http.MethodGet, version, "/orders/{order_id}", api.queryByID)
 
 	// Status updates (admin only)
 	app.HandleFunc(http.MethodPatch, version, "/orders/{order_id}/status", api.updateStatus, authen, ruleAdmin)
@@ -50,9 +51,10 @@ func Routes(app *web.App, cfg Config) {
 	// Cancel order (admin only)
 	app.HandleFunc(http.MethodPost, version, "/orders/{order_id}/cancel", api.cancel, authen, ruleAdmin)
 
-	// Payment endpoints (authenticated users)
-	app.HandleFunc(http.MethodPost, version, "/orders/{order_id}/payment/intent", api.createPaymentIntent, authen, ruleUserOnly)
-	app.HandleFunc(http.MethodPost, version, "/orders/{order_id}/payment/confirm", api.confirmPayment, authen, ruleUserOnly)
+	// Payment endpoints
+	// NOTE: Checkout flow is anonymous, so these routes are unauthenticated.
+	app.HandleFunc(http.MethodPost, version, "/orders/{order_id}/payment/intent", api.createPaymentIntent)
+	app.HandleFunc(http.MethodPost, version, "/orders/{order_id}/payment/confirm", api.confirmPayment)
 
 	// Stripe webhook (no authentication - Stripe signs the payload)
 	if cfg.StripeWebhookSecret != "" {

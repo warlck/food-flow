@@ -2,6 +2,7 @@
 FROM node:20-alpine AS build_frontend
 ARG BUILD_REF
 ARG VITE_API_URL
+ARG VITE_STRIPE_PUBLISHABLE_KEY
 
 # Update packages to fix vulnerabilities
 RUN apk update && apk upgrade --no-cache
@@ -19,8 +20,9 @@ RUN npm ci --legacy-peer-deps
 # Copy source code
 COPY api/frontends/food-flow-online-hub/ ./
 
-# Set VITE_API_URL environment variable for build
+# Set Vite environment variables for build
 ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_STRIPE_PUBLISHABLE_KEY=${VITE_STRIPE_PUBLISHABLE_KEY}
 
 # Build the application
 RUN npm run build
