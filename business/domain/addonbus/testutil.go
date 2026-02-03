@@ -11,7 +11,7 @@ import (
 )
 
 // TestNewAddons is a helper method for testing.
-func TestNewAddons(n int, menuItemID, restaurantID uuid.UUID) []NewAddon {
+func TestNewAddons(n int, categoryID, restaurantID uuid.UUID) []NewAddon {
 	newAddons := make([]NewAddon, n)
 
 	addonNames := []string{
@@ -34,7 +34,7 @@ func TestNewAddons(n int, menuItemID, restaurantID uuid.UUID) []NewAddon {
 		price := addonPrices[nameIdx]
 
 		na := NewAddon{
-			MenuItemID:   menuItemID,
+			CategoryID:   categoryID,
 			RestaurantID: restaurantID,
 			Name:         name.MustParse(fmt.Sprintf("%s%d", addonNames[nameIdx], idx+i)),
 			Description:  addonDescriptions[nameIdx],
@@ -49,8 +49,8 @@ func TestNewAddons(n int, menuItemID, restaurantID uuid.UUID) []NewAddon {
 }
 
 // TestSeedAddons is a helper method for testing.
-func TestSeedAddons(ctx context.Context, n int, menuItemID, restaurantID uuid.UUID, bus *Business) ([]Addon, error) {
-	newAddons := TestNewAddons(n, menuItemID, restaurantID)
+func TestSeedAddons(ctx context.Context, n int, categoryID, restaurantID uuid.UUID, bus *Business) ([]Addon, error) {
+	newAddons := TestNewAddons(n, categoryID, restaurantID)
 
 	addons := make([]Addon, len(newAddons))
 	for i, na := range newAddons {
@@ -66,8 +66,8 @@ func TestSeedAddons(ctx context.Context, n int, menuItemID, restaurantID uuid.UU
 }
 
 // TestSeedAddonsForMenuItem is a helper method for testing that creates
-// addons with specific names for a menu item.
-func TestSeedAddonsForMenuItem(ctx context.Context, menuItemID, restaurantID uuid.UUID, bus *Business) ([]Addon, error) {
+// addons with specific names for a category.
+func TestSeedAddonsForMenuItem(ctx context.Context, categoryID, restaurantID uuid.UUID, bus *Business) ([]Addon, error) {
 	addonData := []struct {
 		name        string
 		description string
@@ -83,7 +83,7 @@ func TestSeedAddonsForMenuItem(ctx context.Context, menuItemID, restaurantID uui
 	addons := make([]Addon, len(addonData))
 	for i, data := range addonData {
 		na := NewAddon{
-			MenuItemID:   menuItemID,
+			CategoryID:   categoryID,
 			RestaurantID: restaurantID,
 			Name:         name.MustParse(data.name),
 			Description:  data.description,

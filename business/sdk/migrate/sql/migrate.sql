@@ -157,10 +157,10 @@ CREATE INDEX idx_payment_transactions_order_id ON payment_transactions(order_id)
 CREATE INDEX idx_payment_transactions_stripe_id ON payment_transactions(stripe_payment_intent_id);
 
 -- Version: 1.10
--- Description: Create table addons for menu item addons
+-- Description: Create table addons for category addons
 CREATE TABLE addons (
     addon_id      UUID           NOT NULL,
-    menu_item_id  UUID           NOT NULL,
+    category_id   UUID           NOT NULL,
     restaurant_id UUID           NOT NULL,
     name          TEXT           NOT NULL,
     description   TEXT           NULL,
@@ -171,7 +171,7 @@ CREATE TABLE addons (
     date_updated  TIMESTAMP      NOT NULL,
 
     PRIMARY KEY (addon_id),
-    FOREIGN KEY (menu_item_id) REFERENCES menu_items(menu_item_id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(category_id) ON DELETE CASCADE,
     FOREIGN KEY (restaurant_id) REFERENCES restaurants(restaurant_id) ON DELETE CASCADE
 );
 
@@ -193,6 +193,6 @@ CREATE TABLE order_item_addons (
 
 -- Version: 1.12
 -- Description: Create indexes for addons
-CREATE INDEX idx_addons_menu_item_id ON addons(menu_item_id);
+CREATE INDEX idx_addons_category_id ON addons(category_id);
 CREATE INDEX idx_addons_restaurant_id ON addons(restaurant_id);
 CREATE INDEX idx_order_item_addons_order_item_id ON order_item_addons(order_item_id);

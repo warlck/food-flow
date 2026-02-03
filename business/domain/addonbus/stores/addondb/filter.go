@@ -15,9 +15,9 @@ func applyFilter(filter addonbus.QueryFilter, data map[string]any, buf *bytes.Bu
 		wc = append(wc, "addon_id = :addon_id")
 	}
 
-	if filter.MenuItemID != nil {
-		data["menu_item_id"] = *filter.MenuItemID
-		wc = append(wc, "menu_item_id = :menu_item_id")
+	if filter.CategoryID != nil {
+		data["category_id"] = *filter.CategoryID
+		wc = append(wc, "category_id = :category_id")
 	}
 
 	if filter.RestaurantID != nil {

@@ -33,9 +33,9 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 func (s *Store) Create(ctx context.Context, addon addonbus.Addon) error {
 	const q = `
 	INSERT INTO addons
-		(addon_id, menu_item_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated)
+		(addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated)
 	VALUES
-		(:addon_id, :menu_item_id, :restaurant_id, :name, :description, :price, :available, :max_quantity, :date_created, :date_updated)`
+		(:addon_id, :category_id, :restaurant_id, :name, :description, :price, :available, :max_quantity, :date_created, :date_updated)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAddon(addon)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -90,7 +90,7 @@ func (s *Store) Query(ctx context.Context, filter addonbus.QueryFilter, orderBy 
 
 	const q = `
 	SELECT
-		addon_id, menu_item_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated
+		addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated
 	FROM
 		addons`
 
@@ -146,7 +146,7 @@ func (s *Store) QueryByID(ctx context.Context, addonID uuid.UUID) (addonbus.Addo
 
 	const q = `
 	SELECT
-		addon_id, menu_item_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated
+		addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated
 	FROM
 		addons
 	WHERE 
@@ -163,21 +163,21 @@ func (s *Store) QueryByID(ctx context.Context, addonID uuid.UUID) (addonbus.Addo
 	return toBusAddon(dbAddn)
 }
 
-// QueryByMenuItemID gets all addons for a specific menu item from the database.
-func (s *Store) QueryByMenuItemID(ctx context.Context, menuItemID uuid.UUID) ([]addonbus.Addon, error) {
+// QueryByCategoryID gets all addons for a specific category from the database.
+func (s *Store) QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]addonbus.Addon, error) {
 	data := struct {
-		MenuItemID uuid.UUID `db:"menu_item_id"`
+		CategoryID uuid.UUID `db:"category_id"`
 	}{
-		MenuItemID: menuItemID,
+		CategoryID: categoryID,
 	}
 
 	const q = `
 	SELECT
-		addon_id, menu_item_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated
+		addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated
 	FROM
 		addons
 	WHERE 
-		menu_item_id = :menu_item_id AND available = true
+		category_id = :category_id AND available = true
 	ORDER BY
 		name ASC`
 

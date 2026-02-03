@@ -12,7 +12,7 @@ import (
 // dbAddon represents the database row for an addon.
 type dbAddon struct {
 	ID           uuid.UUID `db:"addon_id"`
-	MenuItemID   uuid.UUID `db:"menu_item_id"`
+	CategoryID   uuid.UUID `db:"category_id"`
 	RestaurantID uuid.UUID `db:"restaurant_id"`
 	Name         string    `db:"name"`
 	Description  string    `db:"description"`
@@ -26,7 +26,7 @@ type dbAddon struct {
 func toDBAddon(bus addonbus.Addon) dbAddon {
 	return dbAddon{
 		ID:           bus.ID,
-		MenuItemID:   bus.MenuItemID,
+		CategoryID:   bus.CategoryID,
 		RestaurantID: bus.RestaurantID,
 		Name:         bus.Name.String(),
 		Description:  bus.Description,
@@ -51,7 +51,7 @@ func toBusAddon(dbo dbAddon) (addonbus.Addon, error) {
 
 	return addonbus.Addon{
 		ID:           dbo.ID,
-		MenuItemID:   dbo.MenuItemID,
+		CategoryID:   dbo.CategoryID,
 		RestaurantID: dbo.RestaurantID,
 		Name:         n,
 		Description:  dbo.Description,

@@ -173,29 +173,29 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 			return fmt.Errorf("query menu items: categoryID[%s]: %w", cat.ID, err)
 		}
 
-		// Convert menu items and fetch addons for each
+		// Fetch addons for this category (shared across menu items).
+		addons, err := a.addonBus.QueryByCategoryID(ctx, cat.ID)
+		if err != nil {
+			return fmt.Errorf("query addons: categoryID[%s]: %w", cat.ID, err)
+		}
+
+		// Convert addons to app layer (always return a non-nil slice in JSON).
+		appAddons := []Addon{}
+		for _, addon := range addons {
+			if addon.Available {
+				appAddons = append(appAddons, Addon{
+					ID:          addon.ID.String(),
+					Name:        addon.Name.String(),
+					Description: addon.Description,
+					Price:       addon.Price.Value(),
+					Available:   addon.Available,
+					MaxQuantity: addon.MaxQuantity,
+				})
+			}
+		}
+
+		// Convert menu items and attach category addons.
 		for _, item := range menuItems {
-			// Fetch addons for this menu item
-			addons, err := a.addonBus.QueryByMenuItemID(ctx, item.ID)
-			if err != nil {
-				return fmt.Errorf("query addons: menuItemID[%s]: %w", item.ID, err)
-			}
-
-			// Convert addons to app layer (always return a non-nil slice in JSON).
-			appAddons := []Addon{}
-			for _, addon := range addons {
-				if addon.Available {
-					appAddons = append(appAddons, Addon{
-						ID:          addon.ID.String(),
-						Name:        addon.Name.String(),
-						Description: addon.Description,
-						Price:       addon.Price.Value(),
-						Available:   addon.Available,
-						MaxQuantity: addon.MaxQuantity,
-					})
-				}
-			}
-
 			appMenuItem := MenuItem{
 				ID:          item.ID.String(),
 				Name:        item.Name.String(),

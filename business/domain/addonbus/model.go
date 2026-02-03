@@ -8,10 +8,10 @@ import (
 	"github.com/warlck/food-flow/business/types/name"
 )
 
-// Addon represents an addon for a menu item in the system.
+// Addon represents an addon for a category in the system.
 type Addon struct {
 	ID           uuid.UUID
-	MenuItemID   uuid.UUID
+	CategoryID   uuid.UUID
 	RestaurantID uuid.UUID
 	Name         name.Name
 	Description  string
@@ -24,7 +24,7 @@ type Addon struct {
 
 // NewAddon contains information needed to create a new addon.
 type NewAddon struct {
-	MenuItemID   uuid.UUID
+	CategoryID   uuid.UUID
 	RestaurantID uuid.UUID
 	Name         name.Name
 	Description  string

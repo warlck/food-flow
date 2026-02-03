@@ -60,15 +60,10 @@ func insertSeedData(busDomain dbtest.BusDomain) (unittest.SeedData, error) {
 		return unittest.SeedData{}, fmt.Errorf("seeding menu items : %w", err)
 	}
 
-	// Seed addons for menu items
-	addons1, err := addonbus.TestSeedAddons(ctx, 2, items[0].ID, rests[0].ID, busDomain.Addon)
+	// Seed addons for the category (shared across menu items)
+	addons, err := addonbus.TestSeedAddons(ctx, 2, cats[0].ID, rests[0].ID, busDomain.Addon)
 	if err != nil {
-		return unittest.SeedData{}, fmt.Errorf("seeding addons for item 1 : %w", err)
-	}
-
-	addons2, err := addonbus.TestSeedAddons(ctx, 2, items[1].ID, rests[0].ID, busDomain.Addon)
-	if err != nil {
-		return unittest.SeedData{}, fmt.Errorf("seeding addons for item 2 : %w", err)
+		return unittest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
 	}
 
 	// -------------------------------------------------------------------------
@@ -85,10 +80,8 @@ func insertSeedData(busDomain dbtest.BusDomain) (unittest.SeedData, error) {
 			{MenuItem: items[1]},
 		},
 		Addons: []unittest.Addon{
-			{Addon: addons1[0]},
-			{Addon: addons1[1]},
-			{Addon: addons2[0]},
-			{Addon: addons2[1]},
+			{Addon: addons[0]},
+			{Addon: addons[1]},
 		},
 	}
 
@@ -180,13 +173,13 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			},
 		},
 		{
-			Name: "bymenuitemid",
+			Name: "bycategoryid",
 			ExpResp: []addonbus.Addon{
 				sd.Addons[0].Addon,
 				sd.Addons[1].Addon,
 			},
 			ExcFunc: func(ctx context.Context) any {
-				resp, err := busDomain.Addon.QueryByMenuItemID(ctx, sd.MenuItems[0].ID)
+				resp, err := busDomain.Addon.QueryByCategoryID(ctx, sd.Categories[0].ID)
 				if err != nil {
 					return err
 				}
@@ -232,7 +225,7 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 		{
 			Name: "basic",
 			ExpResp: addonbus.Addon{
-				MenuItemID:   sd.MenuItems[0].ID,
+				CategoryID:   sd.Categories[0].ID,
 				RestaurantID: sd.Restaurants[0].ID,
 				Name:         name.MustParse("Extra Bacon"),
 				Description:  "Crispy bacon strips",
@@ -242,7 +235,7 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			},
 			ExcFunc: func(ctx context.Context) any {
 				na := addonbus.NewAddon{
-					MenuItemID:   sd.MenuItems[0].ID,
+					CategoryID:   sd.Categories[0].ID,
 					RestaurantID: sd.Restaurants[0].ID,
 					Name:         name.MustParse("Extra Bacon"),
 					Description:  "Crispy bacon strips",
@@ -275,7 +268,7 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 		{
 			Name: "default_max_quantity",
 			ExpResp: addonbus.Addon{
-				MenuItemID:   sd.MenuItems[0].ID,
+				CategoryID:   sd.Categories[0].ID,
 				RestaurantID: sd.Restaurants[0].ID,
 				Name:         name.MustParse("Extra Sauce"),
 				Description:  "Additional sauce portion",
@@ -285,7 +278,7 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			},
 			ExcFunc: func(ctx context.Context) any {
 				na := addonbus.NewAddon{
-					MenuItemID:   sd.MenuItems[0].ID,
+					CategoryID:   sd.Categories[0].ID,
 					RestaurantID: sd.Restaurants[0].ID,
 					Name:         name.MustParse("Extra Sauce"),
 					Description:  "Additional sauce portion",
@@ -326,7 +319,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			Name: "basic",
 			ExpResp: addonbus.Addon{
 				ID:           sd.Addons[0].ID,
-				MenuItemID:   sd.Addons[0].MenuItemID,
+				CategoryID:   sd.Addons[0].CategoryID,
 				RestaurantID: sd.Addons[0].RestaurantID,
 				Name:         name.MustParse("Updated Addon"),
 				Description:  "Updated description for this addon",
@@ -374,7 +367,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			Name: "partial_update",
 			ExpResp: addonbus.Addon{
 				ID:           sd.Addons[1].ID,
-				MenuItemID:   sd.Addons[1].MenuItemID,
+				CategoryID:   sd.Addons[1].CategoryID,
 				RestaurantID: sd.Addons[1].RestaurantID,
 				Name:         sd.Addons[1].Name,
 				Description:  sd.Addons[1].Description,
@@ -421,7 +414,7 @@ func delete(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			Name:    "basic",
 			ExpResp: nil,
 			ExcFunc: func(ctx context.Context) any {
-				if err := busDomain.Addon.Delete(ctx, sd.Addons[2].Addon); err != nil {
+				if err := busDomain.Addon.Delete(ctx, sd.Addons[0].Addon); err != nil {
 					return err
 				}
 

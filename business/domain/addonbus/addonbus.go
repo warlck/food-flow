@@ -26,7 +26,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]Addon, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, addonID uuid.UUID) (Addon, error)
-	QueryByMenuItemID(ctx context.Context, menuItemID uuid.UUID) ([]Addon, error)
+	QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]Addon, error)
 }
 
 // Business manages the set of APIs for addon access.
@@ -54,7 +54,7 @@ func (b *Business) Create(ctx context.Context, na NewAddon) (Addon, error) {
 
 	addon := Addon{
 		ID:           uuid.New(),
-		MenuItemID:   na.MenuItemID,
+		CategoryID:   na.CategoryID,
 		RestaurantID: na.RestaurantID,
 		Name:         na.Name,
 		Description:  na.Description,
@@ -137,11 +137,11 @@ func (b *Business) QueryByID(ctx context.Context, addonID uuid.UUID) (Addon, err
 	return addon, nil
 }
 
-// QueryByMenuItemID finds all addons for a specific menu item.
-func (b *Business) QueryByMenuItemID(ctx context.Context, menuItemID uuid.UUID) ([]Addon, error) {
-	addons, err := b.storer.QueryByMenuItemID(ctx, menuItemID)
+// QueryByCategoryID finds all addons for a specific category.
+func (b *Business) QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]Addon, error) {
+	addons, err := b.storer.QueryByCategoryID(ctx, categoryID)
 	if err != nil {
-		return nil, fmt.Errorf("query: menuItemID[%s]: %w", menuItemID, err)
+		return nil, fmt.Errorf("query: categoryID[%s]: %w", categoryID, err)
 	}
 
 	return addons, nil
