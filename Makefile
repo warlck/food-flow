@@ -15,7 +15,7 @@ SHELL = $(if $(wildcard $(SHELL_PATH)),/bin/ash,/bin/bash)
 	curl-live curl-ready curl-test-error load-test curl-auth curl-create-user \
 	admin-genkey pgcli \
 	debug-statsviz metrics \
-	dev-up dev-down dev-load-db dev-load dev-apply dev-restart dev-run dev-update dev-update-apply \
+	dev-up dev-down dev-load-db dev-load dev-apply dev-restart dev-run dev-update dev-update-apply dev-stripe-secrets \
 	dev-logs dev-logs-auth dev-logs-frontend dev-describe-deployment dev-describe-sales dev-describe-auth dev-describe-frontend dev-logs-db
 
 # Define dependencies
@@ -70,6 +70,7 @@ frontend:
 		--build-arg BUILD_REF=$(VERSION) \
 		--build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
 		--build-arg VITE_API_URL="" \
+		--build-arg VITE_STRIPE_PUBLISHABLE_KEY="$(VITE_STRIPE_PUBLISHABLE_KEY)" \
 		.
 
 
@@ -157,6 +158,21 @@ dev-load:
 	kind load docker-image $(SALES_IMAGE) --name $(KIND_CLUSTER)
 	kind load docker-image $(AUTH_IMAGE) --name $(KIND_CLUSTER)
 	kind load docker-image $(FRONTEND_IMAGE) --name $(KIND_CLUSTER)
+
+
+dev-stripe-secrets:
+	@if [ -z "$$SALES_STRIPE_SECRET_KEY" ]; then echo "SALES_STRIPE_SECRET_KEY is not set"; exit 1; fi
+	@if [ -n "$$SALES_STRIPE_WEBHOOK_SECRET" ]; then \
+		kubectl create secret generic stripe-secrets --namespace=$(NAMESPACE) \
+			--from-literal=stripe_secret_key="$$SALES_STRIPE_SECRET_KEY" \
+			--from-literal=stripe_webhook_secret="$$SALES_STRIPE_WEBHOOK_SECRET" \
+			--dry-run=client -o yaml | kubectl apply -f - ; \
+	else \
+		echo "SALES_STRIPE_WEBHOOK_SECRET is not set; creating secret without webhook secret" ; \
+		kubectl create secret generic stripe-secrets --namespace=$(NAMESPACE) \
+			--from-literal=stripe_secret_key="$$SALES_STRIPE_SECRET_KEY" \
+			--dry-run=client -o yaml | kubectl apply -f - ; \
+	fi
 
 
 dev-apply:

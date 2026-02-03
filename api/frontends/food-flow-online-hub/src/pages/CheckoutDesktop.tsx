@@ -26,8 +26,10 @@ import {
 import { orderService, Order } from "@/services/orderService";
 import StripePaymentForm from "@/components/StripePaymentForm";
 
-// Initialize Stripe
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
+// Initialize Stripe (may be null when key isn't configured)
+const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+  : Promise.resolve(null);
 
 // Form schemas
 const deliveryFormSchema = z.object({
@@ -151,7 +153,8 @@ const CheckoutDesktop: React.FC = () => {
       setStep(2);
     } catch (error) {
       console.error("Failed to create order:", error);
-      toast.error("Failed to create order. Please try again.");
+      const message = error instanceof Error ? error.message : "Failed to create order. Please try again.";
+      toast.error(message);
     } finally {
       setIsCreatingOrder(false);
     }
@@ -176,7 +179,35 @@ const CheckoutDesktop: React.FC = () => {
     }
   };
 
-  const handlePaymentSuccess = () => {
+  const retryCreatePaymentIntent = async () => {
+    if (!currentOrder) {
+      toast.error("No order found. Please go back and try again.");
+      return;
+    }
+
+    try {
+      setIsCreatingOrder(true);
+      const paymentIntent = await orderService.createPaymentIntent(currentOrder.id);
+      setClientSecret(paymentIntent.clientSecret);
+    } catch (error) {
+      console.error("Failed to create payment intent:", error);
+      toast.error("Failed to initialize Stripe payment. Please try again.");
+    } finally {
+      setIsCreatingOrder(false);
+    }
+  };
+
+  const handlePaymentSuccess = async () => {
+    // Ensure backend order/payment status is updated (useful even without webhooks in dev).
+    if (currentOrder) {
+      try {
+        await orderService.confirmPayment(currentOrder.id);
+      } catch (err) {
+        // Payment may have succeeded on Stripe but backend confirmation failed.
+        console.error("Failed to confirm payment with backend:", err);
+      }
+    }
+
     clearCart();
     toast.success("Payment successful!");
     navigate(`/order-confirmation/${currentOrder?.id}`);
@@ -513,26 +544,55 @@ const CheckoutDesktop: React.FC = () => {
                     </div>
                   </CardHeader>
                   <CardContent className="p-6">
-                    {paymentMethod === "creditCard" && clientSecret ? (
-                      <Elements 
-                        stripe={stripePromise} 
-                        options={{ 
-                          clientSecret,
-                          appearance: {
-                            theme: 'stripe',
-                            variables: {
-                              colorPrimary: '#f97316',
+                    {paymentMethod === "creditCard" ? (
+                      clientSecret ? (
+                        <Elements
+                          stripe={stripePromise}
+                          options={{
+                            clientSecret,
+                            appearance: {
+                              theme: 'stripe',
+                              variables: {
+                                colorPrimary: '#f97316',
+                              },
                             },
-                          },
-                        }}
-                      >
-                        <StripePaymentForm
-                          orderId={currentOrder?.id || ""}
-                          total={currentOrder?.total || total}
-                          onSuccess={handlePaymentSuccess}
-                          onError={handlePaymentError}
-                        />
-                      </Elements>
+                          }}
+                        >
+                          <StripePaymentForm
+                            orderId={currentOrder?.id || ""}
+                            total={currentOrder?.total || total}
+                            onSuccess={handlePaymentSuccess}
+                            onError={handlePaymentError}
+                          />
+                        </Elements>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="bg-yellow-50 p-6 rounded-xl border border-yellow-200">
+                            <h3 className="text-lg font-semibold mb-2 text-yellow-900">Stripe payment isn't ready</h3>
+                            <p className="text-yellow-800">
+                              We couldn't initialize a Stripe PaymentIntent for this order.
+                            </p>
+                            <p className="text-yellow-800 mt-2 text-sm">
+                              In dev, this usually means Stripe keys are not configured for the backend and/or frontend.
+                            </p>
+                          </div>
+
+                          <Button
+                            onClick={retryCreatePaymentIntent}
+                            disabled={isCreatingOrder}
+                            className="w-full bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white py-4 rounded-xl font-semibold text-lg disabled:opacity-50"
+                          >
+                            {isCreatingOrder ? (
+                              <span className="flex items-center justify-center">
+                                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                Initializing Stripe...
+                              </span>
+                            ) : (
+                              "Retry Stripe Payment"
+                            )}
+                          </Button>
+                        </div>
+                      )
                     ) : (
                       <div className="space-y-6">
                         <div className="bg-gray-50 p-6 rounded-xl border text-center">
@@ -542,7 +602,7 @@ const CheckoutDesktop: React.FC = () => {
                             You'll pay ${(currentOrder?.total || total).toFixed(2)} when you receive your order.
                           </p>
                         </div>
-                        <Button 
+                        <Button
                           onClick={onSubmitPayAtLocation}
                           disabled={isSubmitting}
                           className="w-full bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white py-4 rounded-xl font-semibold text-lg disabled:opacity-50"

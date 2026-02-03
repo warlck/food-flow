@@ -99,8 +99,8 @@ func run(ctx context.Context, log *logger.Logger) error {
 		}
 
 		Stripe struct {
-			SecretKey     string `conf:"default:",mask"`
-			WebhookSecret string `conf:"default:",mask"`
+			SecretKey     string `conf:"mask"`
+			WebhookSecret string `conf:"mask"`
 		}
 	}{
 		Version: conf.Version{
