@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { MenuItem as MenuItemType, Addon, SelectedAddon } from '@/types';
 import { useCart } from '@/context/CartContext';
-import { Plus, Minus, Tag, ShoppingCart } from 'lucide-react';
+import { Plus, Minus, ShoppingCart } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -50,6 +50,11 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     return list;
   }, [categoryItems, item]);
 
+  // Backend sends category items sorted by price (cheapest first).
+  const cheapestItem = useMemo(() => {
+    if (itemsInCategory.length === 0) return null;
+    return itemsInCategory[0];
+  }, [itemsInCategory]);
 
   const activeItem = useMemo(() => {
     if (!item) return null;
@@ -76,7 +81,6 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     setSelectedItemId(menuItemId);
     // Addons are menu-item specific, so reset when switching.
     setAddonQuantities({});
-    setImageError(false);
   };
 
   const handleAddonIncrement = (addon: Addon) => {
@@ -129,8 +133,8 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     onClose();
   };
 
-  const getFallbackImage = () => {
-    if (!activeItem) return '';
+  const getCategoryImage = () => {
+    if (!item) return '';
     const categoryImageMap: Record<string, string> = {
       Appetizers: 'https://images.unsplash.com/photo-1546241072-48010ad2862c?auto=format&fit=crop&q=80',
       'Main Course': 'https://images.unsplash.com/photo-1574484284002-952d92456975?auto=format&fit=crop&q=80',
@@ -142,7 +146,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
       Pasta: 'https://images.unsplash.com/photo-1473093226795-af9932fe5856?auto=format&fit=crop&q=80',
     };
     return (
-      categoryImageMap[activeItem.category] ||
+      categoryImageMap[item.category] ||
       'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80'
     );
   };
@@ -154,36 +158,34 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-4 bg-muted">
+          <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-3 bg-muted">
             <img
-              src={imageError ? getFallbackImage() : activeItem.image}
-              alt={activeItem.name}
+              src={
+                imageError
+                  ? 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80'
+                  : cheapestItem?.image || getCategoryImage()
+              }
+              alt={item.category}
               className="w-full h-full object-cover"
               onError={() => setImageError(true)}
             />
-            {!activeItem.available && (
-              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <span className="text-white font-semibold text-lg">Out of Stock</span>
-              </div>
-            )}
             <div className="absolute top-2 right-2">
-              <Badge className="bg-food-primary text-white">{activeItem.category}</Badge>
+              <Badge className="bg-food-primary text-white">{item.category}</Badge>
             </div>
           </div>
-          <DialogTitle className="text-xl font-bold">{activeItem.name}</DialogTitle>
+
+          <div className="flex items-baseline justify-between gap-3">
+            <DialogTitle className="text-xl font-bold">{item.category}</DialogTitle>
+            {cheapestItem && (
+              <div className="text-lg font-semibold text-food-primary">
+                ${cheapestItem.price.toFixed(2)}
+              </div>
+            )}
+          </div>
+
           <DialogDescription className="text-base text-gray-600 mt-2">
-            {activeItem.description}
+            Choose an item in this category.
           </DialogDescription>
-          {activeItem.tags && activeItem.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {activeItem.tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs flex items-center">
-                  <Tag size={10} className="mr-1" />
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          )}
 
           {itemsInCategory.length > 1 && (
             <div className="mt-4">
@@ -193,21 +195,27 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                 {itemsInCategory.map((mi) => {
                   const id = `menu-item-${mi.id}`;
                   const selected = mi.id === activeItem.id;
+                  const delta = cheapestItem ? mi.price - cheapestItem.price : 0;
+                  const deltaLabel = !mi.available
+                    ? 'Out of stock'
+                    : delta > 0
+                      ? `+$${delta.toFixed(2)}`
+                      : '';
 
                   return (
                     <div
                       key={mi.id}
-                      className={`flex items-start gap-3 rounded-lg p-3 transition-colors ${
+                      className={`flex items-center gap-3 rounded-lg p-3 transition-colors ${
                         selected
                           ? 'border border-food-primary bg-food-primary/5'
-                          : 'bg-white'
+                          : 'bg-gray-50'
                       } ${!mi.available ? 'opacity-60' : ''}`}
                     >
                       <RadioGroupItem
                         id={id}
                         value={mi.id}
                         disabled={!mi.available}
-                        className="mt-1"
+                        className="mt-0"
                       />
 
                       <Label
@@ -216,9 +224,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                       >
                         <div className="flex items-center justify-between gap-3">
                           <span className="font-medium">{mi.name}</span>
-                          <span className="font-semibold text-food-primary">
-                            ${mi.price.toFixed(2)}
-                          </span>
+                          <span className="text-sm text-gray-500">{deltaLabel}</span>
                         </div>
 
                         {!mi.available && (
@@ -233,6 +239,14 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
           )}
 
         </DialogHeader>
+
+        {/* Selection Summary */}
+        <div className="mt-4">
+          <Separator className="mb-4" />
+          <div className="text-sm text-gray-600">
+            Selected item: <span className="font-medium text-gray-900">{activeItem.name}</span>
+          </div>
+        </div>
 
         {/* Addons Section */}
         {activeItem.addons && activeItem.addons.length > 0 && (
