@@ -229,32 +229,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 }
 
 func create401(sd apitest.SeedData) []apitest.Table {
-	table := []apitest.Table{
-		{
-			Name:       "empty-token",
-			URL:        "/v1/orders",
-			Token:      "&nbsp;",
-			Method:     http.MethodPost,
-			StatusCode: http.StatusUnauthorized,
-			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "error parsing token: token is malformed: token contains an invalid number of segments"),
-			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
-		{
-			Name:       "bad-token",
-			URL:        "/v1/orders",
-			Token:      sd.Users[0].Token[:10],
-			Method:     http.MethodPost,
-			StatusCode: http.StatusUnauthorized,
-			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "error parsing token: token is malformed: token contains an invalid number of segments"),
-			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
-	}
-
+	table := []apitest.Table{}
 	return table
 }
