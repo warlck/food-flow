@@ -21,6 +21,7 @@ import (
 	"github.com/warlck/food-flow/business/sdk/sqldb"
 	"github.com/warlck/food-flow/foundation/keystore"
 	"github.com/warlck/food-flow/foundation/logger"
+	"github.com/warlck/food-flow/foundation/otel"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
@@ -87,6 +88,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 			MaxOpenConns int    `conf:"default:0"`
 			DisableTLS   bool   `conf:"default:true"`
 		}
+		Otel struct {
+			TraceEndpoint string `conf:"default:tempo-service:4317"`
+		}
 	}{
 		Version: conf.Version{
 			Build: build,
@@ -119,6 +123,17 @@ func run(ctx context.Context, log *logger.Logger) error {
 	log.BuildInfo(ctx)
 
 	expvar.NewString("build").Set(cfg.Build)
+
+	// -------------------------------------------------------------------------
+	// Initialize OpenTelemetry
+
+	log.Info(ctx, "startup", "status", "initializing OpenTelemetry support", "traceEndpoint", cfg.Otel.TraceEndpoint)
+
+	shutdownOtel, err := otel.Init(ctx, "auth", cfg.Otel.TraceEndpoint)
+	if err != nil {
+		return fmt.Errorf("initializing otel: %w", err)
+	}
+	defer shutdownOtel(ctx)
 
 	// -------------------------------------------------------------------------
 	// Database Support
