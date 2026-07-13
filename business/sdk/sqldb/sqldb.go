@@ -14,6 +14,8 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/warlck/food-flow/foundation/logger"
+	"go.opentelemetry.io/otel"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 // lib/pq errorCodeNames
@@ -117,10 +119,15 @@ func ExecContext(ctx context.Context, log *logger.Logger, db sqlx.ExtContext, qu
 // NamedExecContext is a helper function to execute a CUD operation with
 // logging and tracing where field replacement is necessary.
 func NamedExecContext(ctx context.Context, log *logger.Logger, db sqlx.ExtContext, query string, data any) (err error) {
+	ctx, span := otel.Tracer("sqldb").Start(ctx, "sqldb.NamedExecContext")
+	defer span.End()
+
 	q := queryString(query, data)
+	span.SetAttributes(semconv.DBQueryTextKey.String(q))
 
 	defer func() {
 		if err != nil {
+			span.RecordError(err)
 			switch data.(type) {
 			case struct{}:
 				log.Infoc(ctx, 6, "database.NamedExecContext", "query", q, "ERROR", err)
@@ -167,10 +174,15 @@ func NamedQuerySliceUsingIn[T any](ctx context.Context, log *logger.Logger, db s
 }
 
 func namedQuerySlice[T any](ctx context.Context, log *logger.Logger, db sqlx.ExtContext, query string, data any, dest *[]T, withIn bool) (err error) {
+	ctx, span := otel.Tracer("sqldb").Start(ctx, "sqldb.namedQuerySlice")
+	defer span.End()
+
 	q := queryString(query, data)
+	span.SetAttributes(semconv.DBQueryTextKey.String(q))
 
 	defer func() {
 		if err != nil {
+			span.RecordError(err)
 			log.Infoc(ctx, 6, "database.namedQuerySlice", "query", q, "ERROR", err)
 		}
 	}()
@@ -240,10 +252,15 @@ func NamedQueryStructUsingIn(ctx context.Context, log *logger.Logger, db sqlx.Ex
 }
 
 func namedQueryStruct(ctx context.Context, log *logger.Logger, db sqlx.ExtContext, query string, data any, dest any, withIn bool) (err error) {
+	ctx, span := otel.Tracer("sqldb").Start(ctx, "sqldb.namedQueryStruct")
+	defer span.End()
+
 	q := queryString(query, data)
+	span.SetAttributes(semconv.DBQueryTextKey.String(q))
 
 	defer func() {
 		if err != nil {
+			span.RecordError(err)
 			log.Infoc(ctx, 6, "database.NamedQuerySlice", "query", q, "ERROR", err)
 		}
 	}()
