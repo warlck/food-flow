@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"log/slog"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 // TraceIDFn represents a function that can return the trace id from
@@ -96,7 +98,11 @@ func (log *Logger) write(ctx context.Context, level Level, caller int, msg strin
 
 	r := slog.NewRecord(time.Now(), slogLevel, msg, pcs[0])
 
-	if log.traceIDFn != nil {
+	spanContext := trace.SpanContextFromContext(ctx)
+	if spanContext.IsValid() {
+		args = append(args, "trace_id", spanContext.TraceID().String())
+		args = append(args, "span_id", spanContext.SpanID().String())
+	} else if log.traceIDFn != nil {
 		args = append(args, "trace_id", log.traceIDFn(ctx))
 	}
 	r.Add(args...)
