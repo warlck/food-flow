@@ -22,7 +22,7 @@ SHELL = $(if $(wildcard $(SHELL_PATH)),/bin/ash,/bin/bash)
 
 KIND_CLUSTER    := food-flow-cluster
 KIND            := kindest/node:v1.34.0
-GOLANG          := golang:1.24
+GOLANG          := golang:1.25
 ALPINE          := alpine:3.21
 POSTGRES        := postgres:18
 GRAFANA         := grafana/grafana:11.6.0
