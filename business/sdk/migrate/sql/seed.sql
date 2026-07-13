@@ -10,7 +10,8 @@ ON CONFLICT DO NOTHING;
 -- Restaurants
 -- ============================================================================
 INSERT INTO restaurants (restaurant_id, name, description, address, phone, email, image_url, enabled, date_created, date_updated) VALUES
-	('a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Donergy', 'Authentic Turkish Kebab & Pide Restaurant', '9 Raffles Boulevard, #01-91B, Millenia Walk, Singapore 039596', '+65 6333 0785', 'info@donergy.sg', 'https://www.donergy.sg/Content/images/logo.png', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00')
+	('a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Donergy', 'Authentic Turkish Kebab & Pide Restaurant', '9 Raffles Boulevard, #01-91B, Millenia Walk, Singapore 039596', '+65 6333 0785', 'info@donergy.sg', 'https://www.donergy.sg/Content/images/logo.png', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'A1 Kebab', 'Signature Kebabs & 100% Plant-Based Falafel', '100 Beach Road, #01-12, Singapore 189702', '+65 6789 0123', 'info@a1kebabs.com', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/875772946_10ChickenRoll1.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00')
 ON CONFLICT DO NOTHING;
 
 -- ============================================================================
@@ -28,7 +29,13 @@ INSERT INTO categories (category_id, name, description, restaurant_id, enabled, 
 	('c1000000-0000-0000-0000-000000000008', 'Vegetarian Options', 'Delicious meat-free dishes', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
 	('c1000000-0000-0000-0000-000000000009', 'Side Dishes', 'Appetizers and accompaniments', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
 	('c1000000-0000-0000-0000-000000000010', 'Dessert', 'Traditional Turkish sweets', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
-	('c1000000-0000-0000-0000-000000000011', 'Drinks', 'Refreshing beverages', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00')
+	('c1000000-0000-0000-0000-000000000011', 'Drinks', 'Refreshing beverages', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	-- A1 Categories
+	('c2000000-0000-0000-0000-000000000001', 'Signature Kebabs', 'Fresh ingredients, bold flavours', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('c2000000-0000-0000-0000-000000000002', 'Kebab Bowl', 'Choose your base (150g chicken)', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('c2000000-0000-0000-0000-000000000003', 'Falafel', '100% Plant-Based goodness', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('c2000000-0000-0000-0000-000000000004', 'Sides', 'Perfect accompaniments', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('c2000000-0000-0000-0000-000000000005', 'Drinks', 'Refreshing beverages', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00')
 ON CONFLICT DO NOTHING;
 
 -- ============================================================================
@@ -105,7 +112,36 @@ INSERT INTO menu_items (menu_item_id, name, description, price, category_id, res
 	('a1b2c3d4-0001-0000-0000-000000000047', 'Ayran Plain', 'Salted yogurt drink', 4.50, 'c1000000-0000-0000-0000-000000000011', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/904291627_AyranPlain.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
 	('a1b2c3d4-0001-0000-0000-000000000048', 'Tea', 'Traditional Turkish tea', 3.00, 'c1000000-0000-0000-0000-000000000011', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/786264153_220TurkishTea.jpg', false, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
 	('a1b2c3d4-0001-0000-0000-000000000049', 'Mineral Water', 'Bottled mineral water', 1.50, 'c1000000-0000-0000-0000-000000000011', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/1484899931_42MineralWater1.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
-	('a1b2c3d4-0001-0000-0000-000000000050', 'Soft Drinks', 'Assorted carbonated beverages', 3.00, 'c1000000-0000-0000-0000-000000000011', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/272684694_43SoftDrinks2.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00')
+	('a1b2c3d4-0001-0000-0000-000000000050', 'Soft Drinks', 'Assorted carbonated beverages', 3.00, 'c1000000-0000-0000-0000-000000000011', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/272684694_43SoftDrinks2.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+
+	-- A1 MENU ITEMS
+	-- Signature Kebabs
+	('d2000000-0001-0000-0000-000000000001', 'Twelve Inch Wrap', '12" wrap (150g) - Signature kebab wrap with grilled chicken', 14.00, 'c2000000-0000-0000-0000-000000000001', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/875772946_10ChickenRoll1.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('d2000000-0001-0000-0000-000000000002', 'Ten Inch Wrap', '10" wrap (100g) - Signature kebab wrap with grilled chicken', 11.00, 'c2000000-0000-0000-0000-000000000001', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/875772946_10ChickenRoll1.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('d2000000-0001-0000-0000-000000000003', 'Fresh Pita', 'Fresh pita (100g) - Signature kebab in fresh pita bread', 12.00, 'c2000000-0000-0000-0000-000000000001', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/548042839_20ChickenTombik1.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+
+	-- Kebab Bowl
+	('d2000000-0002-0000-0000-000000000001', 'Kebab Bowl - Salad Only', 'Kebab bowl with fresh salad base', 14.00, 'c2000000-0000-0000-0000-000000000002', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/1855254249_60ChickenSalad.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('d2000000-0002-0000-0000-000000000002', 'Kebab Bowl - Salad and Rice', 'Kebab bowl with salad and rice base', 15.00, 'c2000000-0000-0000-0000-000000000002', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/53393089_40ChickenRice.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('d2000000-0002-0000-0000-000000000003', 'Kebab Bowl - Salad and Fries', 'Kebab bowl with salad and french fries base', 16.00, 'c2000000-0000-0000-0000-000000000002', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/1662471778_50ChickenFries1.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+
+	-- Falafel
+	('d2000000-0003-0000-0000-000000000001', 'Falafel Twelve Inch Wrap', '100% plant-based falafel in a 12-inch wrap (4 pcs)', 14.00, 'c2000000-0000-0000-0000-000000000003', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/89806033_120FallafelRollvegan1.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('d2000000-0003-0000-0000-000000000002', 'Falafel Ten Inch Wrap', '100% plant-based falafel in a 10-inch wrap (3 pcs)', 11.00, 'c2000000-0000-0000-0000-000000000003', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/89806033_120FallafelRollvegan1.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('d2000000-0003-0000-0000-000000000003', 'Falafel Homemade Pita', 'Homemade pita filled with crispy plant-based falafels (3 pcs)', 12.00, 'c2000000-0000-0000-0000-000000000003', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/getz-prod/40a27a5c-7901-4397-b244-10dca6109848/1375458996_falafeltombik.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('d2000000-0003-0000-0000-000000000004', 'Falafel Plate', '100% plant-based falafel plate (6 pcs)', 16.00, 'c2000000-0000-0000-0000-000000000003', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/574589317_130FalafelPlate1.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+
+	-- Sides
+	('d2000000-0004-0000-0000-000000000001', 'Hummus with Pita', 'Creamy hummus dip served with fresh pita bread', 10.00, 'c2000000-0000-0000-0000-000000000004', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/364237033_140Hummus.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('d2000000-0004-0000-0000-000000000002', 'Three Piece Falafel', 'Three pieces of crispy plant-based falafels', 6.00, 'c2000000-0000-0000-0000-000000000004', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/574589317_130FalafelPlate1.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('d2000000-0004-0000-0000-000000000003', 'Fries Large', 'Large portion of crispy golden fries', 7.50, 'c2000000-0000-0000-0000-000000000004', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/862897504_150FrenchFries.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('d2000000-0004-0000-0000-000000000004', 'Fries Small', 'Small portion of crispy golden fries', 4.50, 'c2000000-0000-0000-0000-000000000004', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/862897504_150FrenchFries.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+
+	-- Drinks
+	('d2000000-0005-0000-0000-000000000001', 'Soft Drinks', 'Assorted carbonated beverages', 2.50, 'c2000000-0000-0000-0000-000000000005', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/272684694_43SoftDrinks2.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('d2000000-0005-0000-0000-000000000002', 'Mineral Water', 'Bottled mineral water', 2.00, 'c2000000-0000-0000-0000-000000000005', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/1484899931_42MineralWater1.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('d2000000-0005-0000-0000-000000000003', 'Turkish Ayran', 'Salted cold yogurt beverage', 4.00, 'c2000000-0000-0000-0000-000000000005', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/getz-prod/40a27a5c-7901-4397-b244-10dca6109848/262280452_1006442618200TurkishAyran.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('d2000000-0005-0000-0000-000000000004', 'Turkish Lemonade', 'Sweet and refreshing homemade Turkish lemonade', 3.00, 'c2000000-0000-0000-0000-000000000005', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/272684694_43SoftDrinks2.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00')
 ON CONFLICT DO NOTHING;
 
 -- ============================================================================
@@ -133,5 +169,27 @@ INSERT INTO addons (addon_id, category_id, restaurant_id, name, description, pri
 	-- VEGETARIAN OPTIONS (shared across category)
 	('b1000000-0033-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000008', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Falafel', 'Additional falafel pieces (4 pcs)', 3.00, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
 	('b1000000-0033-0000-0000-000000000002', 'c1000000-0000-0000-0000-000000000008', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Hummus', 'Additional portion of hummus', 2.50, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
-	('b1000000-0033-0000-0000-000000000003', 'c1000000-0000-0000-0000-000000000008', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Pita Bread', 'Additional pita bread', 1.50, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00')
+	('b1000000-0033-0000-0000-000000000003', 'c1000000-0000-0000-0000-000000000008', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Extra Pita Bread', 'Additional pita bread', 1.50, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+
+	-- A1 ADDONS
+	-- Signature Kebabs Addons
+	('a2000000-0001-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000001', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Make It A Meal', 'Upgrade your main to a meal (with Fries and Drink)', 5.00, true, 1, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('a2000000-0001-0000-0000-000000000002', 'c2000000-0000-0000-0000-000000000001', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Extra Chicken Standard', 'Add extra grilled chicken (60g)', 3.50, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('a2000000-0001-0000-0000-000000000003', 'c2000000-0000-0000-0000-000000000001', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Extra Chicken Large', 'Add a large portion of chicken (100g)', 5.50, true, 1, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('a2000000-0001-0000-0000-000000000004', 'c2000000-0000-0000-0000-000000000001', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Extra Salad', 'Add extra fresh salad mix', 3.00, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('a2000000-0001-0000-0000-000000000005', 'c2000000-0000-0000-0000-000000000001', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Nacho Cheese Sauce', 'Melted nacho cheese dip', 1.00, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('a2000000-0001-0000-0000-000000000006', 'c2000000-0000-0000-0000-000000000001', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Hummus Spread', 'Side of creamy hummus dip', 1.50, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+
+	-- Kebab Bowl Addons
+	('a2000000-0002-0000-0000-000000000002', 'c2000000-0000-0000-0000-000000000002', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Extra Chicken Standard', 'Add extra grilled chicken (60g)', 3.50, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('a2000000-0002-0000-0000-000000000003', 'c2000000-0000-0000-0000-000000000002', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Extra Chicken Large', 'Add a large portion of chicken (100g)', 5.50, true, 1, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('a2000000-0002-0000-0000-000000000004', 'c2000000-0000-0000-0000-000000000002', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Extra Salad', 'Add extra fresh salad mix', 3.00, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('a2000000-0002-0000-0000-000000000005', 'c2000000-0000-0000-0000-000000000002', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Nacho Cheese Sauce', 'Melted nacho cheese dip', 1.00, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('a2000000-0002-0000-0000-000000000006', 'c2000000-0000-0000-0000-000000000002', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Hummus Spread', 'Side of creamy hummus dip', 1.50, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+
+	-- Falafel Addons
+	('a2000000-0003-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000003', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Make It A Meal', 'Upgrade your main to a meal (with Fries and Drink)', 5.00, true, 1, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('a2000000-0003-0000-0000-000000000004', 'c2000000-0000-0000-0000-000000000003', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Extra Salad', 'Add extra fresh salad mix', 3.00, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('a2000000-0003-0000-0000-000000000005', 'c2000000-0000-0000-0000-000000000003', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Nacho Cheese Sauce', 'Melted nacho cheese dip', 1.00, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('a2000000-0003-0000-0000-000000000006', 'c2000000-0000-0000-0000-000000000003', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Hummus Spread', 'Side of creamy hummus dip', 1.50, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00')
 ON CONFLICT DO NOTHING;
