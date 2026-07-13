@@ -182,6 +182,9 @@ dev-apply:
 	kustomize build infra/k8s/dev/sales | kubectl apply -f -
 	kustomize build infra/k8s/dev/auth | kubectl apply -f -
 	kustomize build infra/k8s/dev/frontend | kubectl apply -f -
+	kustomize build infra/k8s/dev/prometheus | kubectl apply -f -
+	kustomize build infra/k8s/dev/grafana | kubectl apply -f -
+	kustomize build infra/k8s/dev/tempo | kubectl apply -f -
 	
 	# If image tags don't change (e.g. localhost/food-flow/frontend:0.0.5), Kubernetes won't update pods
 	# just because you rebuilt and re-loaded the image into kind. Force a restart to pick up the new image.
