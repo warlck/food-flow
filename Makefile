@@ -40,6 +40,10 @@ SALES_IMAGE     := $(BASE_IMAGE_NAME)/$(SALES_APP):$(VERSION)
 METRICS_IMAGE   := $(BASE_IMAGE_NAME)/metrics:$(VERSION)
 AUTH_IMAGE      := $(BASE_IMAGE_NAME)/$(AUTH_APP):$(VERSION)
 FRONTEND_IMAGE  := $(BASE_IMAGE_NAME)/frontend:$(VERSION)
+HELM_CHART      := infra/helm/food-flow
+HELM_RELEASE    := food-flow
+DATABASE_SECRET := $(HELM_RELEASE)-database-credentials
+STRIPE_SECRET   := $(HELM_RELEASE)-stripe-secrets
 
 # VERSION       := "0.0.1-$(shell git rev-parse --short HEAD)"
 # ==============================================================================
@@ -163,38 +167,37 @@ dev-load:
 dev-stripe-secrets:
 	@if [ -z "$$SALES_STRIPE_SECRET_KEY" ]; then echo "SALES_STRIPE_SECRET_KEY is not set"; exit 1; fi
 	@if [ -n "$$SALES_STRIPE_WEBHOOK_SECRET" ]; then \
-		kubectl create secret generic stripe-secrets --namespace=$(NAMESPACE) \
+		kubectl create secret generic $(STRIPE_SECRET) --namespace=$(NAMESPACE) \
 			--from-literal=stripe_secret_key="$$SALES_STRIPE_SECRET_KEY" \
 			--from-literal=stripe_webhook_secret="$$SALES_STRIPE_WEBHOOK_SECRET" \
 			--dry-run=client -o yaml | kubectl apply -f - ; \
 	else \
 		echo "SALES_STRIPE_WEBHOOK_SECRET is not set; creating secret without webhook secret" ; \
-		kubectl create secret generic stripe-secrets --namespace=$(NAMESPACE) \
+		kubectl create secret generic $(STRIPE_SECRET) --namespace=$(NAMESPACE) \
 			--from-literal=stripe_secret_key="$$SALES_STRIPE_SECRET_KEY" \
 			--dry-run=client -o yaml | kubectl apply -f - ; \
 	fi
 
 
 dev-apply:
-	kustomize build infra/k8s/dev/database | kubectl apply -f -
-	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/database
-	
-	kustomize build infra/k8s/dev/sales | kubectl apply -f -
-	kustomize build infra/k8s/dev/auth | kubectl apply -f -
-	kustomize build infra/k8s/dev/frontend | kubectl apply -f -
-	kustomize build infra/k8s/dev/prometheus | kubectl apply -f -
-	kustomize build infra/k8s/dev/grafana | kubectl apply -f -
-	kustomize build infra/k8s/dev/tempo | kubectl apply -f -
+	@if [ -z "$$POSTGRES_PASSWORD" ]; then echo "POSTGRES_PASSWORD is not set"; exit 1; fi
+	kubectl create namespace $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
+	kubectl create secret generic $(DATABASE_SECRET) --namespace=$(NAMESPACE) \
+		--from-literal=password="$$POSTGRES_PASSWORD" --dry-run=client -o yaml | kubectl apply -f -
+	helm upgrade --install $(HELM_RELEASE) $(HELM_CHART) \
+		--namespace=$(NAMESPACE) \
+		--wait \
+		--timeout=120s
 	
 	# If image tags don't change (e.g. localhost/food-flow/frontend:0.0.5), Kubernetes won't update pods
 	# just because you rebuilt and re-loaded the image into kind. Force a restart to pick up the new image.
-	kubectl rollout restart deployment $(SALES_APP) --namespace=$(NAMESPACE)
-	kubectl rollout restart deployment $(AUTH_APP) --namespace=$(NAMESPACE)
-	kubectl rollout restart deployment frontend --namespace=$(NAMESPACE)
+	kubectl rollout restart deployment $(HELM_RELEASE)-$(SALES_APP) --namespace=$(NAMESPACE)
+	kubectl rollout restart deployment $(HELM_RELEASE)-$(AUTH_APP) --namespace=$(NAMESPACE)
+	kubectl rollout restart deployment $(HELM_RELEASE)-frontend --namespace=$(NAMESPACE)
 	
-	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/$(SALES_APP)
-	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/$(AUTH_APP)
-	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/frontend
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/$(HELM_RELEASE)-$(SALES_APP)
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/$(HELM_RELEASE)-$(AUTH_APP)
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/$(HELM_RELEASE)-frontend
 
 
 dev-restart:
