@@ -42,6 +42,7 @@ AUTH_IMAGE      := $(BASE_IMAGE_NAME)/$(AUTH_APP):$(VERSION)
 FRONTEND_IMAGE  := $(BASE_IMAGE_NAME)/frontend:$(VERSION)
 HELM_CHART      := infra/helm/food-flow
 HELM_RELEASE    := food-flow
+HELM_DEV_VALUES := $(HELM_CHART)/values-kind.yaml
 DATABASE_SECRET := $(HELM_RELEASE)-database-credentials
 STRIPE_SECRET   := $(HELM_RELEASE)-stripe-secrets
 
@@ -186,6 +187,7 @@ dev-apply:
 		--from-literal=password="$$POSTGRES_PASSWORD" --dry-run=client -o yaml | kubectl apply -f -
 	helm upgrade --install $(HELM_RELEASE) $(HELM_CHART) \
 		--namespace=$(NAMESPACE) \
+		--values=$(HELM_DEV_VALUES) \
 		--wait \
 		--timeout=120s
 	

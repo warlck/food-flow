@@ -14,6 +14,8 @@ The development chart defaults are in `infra/helm/food-flow/values.yaml`. The Ki
 
 Set `POSTGRES_PASSWORD` before running `make dev-apply`; the Make target stores it in a Kubernetes Secret rather than in the chart values.
 
+The local Kind deployment also applies `values-kind.yaml`, which enables the database migration and seed init container. Staging and production must use the default chart values (or environment-specific files that keep `sales.migration.enabled: false`).
+
 
 
 Set environment variables:

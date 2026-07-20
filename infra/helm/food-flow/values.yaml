@@ -79,6 +79,9 @@ sales:
   stripe:
     # Leave empty to use a release-scoped Secret name.
     secretName: ""
+  migration:
+    # Disabled by default so staging and production never run schema changes on deploy.
+    enabled: false
   service:
     name: sales-service
     type: ClusterIP

@@ -1,0 +1,5 @@
+# Local Kind-only settings. Do not use this file for staging or production.
+sales:
+  migration:
+    # Run ./admin migrate-seed before starting the local sales API.
+    enabled: true

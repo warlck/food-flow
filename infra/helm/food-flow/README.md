@@ -11,10 +11,11 @@ kubectl create secret generic food-flow-database-credentials \
   --from-literal=password="$POSTGRES_PASSWORD"
 helm upgrade --install food-flow infra/helm/food-flow \
   --namespace sales-system \
+  --values infra/helm/food-flow/values-kind.yaml \
   --wait
 ```
 
-`values.yaml` contains the development defaults. Override image locations or resource settings with a separate values file for other environments. The `stripe-secrets` Secret remains externally managed; use `make dev-stripe-secrets` to create it locally.
+`values.yaml` is safe for staging and production: it disables the `migrate-seed` init container. `values-kind.yaml` enables it only for the local Kind workflow. The `stripe-secrets` Secret remains externally managed; use `make dev-stripe-secrets` to create it locally.
 
 ## Migrating an existing Kustomize deployment
 

@@ -28,7 +28,7 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       {{- end }}
       terminationGracePeriodSeconds: {{ $app.terminationGracePeriodSeconds }}
-      {{- if eq $name "sales" }}
+      {{- if and (eq $name "sales") $.Values.sales.migration.enabled }}
       initContainers:
         - name: init-migrate-seed
           image: {{ printf "%s:%s" $app.image.repository $app.image.tag | quote }}
