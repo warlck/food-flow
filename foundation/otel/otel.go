@@ -19,7 +19,7 @@ func Init(ctx context.Context, serviceName string, traceURL string) (func(contex
 	res, err := resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(
-			semconv.SchemaURL,
+			"",
 			semconv.ServiceNameKey.String(serviceName),
 		),
 	)

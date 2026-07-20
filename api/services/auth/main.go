@@ -133,7 +133,13 @@ func run(ctx context.Context, log *logger.Logger) error {
 	if err != nil {
 		return fmt.Errorf("initializing otel: %w", err)
 	}
-	defer shutdownOtel(ctx)
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := shutdownOtel(ctx); err != nil {
+			log.Error(ctx, "shutdown", "status", "otel shutdown error", "err", err)
+		}
+	}()
 
 	// -------------------------------------------------------------------------
 	// Database Support
