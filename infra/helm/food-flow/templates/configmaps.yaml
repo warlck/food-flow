@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "food-flow.configName" (dict "root" . "name" "app-config") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+data:
+  db_host: {{ include "food-flow.serviceName" (dict "root" . "name" "database" "overrideName" .Values.database.service.name) | quote }}
+  db_hostport: {{ printf "%s:%v" (include "food-flow.serviceName" (dict "root" . "name" "database" "overrideName" .Values.database.service.name)) .Values.database.service.port | quote }}
+  db_user: {{ .Values.database.auth.username | quote }}
+  db_disabletls: {{ .Values.database.auth.disableTLS | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "food-flow.configName" (dict "root" . "name" "pghbaconf") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+data:
+  pg_hba.conf: |
+    local   all             all                                     trust
+    host    all             all             0.0.0.0/0               trust
+    host    all             all             ::1/128                 trust
+    local   replication     all                                     trust
+    host    replication     all             0.0.0.0/0               trust
+    host    replication     all             ::1/128                 trust
+{{- if .Values.observability.prometheus.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "food-flow.configName" (dict "root" . "name" "prometheus-config") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: {{ .Values.observability.prometheus.scrapeInterval }}
+    scrape_configs:
+      - job_name: sales
+        static_configs:
+          - targets: [{{ printf "%s:%v" (include "food-flow.serviceName" (dict "root" . "name" "sales" "overrideName" .Values.sales.service.name)) .Values.sales.service.debugPort | quote }}]
+      - job_name: auth
+        static_configs:
+          - targets: [{{ printf "%s:%v" (include "food-flow.serviceName" (dict "root" . "name" "auth" "overrideName" .Values.auth.service.name)) .Values.auth.service.debugPort | quote }}]
+{{- end }}
+{{- if .Values.observability.tempo.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "food-flow.configName" (dict "root" . "name" "tempo-config") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+data:
+  tempo.yaml: |
+    server:
+      http_listen_port: 3200
+    distributor:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+    storage:
+      trace:
+        backend: local
+        local:
+          path: /tmp/tempo/blocks
+        wal:
+          path: /tmp/tempo/wal
+{{- end }}
+{{- if .Values.observability.grafana.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "food-flow.configName" (dict "root" . "name" "grafana-datasources") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://{{ include "food-flow.serviceName" (dict "root" . "name" "prometheus" "overrideName" .Values.observability.prometheus.service.name) }}:{{ .Values.observability.prometheus.service.port }}
+        isDefault: true
+      - name: Tempo
+        type: tempo
+        access: proxy
+        url: http://{{ include "food-flow.serviceName" (dict "root" . "name" "tempo" "overrideName" .Values.observability.tempo.service.name) }}:{{ .Values.observability.tempo.service.port }}
+{{- end }}
