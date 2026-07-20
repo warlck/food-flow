@@ -1,6 +1,19 @@
 # food-flow
 Backend for the food flow, restaurant management POS 
 
+## Kubernetes development
+
+The local Kubernetes deployment is managed by the Helm chart in `infra/helm/food-flow`. Create the Kind cluster and deploy it with:
+
+```sh
+make dev-up
+make build dev-load dev-apply
+```
+
+The development chart defaults are in `infra/helm/food-flow/values.yaml`. The Kind cluster configuration remains in `infra/k8s/dev/kind-config.yaml`.
+
+Set `POSTGRES_PASSWORD` before running `make dev-apply`; the Make target stores it in a Kubernetes Secret rather than in the chart values.
+
 
 
 Set environment variables:

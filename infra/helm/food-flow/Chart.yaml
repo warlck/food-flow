@@ -1,0 +1,7 @@
+apiVersion: v2
+name: food-flow
+description: Food Flow application, database, and local observability stack
+type: application
+version: 0.1.0
+appVersion: "0.0.5"
+kubeVersion: ">=1.25.0-0"
