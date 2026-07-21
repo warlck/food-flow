@@ -1,5 +1,59 @@
 # Local Kind-only settings. Do not use this file for staging or production.
+database:
+  hostNetwork: true
+  auth:
+    # The local database is disposable and exposed through the Kind node port.
+    hostAuthMethod: trust
+
 sales:
+  hostNetwork: true
   migration:
     # Run ./admin migrate-seed before starting the local sales API.
+    enabled: true
+
+auth:
+  hostNetwork: true
+
+# Run the complete observability stack in Kind.
+observability:
+  prometheus:
+    enabled: true
+    service:
+      type: NodePort
+      ports:
+        - name: http
+          port: 9090
+          targetPort: http
+          nodePort: 30090
+  grafana:
+    enabled: true
+    env:
+      - name: GF_AUTH_ANONYMOUS_ENABLED
+        value: "true"
+      - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+        value: Admin
+      - name: GF_AUTH_DISABLE_LOGIN_FORM
+        value: "true"
+    service:
+      type: NodePort
+      ports:
+        - name: http
+          port: 3000
+          targetPort: http
+          nodePort: 30000
+  tempo:
+    enabled: true
+    service:
+      type: NodePort
+      ports:
+        - name: http
+          port: 3200
+          targetPort: http
+          nodePort: 30200
+        - name: grpc-otlp
+          port: 4317
+          targetPort: grpc-otlp
+  loki:
+    enabled: true
+  promtail:
     enabled: true

@@ -58,8 +58,10 @@ spec:
               valueFrom:
                 resourceFieldRef:
                   resource: limits.cpu
+            {{- if $.Values.observability.tempo.enabled }}
             - name: OTEL_TRACE_ENDPOINT
               value: {{ printf "%s:4317" (include "food-flow.serviceName" (dict "root" $ "name" "tempo" "overrideName" $.Values.observability.tempo.service.name)) | quote }}
+            {{- end }}
             {{- end }}
             {{- if eq $name "sales" }}
             - name: GOGC

@@ -8,7 +8,7 @@ namespace:
 database:
   enabled: true
   replicas: 1
-  hostNetwork: true
+  hostNetwork: false
   terminationGracePeriodSeconds: 60
   image:
     repository: postgres
@@ -19,6 +19,7 @@ database:
     existingSecret: ""
     existingSecretPasswordKey: password
     disableTLS: "true"
+    hostAuthMethod: scram-sha-256
   persistence:
     # Set this to reuse an already-provisioned PVC during a migration.
     existingClaim: ""
@@ -38,7 +39,7 @@ database:
 sales:
   enabled: true
   replicas: 1
-  hostNetwork: true
+  hostNetwork: false
   terminationGracePeriodSeconds: 60
   image:
     repository: localhost/food-flow/sales
@@ -106,7 +107,7 @@ sales:
 auth:
   enabled: true
   replicas: 1
-  hostNetwork: true
+  hostNetwork: false
   terminationGracePeriodSeconds: 60
   image:
     repository: localhost/food-flow/auth
@@ -207,7 +208,7 @@ frontend:
 
 observability:
   prometheus:
-    enabled: true
+    enabled: false
     image:
       repository: prom/prometheus
       tag: v3.2.0
@@ -219,15 +220,14 @@ observability:
     scrapeInterval: 5s
     service:
       name: prometheus-service
-      type: NodePort
+      type: ClusterIP
       port: 9090
       ports:
         - name: http
           port: 9090
           targetPort: http
-          nodePort: 30090
   tempo:
-    enabled: true
+    enabled: false
     image:
       repository: grafana/tempo
       tag: 2.7.0
@@ -249,8 +249,24 @@ observability:
         - name: grpc-otlp
           port: 4317
           targetPort: grpc-otlp
+  loki:
+    enabled: false
+    image:
+      repository: grafana/loki
+      tag: 3.4.0
+      pullPolicy: IfNotPresent
+    service:
+      name: loki-service
+      type: ClusterIP
+      port: 3100
+  promtail:
+    enabled: false
+    image:
+      repository: grafana/promtail
+      tag: 3.4.0
+      pullPolicy: IfNotPresent
   grafana:
-    enabled: true
+    enabled: false
     image:
       repository: grafana/grafana
       tag: 11.6.0
@@ -258,19 +274,12 @@ observability:
     ports:
       - name: http
         containerPort: 3000
-    env:
-      - name: GF_AUTH_ANONYMOUS_ENABLED
-        value: "true"
-      - name: GF_AUTH_ANONYMOUS_ORG_ROLE
-        value: Admin
-      - name: GF_AUTH_DISABLE_LOGIN_FORM
-        value: "true"
+    env: []
     service:
       name: grafana-service
-      type: NodePort
+      type: ClusterIP
       port: 3000
       ports:
         - name: http
           port: 3000
           targetPort: http
-          nodePort: 30000

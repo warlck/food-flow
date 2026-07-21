@@ -189,7 +189,7 @@ dev-apply:
 		--namespace=$(NAMESPACE) \
 		--values=$(HELM_DEV_VALUES) \
 		--wait \
-		--timeout=120s
+		--timeout=300s
 	
 	# If image tags don't change (e.g. localhost/food-flow/frontend:0.0.5), Kubernetes won't update pods
 	# just because you rebuilt and re-loaded the image into kind. Force a restart to pick up the new image.
@@ -203,9 +203,9 @@ dev-apply:
 
 
 dev-restart:
-	kubectl rollout restart deployment $(SALES_APP) --namespace=$(NAMESPACE)
-	kubectl rollout restart deployment $(AUTH_APP) --namespace=$(NAMESPACE)
-	kubectl rollout restart deployment frontend --namespace=$(NAMESPACE)
+	kubectl rollout restart deployment $(HELM_RELEASE)-$(SALES_APP) --namespace=$(NAMESPACE)
+	kubectl rollout restart deployment $(HELM_RELEASE)-$(AUTH_APP) --namespace=$(NAMESPACE)
+	kubectl rollout restart deployment $(HELM_RELEASE)-frontend --namespace=$(NAMESPACE)
  
 dev-run: build dev-up dev-load dev-apply
 
@@ -225,7 +225,7 @@ dev-logs-frontend:
 	kubectl logs --namespace=$(NAMESPACE) -l app=frontend --all-containers=true -f --tail=100
 
 dev-describe-deployment:
-	kubectl describe deployment --namespace=$(NAMESPACE) $(SALES_APP)
+	kubectl describe deployment --namespace=$(NAMESPACE) $(HELM_RELEASE)-$(SALES_APP)
 
 dev-describe-sales:
 	kubectl describe pod --namespace=$(NAMESPACE) -l app=$(SALES_APP)

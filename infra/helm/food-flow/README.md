@@ -15,7 +15,9 @@ helm upgrade --install food-flow infra/helm/food-flow \
   --wait
 ```
 
-`values.yaml` is safe for staging and production: it disables the `migrate-seed` init container. `values-kind.yaml` enables it only for the local Kind workflow. The `stripe-secrets` Secret remains externally managed; use `make dev-stripe-secrets` to create it locally.
+`values.yaml` is safe for staging and production: it uses normal pod networking, password-authenticated Postgres, and disables the bundled observability services and `migrate-seed` init container. `values-kind.yaml` enables the local-only network exposure, disposable database trust authentication, observability stack, and migration/seed workflow. The `stripe-secrets` Secret remains externally managed; use `make dev-stripe-secrets` to create it locally.
+
+The Kind profile also starts Prometheus, Grafana, Tempo, Loki, and Promtail. Grafana provisions the **Food Flow Overview**, **Food Flow Go Runtime**, and **Food Flow Requests, Errors & Logs** dashboards automatically. Open Grafana at `http://localhost:3100`; log entries expose a TraceID link that opens the corresponding trace in Tempo.
 
 ## Migrating an existing Kustomize deployment
 

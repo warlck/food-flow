@@ -28,14 +28,14 @@ nodes:
   - containerPort: 30080
     hostPort: 8080
   # Grafana
-  - containerPort: 3100
+  - containerPort: 30000
     hostPort: 3100
   # Postgres
   - containerPort: 5432
     hostPort: 5432
   # Prometheus
-  - containerPort: 9090
+  - containerPort: 30090
     hostPort: 9090
   # Tempo (tracing)
-  - containerPort: 9411
-    hostPort: 9411
+  - containerPort: 30200
+    hostPort: 3200

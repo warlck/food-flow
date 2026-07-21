@@ -8,6 +8,8 @@ import (
 	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/web"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Errors handles errors coming out of the call chain. It detects normal
@@ -17,6 +19,10 @@ func Errors(log *logger.Logger) web.MidHandler {
 	m := func(handler web.Handler) web.Handler {
 		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 			if err := handler(ctx, w, r); err != nil {
+				span := trace.SpanFromContext(ctx)
+				span.RecordError(err)
+				span.SetStatus(codes.Error, err.Error())
+
 				log.Error(ctx, "error", "msg", err)
 				var appErr *errs.Error
 				if !errors.As(err, &appErr) {
