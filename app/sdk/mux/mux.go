@@ -44,7 +44,9 @@ type RouteAdder interface {
 
 // WebAPI constructs a http.Handler with all application routes bound.
 func WebAPI(cfg Config, routeAdder RouteAdder) *web.App {
-	app := web.NewApp(cfg.Log.Info, mid.Logger(cfg.Log), mid.Errors(cfg.Log), mid.Metrics(), mid.OTEL(), mid.Panics())
+	// Start the span before any request logging or error handling so every
+	// request log contains the OpenTelemetry trace ID used by Tempo.
+	app := web.NewApp(cfg.Log.Info, mid.OTEL(), mid.Logger(cfg.Log), mid.Metrics(), mid.Errors(cfg.Log), mid.Panics())
 
 	routeAdder.Add(app, cfg)
 	return app

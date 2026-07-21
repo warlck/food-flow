@@ -71,8 +71,6 @@ func (a *api) readiness(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		Status: status,
 	}
 
-	a.log.Info(ctx, "readiness", "status", status)
-
 	return web.Respond(ctx, w, data, statusCode)
 }
 

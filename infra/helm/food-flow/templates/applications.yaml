@@ -1,0 +1,163 @@
+{{- $namespace := .Values.namespace.name }}
+{{- range $name, $app := dict "sales" .Values.sales "auth" .Values.auth "frontend" .Values.frontend }}
+{{- if $app.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "food-flow.componentName" (dict "root" $ "name" $name) }}
+  namespace: {{ $namespace }}
+  labels:
+    app: {{ $name }}
+    {{- include "food-flow.labels" $ | nindent 4 }}
+spec:
+  replicas: {{ $app.replicas }}
+  strategy:
+    {{- toYaml $app.strategy | nindent 4 }}
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+        {{- include "food-flow.labels" $ | nindent 8 }}
+    spec:
+      {{- if $app.hostNetwork }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
+      terminationGracePeriodSeconds: {{ $app.terminationGracePeriodSeconds }}
+      {{- if and (eq $name "sales") $.Values.sales.migration.enabled }}
+      initContainers:
+        - name: init-migrate-seed
+          image: {{ printf "%s:%s" $app.image.repository $app.image.tag | quote }}
+          imagePullPolicy: {{ $app.image.pullPolicy }}
+          command: [./admin, migrate-seed]
+          env:
+            {{- include "food-flow.databaseEnv" (dict "root" $ "name" $name) | nindent 12 }}
+      {{- end }}
+      containers:
+        - name: {{ $name }}
+          image: {{ printf "%s:%s" $app.image.repository $app.image.tag | quote }}
+          imagePullPolicy: {{ $app.image.pullPolicy }}
+          ports:
+            {{- range $app.ports }}
+            - name: {{ .name }}
+              containerPort: {{ .containerPort }}
+            {{- end }}
+          resources:
+            {{- toYaml $app.resources | nindent 12 }}
+          livenessProbe:
+            {{- toYaml $app.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml $app.readinessProbe | nindent 12 }}
+          env:
+            {{- if ne $name "frontend" }}
+            - name: GOMAXPROCS
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+            {{- if $.Values.observability.tempo.enabled }}
+            - name: OTEL_TRACE_ENDPOINT
+              value: {{ printf "%s:4317" (include "food-flow.serviceName" (dict "root" $ "name" "tempo" "overrideName" $.Values.observability.tempo.service.name)) | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if eq $name "sales" }}
+            - name: GOGC
+              value: "off"
+            - name: GOMEMLIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory
+            - name: AUTH_HOST
+              value: {{ printf "http://%s:6000" (include "food-flow.serviceName" (dict "root" $ "name" "auth" "overrideName" $.Values.auth.service.name)) | quote }}
+            {{- end }}
+            {{- include "food-flow.kubernetesEnv" $ | nindent 12 }}
+            {{- if ne $name "frontend" }}
+            {{- include "food-flow.databaseEnv" (dict "root" $ "name" $name) | nindent 12 }}
+            {{- end }}
+            {{- if eq $name "sales" }}
+            - name: SALES_STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "food-flow.stripeSecretName" $ }}
+                  key: stripe_secret_key
+                  optional: true
+            - name: SALES_STRIPE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "food-flow.stripeSecretName" $ }}
+                  key: stripe_webhook_secret
+                  optional: true
+            {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "food-flow.serviceName" (dict "root" $ "name" $name "overrideName" $app.service.name) }}
+  namespace: {{ $namespace }}
+  labels:
+    app: {{ $name }}
+    {{- include "food-flow.labels" $ | nindent 4 }}
+spec:
+  type: {{ $app.service.type }}
+  selector:
+    app: {{ $name }}
+  ports:
+    {{- range $app.service.ports }}
+    - name: {{ .name }}
+      port: {{ .port }}
+      targetPort: {{ .targetPort }}
+      {{- with .nodePort }}
+      nodePort: {{ . }}
+      {{- end }}
+    {{- end }}
+{{- end }}
+{{- end }}
+
+{{- define "food-flow.kubernetesEnv" }}
+- name: KUBERNETES_NAMESPACE
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.namespace
+- name: KUBERNETES_NAME
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.name
+- name: KUBERNETES_POD_IP
+  valueFrom:
+    fieldRef:
+      fieldPath: status.podIP
+- name: KUBERNETES_NODE_NAME
+  valueFrom:
+    fieldRef:
+      fieldPath: spec.nodeName
+{{- end }}
+
+{{- define "food-flow.databaseEnv" }}
+{{- $prefix := upper .name }}
+- name: {{ printf "%s_DB_USER" $prefix }}
+  valueFrom:
+    configMapKeyRef:
+      name: {{ include "food-flow.configName" (dict "root" .root "name" "app-config") }}
+      key: db_user
+      optional: true
+- name: {{ printf "%s_DB_PASSWORD" $prefix }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "food-flow.databaseSecretName" .root }}
+      key: {{ .root.Values.database.auth.existingSecretPasswordKey }}
+- name: {{ printf "%s_DB_HOST_PORT" $prefix }}
+  valueFrom:
+    configMapKeyRef:
+      name: {{ include "food-flow.configName" (dict "root" .root "name" "app-config") }}
+      key: db_hostport
+      optional: true
+- name: {{ printf "%s_DB_DISABLE_TLS" $prefix }}
+  valueFrom:
+    configMapKeyRef:
+      name: {{ include "food-flow.configName" (dict "root" .root "name" "app-config") }}
+      key: db_disabletls
+      optional: true
+{{- end }}

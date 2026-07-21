@@ -1,0 +1,285 @@
+nameOverride: ""
+fullnameOverride: ""
+
+namespace:
+  name: sales-system
+  create: false
+
+database:
+  enabled: true
+  replicas: 1
+  hostNetwork: false
+  terminationGracePeriodSeconds: 60
+  image:
+    repository: postgres
+    tag: "18.0"
+    pullPolicy: IfNotPresent
+  auth:
+    username: postgres
+    existingSecret: ""
+    existingSecretPasswordKey: password
+    disableTLS: "true"
+    hostAuthMethod: scram-sha-256
+  persistence:
+    # Set this to reuse an already-provisioned PVC during a migration.
+    existingClaim: ""
+    accessMode: ReadWriteOnce
+    size: 10Gi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 100m
+    limits:
+      cpu: 3400m
+  service:
+    name: database-service
+    type: ClusterIP
+    port: 5432
+
+sales:
+  enabled: true
+  replicas: 1
+  hostNetwork: false
+  terminationGracePeriodSeconds: 60
+  image:
+    repository: localhost/food-flow/sales
+    tag: 0.0.5
+    pullPolicy: IfNotPresent
+  strategy:
+    type: Recreate
+  ports:
+    - name: sales
+      containerPort: 3000
+    - name: sales-debug
+      containerPort: 3010
+  resources:
+    requests:
+      cpu: 250m
+      memory: 100Mi
+    limits:
+      cpu: 250m
+      memory: 100Mi
+  livenessProbe:
+    httpGet:
+      path: /v1/liveness
+      port: 3000
+    initialDelaySeconds: 2
+    periodSeconds: 5
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 2
+  readinessProbe:
+    httpGet:
+      path: /v1/readiness
+      port: 3000
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 2
+  stripe:
+    # Leave empty to use a release-scoped Secret name.
+    secretName: ""
+  migration:
+    # Disabled by default so staging and production never run schema changes on deploy.
+    enabled: false
+  service:
+    name: sales-service
+    type: ClusterIP
+    debugPort: 3010
+    ports:
+      - name: sales
+        port: 3000
+        targetPort: sales
+      - name: sales-debug
+        port: 3010
+        targetPort: sales-debug
+      - name: metrics
+        port: 4000
+        targetPort: metrics
+      - name: metrics-debug
+        port: 4010
+        targetPort: metrics-debug
+      - name: prometheus
+        port: 4020
+        targetPort: metrics-prom
+
+auth:
+  enabled: true
+  replicas: 1
+  hostNetwork: false
+  terminationGracePeriodSeconds: 60
+  image:
+    repository: localhost/food-flow/auth
+    tag: 0.0.5
+    pullPolicy: IfNotPresent
+  strategy:
+    type: Recreate
+  ports:
+    - name: auth
+      containerPort: 6000
+    - name: auth-debug
+      containerPort: 6010
+  resources:
+    requests:
+      cpu: 100m
+    limits:
+      cpu: 1000m
+  livenessProbe:
+    httpGet:
+      path: /v1/liveness
+      port: 6000
+    initialDelaySeconds: 2
+    periodSeconds: 5
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 2
+  readinessProbe:
+    httpGet:
+      path: /v1/readiness
+      port: 6000
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 2
+  service:
+    name: auth-service
+    type: ClusterIP
+    debugPort: 6010
+    ports:
+      - name: auth
+        port: 6000
+        targetPort: auth
+      - name: auth-debug
+        port: 6010
+        targetPort: auth-debug
+
+frontend:
+  enabled: true
+  replicas: 1
+  hostNetwork: false
+  terminationGracePeriodSeconds: 30
+  image:
+    repository: localhost/food-flow/frontend
+    tag: 0.0.5
+    pullPolicy: IfNotPresent
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  ports:
+    - name: http
+      containerPort: 8080
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 3
+    successThreshold: 1
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    successThreshold: 1
+    failureThreshold: 3
+  service:
+    name: frontend-service
+    type: NodePort
+    ports:
+      - name: http
+        port: 8080
+        targetPort: http
+        nodePort: 30080
+
+observability:
+  prometheus:
+    enabled: false
+    image:
+      repository: prom/prometheus
+      tag: v3.2.0
+      pullPolicy: IfNotPresent
+    args: ["--config.file=/etc/prometheus/prometheus.yml"]
+    ports:
+      - name: http
+        containerPort: 9090
+    scrapeInterval: 5s
+    service:
+      name: prometheus-service
+      type: ClusterIP
+      port: 9090
+      ports:
+        - name: http
+          port: 9090
+          targetPort: http
+  tempo:
+    enabled: false
+    image:
+      repository: grafana/tempo
+      tag: 2.7.0
+      pullPolicy: IfNotPresent
+    args: ["-config.file=/etc/tempo.yaml"]
+    ports:
+      - name: http
+        containerPort: 3200
+      - name: grpc-otlp
+        containerPort: 4317
+    service:
+      name: tempo-service
+      type: ClusterIP
+      port: 3200
+      ports:
+        - name: http
+          port: 3200
+          targetPort: http
+        - name: grpc-otlp
+          port: 4317
+          targetPort: grpc-otlp
+  loki:
+    enabled: false
+    image:
+      repository: grafana/loki
+      tag: 3.4.0
+      pullPolicy: IfNotPresent
+    service:
+      name: loki-service
+      type: ClusterIP
+      port: 3100
+  promtail:
+    enabled: false
+    image:
+      repository: grafana/promtail
+      tag: 3.4.0
+      pullPolicy: IfNotPresent
+  grafana:
+    enabled: false
+    image:
+      repository: grafana/grafana
+      tag: 11.6.0
+      pullPolicy: IfNotPresent
+    ports:
+      - name: http
+        containerPort: 3000
+    env: []
+    service:
+      name: grafana-service
+      type: ClusterIP
+      port: 3000
+      ports:
+        - name: http
+          port: 3000
+          targetPort: http

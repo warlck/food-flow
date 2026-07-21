@@ -1,0 +1,103 @@
+{{- range $name, $component := dict "prometheus" .Values.observability.prometheus "tempo" .Values.observability.tempo "grafana" .Values.observability.grafana }}
+{{- if $component.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "food-flow.componentName" (dict "root" $ "name" $name) }}
+  namespace: {{ $.Values.namespace.name }}
+  labels:
+    app: {{ $name }}
+    {{- include "food-flow.labels" $ | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+        {{- include "food-flow.labels" $ | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: {{ printf "%s:%s" $component.image.repository $component.image.tag | quote }}
+          imagePullPolicy: {{ $component.image.pullPolicy }}
+          {{- with $component.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            {{- range $component.ports }}
+            - name: {{ .name }}
+              containerPort: {{ .containerPort }}
+            {{- end }}
+          {{- with $component.env }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if eq $name "prometheus" }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/prometheus
+          {{- else if eq $name "tempo" }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/tempo.yaml
+              subPath: tempo.yaml
+          {{- else if eq $name "grafana" }}
+          volumeMounts:
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: dashboards
+              mountPath: /var/lib/grafana/dashboards/food-flow
+          {{- end }}
+      {{- if eq $name "prometheus" }}
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "food-flow.configName" (dict "root" $ "name" "prometheus-config") }}
+      {{- else if eq $name "tempo" }}
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "food-flow.configName" (dict "root" $ "name" "tempo-config") }}
+      {{- else if eq $name "grafana" }}
+      volumes:
+        - name: datasources
+          configMap:
+            name: {{ include "food-flow.configName" (dict "root" $ "name" "grafana-datasources") }}
+        - name: dashboard-provider
+          configMap:
+            name: {{ include "food-flow.configName" (dict "root" $ "name" "grafana-dashboard-provider") }}
+        - name: dashboards
+          configMap:
+            name: {{ include "food-flow.configName" (dict "root" $ "name" "grafana-dashboards") }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "food-flow.serviceName" (dict "root" $ "name" $name "overrideName" $component.service.name) }}
+  namespace: {{ $.Values.namespace.name }}
+  labels:
+    app: {{ $name }}
+    {{- include "food-flow.labels" $ | nindent 4 }}
+spec:
+  type: {{ $component.service.type }}
+  selector:
+    app: {{ $name }}
+  ports:
+    {{- range $component.service.ports }}
+    - name: {{ .name }}
+      port: {{ .port }}
+      targetPort: {{ .targetPort }}
+      {{- with .nodePort }}
+      nodePort: {{ . }}
+      {{- end }}
+    {{- end }}
+{{- end }}
+{{- end }}

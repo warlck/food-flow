@@ -1,0 +1,418 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "food-flow.configName" (dict "root" . "name" "app-config") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+data:
+  db_host: {{ include "food-flow.serviceName" (dict "root" . "name" "database" "overrideName" .Values.database.service.name) | quote }}
+  db_hostport: {{ printf "%s:%v" (include "food-flow.serviceName" (dict "root" . "name" "database" "overrideName" .Values.database.service.name)) .Values.database.service.port | quote }}
+  db_user: {{ .Values.database.auth.username | quote }}
+  db_disabletls: {{ .Values.database.auth.disableTLS | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "food-flow.configName" (dict "root" . "name" "pghbaconf") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+data:
+  pg_hba.conf: |
+    local   all             all                                     trust
+    host    all             all             0.0.0.0/0               {{ .Values.database.auth.hostAuthMethod }}
+    host    all             all             ::1/128                 {{ .Values.database.auth.hostAuthMethod }}
+    local   replication     all                                     trust
+    host    replication     all             0.0.0.0/0               {{ .Values.database.auth.hostAuthMethod }}
+    host    replication     all             ::1/128                 {{ .Values.database.auth.hostAuthMethod }}
+{{- if .Values.observability.prometheus.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "food-flow.configName" (dict "root" . "name" "prometheus-config") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: {{ .Values.observability.prometheus.scrapeInterval }}
+    scrape_configs:
+      - job_name: sales
+        static_configs:
+          - targets: [{{ printf "%s:%v" (include "food-flow.serviceName" (dict "root" . "name" "sales" "overrideName" .Values.sales.service.name)) .Values.sales.service.debugPort | quote }}]
+      - job_name: auth
+        static_configs:
+          - targets: [{{ printf "%s:%v" (include "food-flow.serviceName" (dict "root" . "name" "auth" "overrideName" .Values.auth.service.name)) .Values.auth.service.debugPort | quote }}]
+{{- end }}
+{{- if .Values.observability.tempo.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "food-flow.configName" (dict "root" . "name" "tempo-config") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+data:
+  tempo.yaml: |
+    server:
+      http_listen_port: 3200
+    distributor:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+    storage:
+      trace:
+        backend: local
+        local:
+          path: /tmp/tempo/blocks
+        wal:
+          path: /tmp/tempo/wal
+{{- end }}
+{{- if .Values.observability.loki.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "food-flow.configName" (dict "root" . "name" "loki-config") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+data:
+  loki.yaml: |
+    auth_enabled: false
+    server:
+      http_listen_port: 3100
+    common:
+      path_prefix: /tmp/loki
+      replication_factor: 1
+      ring:
+        kvstore:
+          store: inmemory
+      storage:
+        filesystem:
+          chunks_directory: /tmp/loki/chunks
+          rules_directory: /tmp/loki/rules
+    schema_config:
+      configs:
+        - from: 2020-10-24
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index:
+            prefix: index_
+            period: 24h
+    analytics:
+      reporting_enabled: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "food-flow.configName" (dict "root" . "name" "promtail-config") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+data:
+  promtail.yaml: |
+    server:
+      http_listen_port: 9080
+      grpc_listen_port: 0
+    positions:
+      filename: /run/promtail/positions.yaml
+    clients:
+      - url: http://{{ include "food-flow.serviceName" (dict "root" . "name" "loki" "overrideName" .Values.observability.loki.service.name) }}:{{ .Values.observability.loki.service.port }}/loki/api/v1/push
+    scrape_configs:
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+        pipeline_stages:
+          - json:
+              expressions:
+                level: level
+          - labels:
+              level:
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: __host__
+          - source_labels: [__meta_kubernetes_namespace]
+            action: keep
+            regex: {{ .Values.namespace.name }}
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: app
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            target_label: container
+          - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
+            separator: /
+            target_label: __path__
+            replacement: /var/log/pods/*$1/*.log
+{{- end }}
+{{- if .Values.observability.grafana.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "food-flow.configName" (dict "root" . "name" "grafana-datasources") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        uid: prometheus
+        type: prometheus
+        access: proxy
+        url: http://{{ include "food-flow.serviceName" (dict "root" . "name" "prometheus" "overrideName" .Values.observability.prometheus.service.name) }}:{{ .Values.observability.prometheus.service.port }}
+        isDefault: true
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://{{ include "food-flow.serviceName" (dict "root" . "name" "tempo" "overrideName" .Values.observability.tempo.service.name) }}:{{ .Values.observability.tempo.service.port }}
+{{- if .Values.observability.loki.enabled }}
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://{{ include "food-flow.serviceName" (dict "root" . "name" "loki" "overrideName" .Values.observability.loki.service.name) }}:{{ .Values.observability.loki.service.port }}
+        jsonData:
+          derivedFields:
+            - name: TraceID
+              matcherRegex: '"trace_id":"([^"]+)"'
+              datasourceUid: tempo
+              url: '$${__value.raw}'
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "food-flow.configName" (dict "root" . "name" "grafana-dashboard-provider") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+data:
+  food-flow.yaml: |
+    apiVersion: 1
+    providers:
+      - name: Food Flow
+        orgId: 1
+        folder: Food Flow
+        type: file
+        disableDeletion: false
+        editable: true
+        updateIntervalSeconds: 10
+        options:
+          path: /var/lib/grafana/dashboards/food-flow
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "food-flow.configName" (dict "root" . "name" "grafana-dashboards") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+data:
+  food-flow-overview.json: |
+    {
+      "annotations": {"list": []},
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [{"options": {"0": {"color": "red", "text": "Down"}, "1": {"color": "green", "text": "Up"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
+          "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "min(up{job=~\"sales|auth\"})", "refId": "A"}],
+          "title": "Application health",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "min(time() - process_start_time_seconds{job=~\"sales|auth\"})", "refId": "A"}],
+          "title": "Minimum uptime",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "process_resident_memory_bytes{job=~\"sales|auth\"}", "legendFormat": "{{ "{{job}}" }}", "refId": "A"}],
+          "title": "Resident memory",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "percentunit"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 0, "y": 8},
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "rate(process_cpu_seconds_total{job=~\"sales|auth\"}[5m])", "legendFormat": "{{ "{{job}}" }}", "refId": "A"}],
+          "title": "CPU usage",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"min": 0}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 12, "y": 8},
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "go_goroutines{job=~\"sales|auth\"}", "legendFormat": "{{ "{{job}}" }}", "refId": "A"}],
+          "title": "Goroutines",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 24, "x": 0, "y": 17},
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "scrape_duration_seconds{job=~\"sales|auth\"}", "legendFormat": "{{ "{{job}}" }}", "refId": "A"}],
+          "title": "Prometheus scrape duration",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 39,
+      "tags": ["food-flow", "overview"],
+      "templating": {"list": []},
+      "time": {"from": "now-1h", "to": "now"},
+      "timezone": "browser",
+      "title": "Food Flow Overview",
+      "uid": "food-flow-overview",
+      "version": 1
+    }
+  food-flow-go-runtime.json: |
+    {
+      "annotations": {"list": []},
+      "editable": true,
+      "graphTooltip": 0,
+      "id": null,
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 0, "y": 0},
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "go_memstats_heap_alloc_bytes{job=~\"sales|auth\"}", "legendFormat": "{{ "{{job}}" }}", "refId": "A"}],
+          "title": "Go heap allocated",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 12, "y": 0},
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "go_memstats_heap_inuse_bytes{job=~\"sales|auth\"}", "legendFormat": "{{ "{{job}}" }}", "refId": "A"}],
+          "title": "Go heap in use",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "ms"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 0, "y": 9},
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "histogram_quantile(0.99, sum by (le, job) (rate(go_gc_duration_seconds_bucket{job=~\"sales|auth\"}[5m]))) * 1000", "legendFormat": "{{ "{{job}}" }}", "refId": "A"}],
+          "title": "GC pause p99",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"min": 0}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 12, "y": 9},
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "go_threads{job=~\"sales|auth\"}", "legendFormat": "{{ "{{job}}" }}", "refId": "A"}],
+          "title": "Operating-system threads",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 39,
+      "tags": ["food-flow", "go", "runtime"],
+      "templating": {"list": []},
+      "time": {"from": "now-1h", "to": "now"},
+      "timezone": "browser",
+      "title": "Food Flow Go Runtime",
+      "uid": "food-flow-go-runtime",
+      "version": 1
+    }
+{{- if .Values.observability.loki.enabled }}
+  food-flow-requests-errors.json: |
+    {
+      "annotations": {"list": []},
+      "editable": true,
+      "graphTooltip": 0,
+      "id": null,
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 0, "y": 0},
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "sum by (job, route) (rate(food_flow_http_requests_total[5m]))", "legendFormat": "{{ "{{job}}" }} {{ "{{route}}" }}", "refId": "A"}],
+          "title": "HTTP request rate by route",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 12, "y": 0},
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "histogram_quantile(0.95, sum by (le, job, route) (rate(food_flow_http_request_duration_seconds_bucket[5m])))", "legendFormat": "{{ "{{job}}" }} {{ "{{route}}" }}", "refId": "A"}],
+          "title": "HTTP latency p95",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 0, "y": 9},
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "sum by (job, route, status) (rate(food_flow_http_errors_total[5m]))", "legendFormat": "{{ "{{job}}" }} {{ "{{route}}" }} {{ "{{status}}" }}", "refId": "A"}],
+          "title": "HTTP errors by route and status",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "percent"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 12, "y": 9},
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "100 * sum(rate(food_flow_http_errors_total[5m])) / clamp_min(sum(rate(food_flow_http_requests_total[5m])), 1)", "legendFormat": "error rate", "refId": "A"}],
+          "title": "HTTP error percentage",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "gridPos": {"h": 12, "w": 24, "x": 0, "y": 18},
+          "options": {"dedupStrategy": "none", "enableLogDetails": true, "prettifyJSON": true, "showCommonLabels": false, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true},
+          "targets": [{"expr": "{namespace=\"sales-system\", app=~\"sales|auth\"}", "refId": "A"}],
+          "title": "Application logs (click TraceID to open Tempo)",
+          "type": "logs"
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 39,
+      "tags": ["food-flow", "http", "errors", "logs", "traces"],
+      "templating": {"list": []},
+      "time": {"from": "now-1h", "to": "now"},
+      "timezone": "browser",
+      "title": "Food Flow Requests, Errors & Logs",
+      "uid": "food-flow-requests-errors",
+      "version": 1
+    }
+{{- end }}
+{{- end }}

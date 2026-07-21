@@ -1,0 +1,103 @@
+{{- if .Values.database.enabled }}
+{{- if not .Values.database.persistence.existingClaim }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "food-flow.databaseClaimName" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: database
+    {{- include "food-flow.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.database.persistence.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.database.persistence.size }}
+{{- with .Values.database.persistence.storageClass }}
+  storageClassName: {{ . }}
+{{- end }}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "food-flow.componentName" (dict "root" . "name" "database") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: database
+    {{- include "food-flow.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "food-flow.serviceName" (dict "root" . "name" "database" "overrideName" .Values.database.service.name) }}
+  replicas: {{ .Values.database.replicas }}
+  selector:
+    matchLabels:
+      app: database
+  template:
+    metadata:
+      labels:
+        app: database
+        {{- include "food-flow.labels" . | nindent 8 }}
+    spec:
+      {{- if .Values.database.hostNetwork }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.database.terminationGracePeriodSeconds }}
+      containers:
+        - name: postgres
+          image: {{ printf "%s:%s" .Values.database.image.repository .Values.database.image.tag | quote }}
+          imagePullPolicy: {{ .Values.database.image.pullPolicy }}
+          args: ["-c", "hba_file=/etc/pg_hba.conf"]
+          ports:
+            - name: postgres
+              containerPort: {{ .Values.database.service.port }}
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "food-flow.databaseSecretName" . }}
+                  key: {{ .Values.database.auth.existingSecretPasswordKey }}
+          resources:
+            {{- toYaml .Values.database.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/18/docker
+            - name: config
+              mountPath: /etc/pg_hba.conf
+              subPath: pg_hba.conf
+          livenessProbe:
+            exec:
+              command: [pg_isready, -h, localhost, -U, {{ .Values.database.auth.username | quote }}]
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command: [pg_isready, -h, localhost, -U, {{ .Values.database.auth.username | quote }}]
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "food-flow.databaseClaimName" . }}
+        - name: config
+          configMap:
+            name: {{ include "food-flow.configName" (dict "root" . "name" "pghbaconf") }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "food-flow.serviceName" (dict "root" . "name" "database" "overrideName" .Values.database.service.name) }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: database
+    {{- include "food-flow.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.database.service.type }}
+  selector:
+    app: database
+  ports:
+    - name: postgres
+      port: {{ .Values.database.service.port }}
+      targetPort: postgres
+{{- end }}

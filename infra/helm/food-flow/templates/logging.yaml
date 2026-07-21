@@ -1,0 +1,137 @@
+{{- if .Values.observability.loki.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "food-flow.componentName" (dict "root" . "name" "loki") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: loki
+    {{- include "food-flow.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loki
+  template:
+    metadata:
+      labels:
+        app: loki
+        {{- include "food-flow.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: loki
+          image: {{ printf "%s:%s" .Values.observability.loki.image.repository .Values.observability.loki.image.tag | quote }}
+          imagePullPolicy: {{ .Values.observability.loki.image.pullPolicy }}
+          args: ["-config.file=/etc/loki/loki.yaml"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.observability.loki.service.port }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/loki
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "food-flow.configName" (dict "root" . "name" "loki-config") }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "food-flow.serviceName" (dict "root" . "name" "loki" "overrideName" .Values.observability.loki.service.name) }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: loki
+    {{- include "food-flow.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.observability.loki.service.type }}
+  selector:
+    app: loki
+  ports:
+    - name: http
+      port: {{ .Values.observability.loki.service.port }}
+      targetPort: http
+{{- end }}
+{{- if and .Values.observability.loki.enabled .Values.observability.promtail.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "food-flow.componentName" (dict "root" . "name" "promtail") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "food-flow.componentName" (dict "root" . "name" "promtail") }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "nodes/proxy", "services", "endpoints", "pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "food-flow.componentName" (dict "root" . "name" "promtail") }}
+  labels:
+    {{- include "food-flow.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "food-flow.componentName" (dict "root" . "name" "promtail") }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "food-flow.componentName" (dict "root" . "name" "promtail") }}
+    namespace: {{ .Values.namespace.name }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "food-flow.componentName" (dict "root" . "name" "promtail") }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: promtail
+    {{- include "food-flow.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: promtail
+  template:
+    metadata:
+      labels:
+        app: promtail
+        {{- include "food-flow.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "food-flow.componentName" (dict "root" . "name" "promtail") }}
+      containers:
+        - name: promtail
+          image: {{ printf "%s:%s" .Values.observability.promtail.image.repository .Values.observability.promtail.image.tag | quote }}
+          imagePullPolicy: {{ .Values.observability.promtail.image.pullPolicy }}
+          args: ["-config.file=/etc/promtail/promtail.yaml"]
+          env:
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: config
+              mountPath: /etc/promtail
+            - name: positions
+              mountPath: /run/promtail
+            - name: pods
+              mountPath: /var/log/pods
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "food-flow.configName" (dict "root" . "name" "promtail-config") }}
+        - name: positions
+          emptyDir: {}
+        - name: pods
+          hostPath:
+            path: /var/log/pods
+            type: Directory
+{{- end }}
