@@ -11,6 +11,7 @@ import { Elements } from "@stripe/react-stripe-js";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/context/CartContext";
@@ -66,7 +67,7 @@ const CheckoutDesktop: React.FC = () => {
   const { items, getTotalPrice, clearCart, orderType, restaurantId } = useCart();
   const [step, setStep] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<"creditCard" | "payAtLocation">("creditCard");
-  const [orderDetails, setOrderDetails] = useState<any>({});
+  const [orderDetails, setOrderDetails] = useState<Record<string, unknown>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Stripe-related state
@@ -115,17 +116,18 @@ const CheckoutDesktop: React.FC = () => {
   });
 
   // Submit handlers
-  const onSubmitCustomerInfo = async (data: any) => {
+  const onSubmitCustomerInfo = async (data: z.infer<typeof deliveryFormSchema> | z.infer<typeof pickupFormSchema>) => {
     setOrderDetails({ ...orderDetails, ...data });
     setIsCreatingOrder(true);
 
     try {
       // Create the order
+      const orderData = data as z.infer<typeof deliveryFormSchema>;
       const order = await orderService.createOrder({
         restaurantId: restaurantId || "",
-        customerName: data.name,
-        customerEmail: data.email,
-        customerPhone: data.phone,
+        customerName: orderData.name,
+        customerEmail: orderData.email,
+        customerPhone: orderData.phone,
         orderType: orderType as "delivery" | "pickup",
         paymentMethod: paymentMethod === "creditCard" ? "creditCard" : "cash",
         items: items.map((item) => ({
@@ -134,11 +136,11 @@ const CheckoutDesktop: React.FC = () => {
           specialInstructions: item.specialInstructions,
         })),
         deliveryAddress: orderType === "delivery" ? {
-          street: data.street,
-          city: data.city,
-          state: data.state,
-          postalCode: data.postalCode,
-          deliveryInstructions: data.deliveryInstructions,
+          street: orderData.street,
+          city: orderData.city,
+          state: orderData.state,
+          postalCode: orderData.postalCode,
+          deliveryInstructions: orderData.deliveryInstructions
         } : undefined,
       });
 
@@ -240,9 +242,16 @@ const CheckoutDesktop: React.FC = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
-            <p className="text-gray-600 mt-2">Complete your {orderType === "delivery" ? "delivery" : "pickup"} order</p>
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
+              <p className="text-gray-600 mt-2">Complete your {orderType === "delivery" ? "delivery" : "pickup"} order</p>
+            </div>
+            <Link to={restaurantId ? `/restaurant/${restaurantId}` : "/"}>
+              <Button variant="outline" className="text-food-primary border-food-primary hover:bg-food-primary/10">
+                Cancel
+              </Button>
+            </Link>
           </div>
 
           {/* Progress Steps */}

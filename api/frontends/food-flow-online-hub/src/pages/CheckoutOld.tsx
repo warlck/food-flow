@@ -58,10 +58,10 @@ const paymentFormSchema = z.object({
 
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
-  const { items, getTotalPrice, clearCart, orderType } = useCart();
+  const { items, getTotalPrice, clearCart, orderType, restaurantId } = useCart();
   const [step, setStep] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<"creditCard" | "payAtLocation">("creditCard");
-  const [orderDetails, setOrderDetails] = useState<any>({});
+  const [orderDetails, setOrderDetails] = useState<Record<string, unknown>>({});
   
   // Calculate totals
   const subtotal = getTotalPrice();
@@ -104,20 +104,24 @@ const Checkout: React.FC = () => {
   });
 
   // Submit handler for customer info step
-  const onSubmitCustomerInfo = (data: any) => {
+  const onSubmitCustomerInfo = (data: z.infer<typeof deliveryFormSchema> | z.infer<typeof pickupFormSchema>) => {
     setOrderDetails({ ...orderDetails, ...data });
     setStep(2); // Go to payment step
   };
 
   // Submit handler for payment step
-  const onSubmitPayment = (data: any) => {
+  const onSubmitPayment = (data: z.infer<typeof paymentFormSchema>) => {
     setOrderDetails({ ...orderDetails, ...data });
     
     // Simulate order submission
     setTimeout(() => {
       clearCart();
       toast.success("Order placed successfully!");
-      navigate("/");
+      if (restaurantId) {
+        navigate(`/restaurant/${restaurantId}`);
+      } else {
+        navigate("/");
+      }
     }, 1500);
   };
 

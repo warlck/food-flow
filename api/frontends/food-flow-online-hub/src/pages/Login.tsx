@@ -6,9 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
+import { useCart } from '@/context/CartContext';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const { restaurantId } = useCart();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,7 +18,12 @@ const Login: React.FC = () => {
       title: "Login successful",
       description: "Welcome back to FoodFlow!",
     });
-    navigate('/');
+
+    if (restaurantId) {
+      navigate(`/restaurant/${restaurantId}`);
+    } else {
+      navigate('/');
+    }
   };
 
   return (
