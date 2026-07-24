@@ -5,11 +5,13 @@ import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Clock, MapPin, Phone, Mail, Package, Loader2, ArrowLeft } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
 
 const OrderConfirmation: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { restaurantId } = useCart();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +65,7 @@ const OrderConfirmation: React.FC = () => {
           <XCircle className="w-16 h-16 text-red-500 mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Order Not Found</h1>
           <p className="text-gray-600 mb-6">{error || 'Unable to find order details'}</p>
-          <Button onClick={() => navigate('/')} className="bg-food-primary hover:bg-food-accent">
+          <Button onClick={() => navigate(restaurantId ? `/restaurant/${restaurantId}` : '/')} className="bg-food-primary hover:bg-food-accent">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Home
           </Button>
@@ -238,7 +240,7 @@ const OrderConfirmation: React.FC = () => {
         {/* Back Button */}
         <div className="mt-8 text-center">
           <Button
-            onClick={() => navigate('/')}
+            onClick={() => navigate(restaurantId ? `/restaurant/${restaurantId}` : '/')}
             variant="outline"
             className="border-food-primary text-food-primary hover:bg-food-primary/10"
           >

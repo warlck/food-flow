@@ -16,7 +16,7 @@ const Header: React.FC = () => {
     <header className="sticky top-0 z-40 bg-white shadow-md">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         {/* Logo */}
-        <Link to={`/restaurant/${restaurantId}`} className="flex items-center">
+        <Link to={restaurantId ? `/restaurant/${restaurantId}` : "/"} className="flex items-center">
           <div className="text-food-primary font-bold text-2xl flex items-center">
             <ChefHat className="mr-2" size={32} />
             <span>FoodFlow</span>

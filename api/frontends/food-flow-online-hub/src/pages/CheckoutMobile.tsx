@@ -57,7 +57,7 @@ const CheckoutMobile: React.FC = () => {
   const { items, getTotalPrice, clearCart, orderType, restaurantId } = useCart();
   const [step, setStep] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<"creditCard" | "payAtLocation">("creditCard");
-  const [orderDetails, setOrderDetails] = useState<any>({});
+  const [orderDetails, setOrderDetails] = useState<Record<string, unknown>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Calculate totals
@@ -101,12 +101,12 @@ const CheckoutMobile: React.FC = () => {
   });
 
   // Submit handlers
-  const onSubmitCustomerInfo = (data: any) => {
+  const onSubmitCustomerInfo = (data: z.infer<typeof deliveryFormSchema> | z.infer<typeof pickupFormSchema>) => {
     setOrderDetails({ ...orderDetails, ...data });
     setStep(2);
   };
 
-  const onSubmitPayment = async (data: any) => {
+  const onSubmitPayment = async (data: z.infer<typeof paymentFormSchema>) => {
     setIsSubmitting(true);
     setOrderDetails({ ...orderDetails, ...data });
     

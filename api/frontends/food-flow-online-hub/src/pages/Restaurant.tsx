@@ -35,6 +35,16 @@ const Menu: React.FC = () => {
     }
   }, [restaurantId, setRestaurantId]);
   
+  useEffect(() => {
+    // Scroll to menu section after data is loaded and component is rendered
+    if (menuSectionRef.current && !isLoading) {
+      const timer = setTimeout(() => {
+        menuSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading]);
+
   // Check if restaurant ID is missing
   if (!restaurantId) {
     return (
@@ -52,16 +62,6 @@ const Menu: React.FC = () => {
       </Layout>
     );
   }
-  
-  useEffect(() => {
-    // Scroll to menu section after data is loaded and component is rendered
-    if (menuSectionRef.current && !isLoading) {
-      const timer = setTimeout(() => {
-        menuSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading]);
 
   const CartComponent = () => (
     <div className="flex flex-col h-full">

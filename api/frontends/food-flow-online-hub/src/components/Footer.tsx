@@ -1,9 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Twitter } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
+  const { restaurantId } = useCart();
 
   return (
     <footer className="bg-gray-800 text-white mt-auto">
@@ -32,11 +34,13 @@ const Footer: React.FC = () => {
           <div className="col-span-1">
             <h3 className="font-semibold text-lg mb-4">For Customers</h3>
             <ul className="space-y-2">
-              <li>
-                <Link to="/menu" className="text-gray-300 hover:text-food-primary">
-                  Browse Menu
-                </Link>
-              </li>
+              {restaurantId && (
+                <li>
+                  <Link to={`/restaurant/${restaurantId}`} className="text-gray-300 hover:text-food-primary">
+                    Browse Menu
+                  </Link>
+                </li>
+              )}
               <li>
                 <Link to="/login" className="text-gray-300 hover:text-food-primary">
                   Login
