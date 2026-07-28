@@ -99,7 +99,8 @@ gcloud run deploy staging-auth \
     --subnet "${SUBNET}" \
     --vpc-egress private-ranges-only \
     --service-account "${WORKLOAD_SERVICE_ACCOUNT}" \
-    --update-env-vars "AUTH_DB_HOST=${POSTGRES_HOST},AUTH_DB_DISABLE_TLS=true" \
+    --remove-env-vars AUTH_DB_DISABLE_TLS \
+    --update-env-vars "AUTH_DB_HOST=${POSTGRES_HOST}" \
     --min-instances 0 \
     --max-instances 1 \
     --cpu-throttling \
@@ -116,7 +117,7 @@ gcloud run deploy staging-sales \
     --subnet "${SUBNET}" \
     --vpc-egress private-ranges-only \
     --service-account "${WORKLOAD_SERVICE_ACCOUNT}" \
-    --update-env-vars "SALES_DB_HOST=${POSTGRES_HOST},SALES_DB_DISABLE_TLS=true" \
+    --update-env-vars "SALES_DB_HOST=${POSTGRES_HOST}" \
     --min-instances 0 \
     --max-instances 1 \
     --cpu-throttling \
