@@ -79,7 +79,7 @@ if [ "${RUN_MIGRATION}" = "true" ]; then
         --network "${NETWORK}" \
         --subnet "${SUBNET}" \
         --vpc-egress private-ranges-only \
-        --set-env-vars "SALES_DB_HOST_PORT=${POSTGRES_HOST},SALES_DB_DISABLE_TLS=true" \
+        --set-env-vars "SALES_DB_HOST=${POSTGRES_HOST},SALES_DB_DISABLE_TLS=true" \
         --set-secrets "SALES_DB_PASSWORD=staging-postgres-password:latest" \
         --max-retries 0 \
         --task-timeout 5m \
@@ -99,8 +99,7 @@ gcloud run deploy staging-auth \
     --subnet "${SUBNET}" \
     --vpc-egress private-ranges-only \
     --service-account "${WORKLOAD_SERVICE_ACCOUNT}" \
-    --remove-env-vars AUTH_DB_HOST \
-    --update-env-vars "AUTH_DB_HOST_PORT=${POSTGRES_HOST},AUTH_DB_DISABLE_TLS=true" \
+    --update-env-vars "AUTH_DB_HOST=${POSTGRES_HOST},AUTH_DB_DISABLE_TLS=true" \
     --min-instances 0 \
     --max-instances 1 \
     --cpu-throttling \
@@ -117,8 +116,7 @@ gcloud run deploy staging-sales \
     --subnet "${SUBNET}" \
     --vpc-egress private-ranges-only \
     --service-account "${WORKLOAD_SERVICE_ACCOUNT}" \
-    --remove-env-vars SALES_DB_HOST \
-    --update-env-vars "SALES_DB_HOST_PORT=${POSTGRES_HOST},SALES_DB_DISABLE_TLS=true" \
+    --update-env-vars "SALES_DB_HOST=${POSTGRES_HOST},SALES_DB_DISABLE_TLS=true" \
     --min-instances 0 \
     --max-instances 1 \
     --cpu-throttling \
