@@ -10,7 +10,7 @@ SHELL = $(if $(wildcard $(SHELL_PATH)),/bin/ash,/bin/bash)
 # ==============================================================================
 
 .PHONY: \
-	build sales auth frontend \
+	build sales auth frontend gcp-staging-deploy \
 	run help version \
 	curl-live curl-ready curl-test-error load-test curl-auth curl-create-user \
 	admin-genkey pgcli \
@@ -77,6 +77,9 @@ frontend:
 		--build-arg VITE_API_URL="" \
 		--build-arg VITE_STRIPE_PUBLISHABLE_KEY="$(VITE_STRIPE_PUBLISHABLE_KEY)" \
 		.
+
+gcp-staging-deploy:
+	./infra/gcp/deploy-staging.sh
 
 
 # ==============================================================================
