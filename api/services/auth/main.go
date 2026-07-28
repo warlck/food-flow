@@ -74,7 +74,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 			CORSAllowedOrigins []string      `conf:"default:*"`
 		}
 		Auth struct {
-			KeysEnvVar string
+			KeysEnvVar string `conf:"mask"`
 			KeysFolder string `conf:"default:infra/keys/"`
 			ActiveKID  string `conf:"default:54bb2165-71e1-41a6-af3e-7da4a0e1e2c1"`
 			Issuer     string `conf:"default:food-flow-auth"`
@@ -178,9 +178,12 @@ func run(ctx context.Context, log *logger.Logger) error {
 		return fmt.Errorf("loading keys by env: %w", err)
 	}
 
-	n2, err := ks.LoadByFileSystem(os.DirFS(cfg.Auth.KeysFolder))
-	if err != nil {
-		return fmt.Errorf("loading keys by fs: %w", err)
+	n2 := 0
+	if n1 == 0 {
+		n2, err = ks.LoadByFileSystem(os.DirFS(cfg.Auth.KeysFolder))
+		if err != nil {
+			return fmt.Errorf("loading keys by fs: %w", err)
+		}
 	}
 
 	if n1+n2 == 0 {
