@@ -33,8 +33,17 @@ jobs:
       - name: Run Go Vet
         run: go vet ./...
 
+      - name: Start Postgres Test Container
+        run: |
+          docker run -d --name servicetest -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:17.5 -c log_statement=all
+          until docker exec servicetest pg_isready -U postgres; do sleep 1; done
+
       - name: Run Backend Tests
-        run: go test -p 1 -count=1 ./...
+        run: go test -count=1 ./...
+
+      - name: Stop Postgres Test Container
+        if: always()
+        run: docker rm -f servicetest || true
 
   test-frontend:
     name: Test & Build Frontend Store

@@ -291,6 +291,8 @@ test-race:
 	CGO_ENABLED=1 go test -race -count=1 ./...
 
 test-only:
+	@docker inspect servicetest >/dev/null 2>&1 || docker run -d --name servicetest -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:17.5 -c log_statement=all
+	@until docker exec servicetest pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
 	CGO_ENABLED=0 go test -count=1 ./...
 
 lint:
