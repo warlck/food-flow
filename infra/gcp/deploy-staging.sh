@@ -180,6 +180,7 @@ gcloud run deploy staging-admin \
     --region "${REGION}" \
     --port 8080 \
     --ingress all \
+    --no-allow-unauthenticated \
     --network "${NETWORK}" \
     --subnet "${SUBNET}" \
     --vpc-egress private-ranges-only \
@@ -197,7 +198,10 @@ echo "=> Verifying Storefront and private API proxies..."
 curl --fail --show-error --silent --retry 6 --retry-all-errors --retry-delay 5 "${STOREFRONT_URL}/health"
 curl --fail --show-error --silent --retry 6 --retry-all-errors --retry-delay 5 "${STOREFRONT_URL}/api/auth/v1/readiness"
 curl --fail --show-error --silent --retry 6 --retry-all-errors --retry-delay 5 "${STOREFRONT_URL}/api/sales/v1/readiness"
-curl --fail --show-error --silent --retry 6 --retry-all-errors --retry-delay 5 "${ADMIN_FRONTEND_URL}/health"
+ADMIN_IDENTITY_TOKEN=$(gcloud auth print-identity-token)
+curl --fail --show-error --silent --retry 6 --retry-all-errors --retry-delay 5 \
+    --header "Authorization: Bearer ${ADMIN_IDENTITY_TOKEN}" \
+    "${ADMIN_FRONTEND_URL}/health"
 
 echo "=> Deployment Complete!"
 echo "Storefront is live at: ${STOREFRONT_URL}"
