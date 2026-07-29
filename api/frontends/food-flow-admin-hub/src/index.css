@@ -4,30 +4,30 @@
 
 @layer base {
   :root {
-    --background: 120 14% 97%;
-    --foreground: 144 17% 11%;
+    --background: 0 0% 96.1%;
+    --foreground: 0 0% 20%;
     --card: 0 0% 100%;
-    --card-foreground: 144 17% 11%;
+    --card-foreground: 0 0% 20%;
     --popover: 0 0% 100%;
-    --popover-foreground: 144 17% 11%;
-    --primary: 154 55% 27%;
-    --primary-foreground: 120 20% 98%;
-    --secondary: 132 15% 95%;
-    --secondary-foreground: 151 42% 19%;
-    --muted: 132 12% 95%;
-    --muted-foreground: 143 8% 44%;
-    --accent: 132 19% 92%;
-    --accent-foreground: 151 42% 19%;
-    --destructive: 5 64% 48%;
+    --popover-foreground: 0 0% 20%;
+    --primary: 16 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 41 100% 58%;
+    --secondary-foreground: 0 0% 20%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 25 100% 63%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 132 12% 87%;
-    --input: 132 12% 87%;
-    --ring: 154 55% 27%;
-    --radius: .65rem;
+    --border: 220 13% 91%;
+    --input: 216 12% 84%;
+    --ring: 16 100% 50%;
+    --radius: .5rem;
   }
 
   * { @apply border-border; }
-  html { background: #eef2ed; }
+  html { background: #f5f5f5; }
   body { @apply m-0 bg-background text-foreground antialiased; }
   button, input, textarea { font: inherit; }
 }
