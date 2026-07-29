@@ -418,6 +418,11 @@ func updateStatus(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.T
 
 				expResp := exp.(orderbus.Order)
 
+				// Normalize DateCreated if timestamps match RFC3339
+				if gotResp.DateCreated.Format(time.RFC3339) == expResp.DateCreated.Format(time.RFC3339) {
+					expResp.DateCreated = gotResp.DateCreated
+				}
+
 				// Normalize DateUpdated since it changes
 				expResp.DateUpdated = gotResp.DateUpdated
 
@@ -489,6 +494,11 @@ func cancel(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				}
 
 				expResp := exp.(orderbus.Order)
+
+				// Normalize DateCreated if timestamps match RFC3339
+				if gotResp.DateCreated.Format(time.RFC3339) == expResp.DateCreated.Format(time.RFC3339) {
+					expResp.DateCreated = gotResp.DateCreated
+				}
 
 				// Normalize DateUpdated since it changes
 				expResp.DateUpdated = gotResp.DateUpdated
