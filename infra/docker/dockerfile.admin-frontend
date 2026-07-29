@@ -1,0 +1,56 @@
+# Build the standalone Restaurant Studio application.
+FROM node:20-alpine AS build_admin_frontend
+ARG BUILD_REF
+ARG VITE_SALES_API_URL
+ARG VITE_AUTH_API_URL
+ARG VITE_AUTH_KID
+
+RUN apk update && apk upgrade --no-cache
+
+WORKDIR /app
+
+COPY api/frontends/food-flow-admin-hub/package*.json ./
+RUN npm ci --legacy-peer-deps
+
+COPY api/frontends/food-flow-admin-hub/ ./
+
+ENV VITE_SALES_API_URL=${VITE_SALES_API_URL}
+ENV VITE_AUTH_API_URL=${VITE_AUTH_API_URL}
+ENV VITE_AUTH_KID=${VITE_AUTH_KID}
+
+RUN npm run build
+
+
+FROM nginx:alpine
+ARG BUILD_DATE
+ARG BUILD_REF
+
+ENV SALES_API_URL=http://sales-service:3000 \
+    AUTH_API_URL=http://auth-service:6000 \
+    NGINX_ENVSUBST_FILTER="^(SALES_API_URL|AUTH_API_URL)$"
+
+RUN rm -rf /usr/share/nginx/html/*
+
+COPY --from=build_admin_frontend /app/dist /usr/share/nginx/html
+COPY infra/docker/nginx.admin.conf /etc/nginx/templates/default.conf.template
+
+RUN addgroup -g 1001 -S admin && \
+    adduser -u 1001 -h /app -G admin -S admin && \
+    chown -R admin:admin /usr/share/nginx/html && \
+    chown -R admin:admin /var/cache/nginx && \
+    chown -R admin:admin /var/log/nginx && \
+    chown -R admin:admin /etc/nginx/conf.d && \
+    touch /var/run/nginx.pid && \
+    chown -R admin:admin /var/run/nginx.pid
+
+USER admin
+
+EXPOSE 8080
+
+CMD ["nginx", "-g", "daemon off;"]
+
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.title="food-flow-admin-hub" \
+      org.opencontainers.image.source="https://github.com/warlck/food-flow/tree/master" \
+      org.opencontainers.image.revision="${BUILD_REF}" \
+      org.opencontainers.image.vendor="FoodFlow"

@@ -206,6 +206,57 @@ frontend:
         targetPort: http
         nodePort: 30080
 
+adminFrontend:
+  enabled: true
+  replicas: 1
+  hostNetwork: false
+  terminationGracePeriodSeconds: 30
+  image:
+    repository: localhost/food-flow/admin-frontend
+    tag: 0.0.5
+    pullPolicy: IfNotPresent
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  ports:
+    - name: http
+      containerPort: 8080
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 3
+    successThreshold: 1
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    successThreshold: 1
+    failureThreshold: 3
+  service:
+    name: admin-frontend-service
+    type: NodePort
+    ports:
+      - name: http
+        port: 8080
+        targetPort: http
+        nodePort: 30081
+
 observability:
   prometheus:
     enabled: false

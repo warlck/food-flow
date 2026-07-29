@@ -6,6 +6,9 @@
 apis/programs/frontends/
 infra/docker/
 !infra/docker/nginx.conf
+!infra/docker/nginx.admin.conf
+**/node_modules/
+**/dist/
 infra/k8s/
 CONTRIBUTORS
 LICENSE

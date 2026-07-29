@@ -27,6 +27,9 @@ nodes:
   # Frontend
   - containerPort: 30080
     hostPort: 8080
+  # Admin frontend
+  - containerPort: 30081
+    hostPort: 8081
   # Grafana
   - containerPort: 30000
     hostPort: 3100

@@ -19,6 +19,7 @@ BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 AUTH_IMAGE="${REGISTRY}/auth:${VERSION}"
 SALES_IMAGE="${REGISTRY}/sales:${VERSION}"
 STOREFRONT_IMAGE="${REGISTRY}/storefront:${VERSION}"
+ADMIN_FRONTEND_IMAGE="${REGISTRY}/admin-frontend:${VERSION}"
 
 for command_name in docker gcloud git curl; do
     if ! command -v "${command_name}" >/dev/null 2>&1; then
@@ -160,12 +161,44 @@ gcloud run deploy staging-storefront \
     --cpu-throttling \
     --quiet
 
+echo "=> Building Admin Frontend Service..."
+docker buildx build \
+    --platform "${IMAGE_PLATFORM}" \
+    -f infra/docker/dockerfile.admin-frontend \
+    -t "${ADMIN_FRONTEND_IMAGE}" \
+    --build-arg "BUILD_REF=${VERSION}" \
+    --build-arg "BUILD_DATE=${BUILD_DATE}" \
+    --build-arg VITE_SALES_API_URL="" \
+    --build-arg VITE_AUTH_API_URL="" \
+    --push \
+    .
+
+echo "=> Deploying Admin Frontend Service..."
+gcloud run deploy staging-admin \
+    --project "${PROJECT_ID}" \
+    --image "${ADMIN_FRONTEND_IMAGE}" \
+    --region "${REGION}" \
+    --port 8080 \
+    --ingress all \
+    --network "${NETWORK}" \
+    --subnet "${SUBNET}" \
+    --vpc-egress private-ranges-only \
+    --service-account "${WORKLOAD_SERVICE_ACCOUNT}" \
+    --update-env-vars "SALES_API_URL=${SALES_URL},AUTH_API_URL=${AUTH_URL}" \
+    --min-instances 0 \
+    --max-instances 1 \
+    --cpu-throttling \
+    --quiet
+
 STOREFRONT_URL=$(gcloud run services describe staging-storefront --project "${PROJECT_ID}" --region "${REGION}" --format 'value(status.url)')
+ADMIN_FRONTEND_URL=$(gcloud run services describe staging-admin --project "${PROJECT_ID}" --region "${REGION}" --format 'value(status.url)')
 
 echo "=> Verifying Storefront and private API proxies..."
 curl --fail --show-error --silent --retry 6 --retry-all-errors --retry-delay 5 "${STOREFRONT_URL}/health"
 curl --fail --show-error --silent --retry 6 --retry-all-errors --retry-delay 5 "${STOREFRONT_URL}/api/auth/v1/readiness"
 curl --fail --show-error --silent --retry 6 --retry-all-errors --retry-delay 5 "${STOREFRONT_URL}/api/sales/v1/readiness"
+curl --fail --show-error --silent --retry 6 --retry-all-errors --retry-delay 5 "${ADMIN_FRONTEND_URL}/health"
 
 echo "=> Deployment Complete!"
 echo "Storefront is live at: ${STOREFRONT_URL}"
+echo "Restaurant Studio is live at: ${ADMIN_FRONTEND_URL}"

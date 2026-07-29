@@ -10,6 +10,8 @@ make dev-up
 make build dev-load dev-apply
 ```
 
+The customer storefront is served at `http://localhost:8080`. The independently deployed Restaurant Studio admin app is served at `http://localhost:8081` and can be built on its own with `make admin-frontend`.
+
 The chart defaults in `infra/helm/food-flow/values.yaml` use normal pod networking, password-authenticated Postgres, and no bundled observability services. The local-only Kind overrides are in `infra/helm/food-flow/values-kind.yaml`; the Kind cluster configuration remains in `infra/k8s/dev/kind-config.yaml`.
 
 Set `POSTGRES_PASSWORD` before running `make dev-apply`; the Make target stores it in a Kubernetes Secret rather than in the chart values.

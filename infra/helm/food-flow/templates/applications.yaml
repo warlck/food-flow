@@ -1,6 +1,7 @@
 {{- $namespace := .Values.namespace.name }}
-{{- range $name, $app := dict "sales" .Values.sales "auth" .Values.auth "frontend" .Values.frontend }}
+{{- range $name, $app := dict "sales" .Values.sales "auth" .Values.auth "frontend" .Values.frontend "admin-frontend" .Values.adminFrontend }}
 {{- if $app.enabled }}
+{{- $isFrontend := or (eq $name "frontend") (eq $name "admin-frontend") }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -53,7 +54,7 @@ spec:
           readinessProbe:
             {{- toYaml $app.readinessProbe | nindent 12 }}
           env:
-            {{- if ne $name "frontend" }}
+            {{- if not $isFrontend }}
             - name: GOMAXPROCS
               valueFrom:
                 resourceFieldRef:
@@ -74,7 +75,7 @@ spec:
               value: {{ printf "http://%s:6000" (include "food-flow.serviceName" (dict "root" $ "name" "auth" "overrideName" $.Values.auth.service.name)) | quote }}
             {{- end }}
             {{- include "food-flow.kubernetesEnv" $ | nindent 12 }}
-            {{- if ne $name "frontend" }}
+            {{- if not $isFrontend }}
             {{- include "food-flow.databaseEnv" (dict "root" $ "name" $name) | nindent 12 }}
             {{- end }}
             {{- if eq $name "sales" }}

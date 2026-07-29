@@ -10,13 +10,13 @@ SHELL = $(if $(wildcard $(SHELL_PATH)),/bin/ash,/bin/bash)
 # ==============================================================================
 
 .PHONY: \
-	build sales auth frontend gcp-staging-deploy \
+	build sales auth frontend admin-frontend gcp-staging-deploy \
 	run help version \
 	curl-live curl-ready curl-test-error load-test curl-auth curl-create-user \
 	admin-genkey pgcli \
 	debug-statsviz metrics \
 	dev-up dev-down dev-load-db dev-load dev-apply dev-restart dev-run dev-update dev-update-apply dev-stripe-secrets \
-	dev-logs dev-logs-auth dev-logs-frontend dev-describe-deployment dev-describe-sales dev-describe-auth dev-describe-frontend dev-logs-db
+	dev-logs dev-logs-auth dev-logs-frontend dev-logs-admin-frontend dev-describe-deployment dev-describe-sales dev-describe-auth dev-describe-frontend dev-describe-admin-frontend dev-logs-db
 
 # Define dependencies
 
@@ -40,6 +40,7 @@ SALES_IMAGE     := $(BASE_IMAGE_NAME)/$(SALES_APP):$(VERSION)
 METRICS_IMAGE   := $(BASE_IMAGE_NAME)/metrics:$(VERSION)
 AUTH_IMAGE      := $(BASE_IMAGE_NAME)/$(AUTH_APP):$(VERSION)
 FRONTEND_IMAGE  := $(BASE_IMAGE_NAME)/frontend:$(VERSION)
+ADMIN_FRONTEND_IMAGE := $(BASE_IMAGE_NAME)/admin-frontend:$(VERSION)
 HELM_CHART      := infra/helm/food-flow
 HELM_RELEASE    := food-flow
 HELM_DEV_VALUES := $(HELM_CHART)/values-kind.yaml
@@ -50,7 +51,7 @@ STRIPE_SECRET   := $(HELM_RELEASE)-stripe-secrets
 # ==============================================================================
 # Building containers
 
-build: sales auth frontend
+build: sales auth frontend admin-frontend
 
 sales:
 	docker build \
@@ -76,6 +77,16 @@ frontend:
 		--build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
 		--build-arg VITE_API_URL="" \
 		--build-arg VITE_STRIPE_PUBLISHABLE_KEY="$(VITE_STRIPE_PUBLISHABLE_KEY)" \
+		.
+
+admin-frontend:
+	docker build \
+		-f infra/docker/dockerfile.admin-frontend \
+		-t $(ADMIN_FRONTEND_IMAGE) \
+		--build-arg BUILD_REF=$(VERSION) \
+		--build-arg BUILD_DATE="$$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+		--build-arg VITE_SALES_API_URL="" \
+		--build-arg VITE_AUTH_API_URL="" \
 		.
 
 gcp-staging-deploy:
@@ -166,6 +177,7 @@ dev-load:
 	kind load docker-image $(SALES_IMAGE) --name $(KIND_CLUSTER)
 	kind load docker-image $(AUTH_IMAGE) --name $(KIND_CLUSTER)
 	kind load docker-image $(FRONTEND_IMAGE) --name $(KIND_CLUSTER)
+	kind load docker-image $(ADMIN_FRONTEND_IMAGE) --name $(KIND_CLUSTER)
 
 
 dev-stripe-secrets:
@@ -199,16 +211,19 @@ dev-apply:
 	kubectl rollout restart deployment $(HELM_RELEASE)-$(SALES_APP) --namespace=$(NAMESPACE)
 	kubectl rollout restart deployment $(HELM_RELEASE)-$(AUTH_APP) --namespace=$(NAMESPACE)
 	kubectl rollout restart deployment $(HELM_RELEASE)-frontend --namespace=$(NAMESPACE)
+	kubectl rollout restart deployment $(HELM_RELEASE)-admin-frontend --namespace=$(NAMESPACE)
 	
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/$(HELM_RELEASE)-$(SALES_APP)
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/$(HELM_RELEASE)-$(AUTH_APP)
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/$(HELM_RELEASE)-frontend
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/$(HELM_RELEASE)-admin-frontend
 
 
 dev-restart:
 	kubectl rollout restart deployment $(HELM_RELEASE)-$(SALES_APP) --namespace=$(NAMESPACE)
 	kubectl rollout restart deployment $(HELM_RELEASE)-$(AUTH_APP) --namespace=$(NAMESPACE)
 	kubectl rollout restart deployment $(HELM_RELEASE)-frontend --namespace=$(NAMESPACE)
+	kubectl rollout restart deployment $(HELM_RELEASE)-admin-frontend --namespace=$(NAMESPACE)
  
 dev-run: build dev-up dev-load dev-apply
 
@@ -227,6 +242,9 @@ dev-logs-auth:
 dev-logs-frontend:
 	kubectl logs --namespace=$(NAMESPACE) -l app=frontend --all-containers=true -f --tail=100
 
+dev-logs-admin-frontend:
+	kubectl logs --namespace=$(NAMESPACE) -l app=admin-frontend --all-containers=true -f --tail=100
+
 dev-describe-deployment:
 	kubectl describe deployment --namespace=$(NAMESPACE) $(HELM_RELEASE)-$(SALES_APP)
 
@@ -238,6 +256,9 @@ dev-describe-auth:
 
 dev-describe-frontend:
 	kubectl describe pod --namespace=$(NAMESPACE) -l app=frontend
+
+dev-describe-admin-frontend:
+	kubectl describe pod --namespace=$(NAMESPACE) -l app=admin-frontend
 
 dev-logs-db:
 	kubectl logs --namespace=$(NAMESPACE) -l app=database --all-containers=true -f --tail=100
