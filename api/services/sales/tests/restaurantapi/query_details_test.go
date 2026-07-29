@@ -163,22 +163,3 @@ func queryByIDWithDetails400(sd apitest.SeedData) []apitest.Table {
 
 	return table
 }
-
-func queryByIDWithDetails401(sd apitest.SeedData) []apitest.Table {
-	table := []apitest.Table{
-		{
-			Name:       "missing-token",
-			URL:        fmt.Sprintf("/v1/restaurants/%s/details", sd.Restaurants[0].ID),
-			Token:      "",
-			StatusCode: http.StatusUnauthorized,
-			Method:     http.MethodGet,
-			GotResp:    &restaurantapi.RestaurantWithMenuCategories{},
-			ExpResp:    &restaurantapi.RestaurantWithMenuCategories{},
-			CmpFunc: func(got any, exp any) string {
-				return "" // We just check status code for auth errors
-			},
-		},
-	}
-
-	return table
-}

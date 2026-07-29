@@ -2,14 +2,12 @@ package checkapi
 
 import (
 	"context"
-	"math/rand"
 	"net/http"
 	"os"
 	"runtime"
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/business/sdk/sqldb"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/web"
@@ -72,18 +70,4 @@ func (a *api) readiness(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	return web.Respond(ctx, w, data, statusCode)
-}
-
-func (a *api) testError(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	if n := rand.Intn(100); n%2 == 0 {
-		return errs.Newf(errs.FailedPrecondition, "this is a trusted error")
-	}
-
-	status := struct {
-		Status string
-	}{
-		Status: "OK",
-	}
-
-	return web.Respond(ctx, w, status, http.StatusOK)
 }

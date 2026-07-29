@@ -2,9 +2,7 @@ package mid
 
 import (
 	"context"
-	"encoding/base64"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -94,23 +92,4 @@ func Basic(ath *auth.Auth) web.MidHandler {
 	}
 
 	return m
-}
-
-func parseBasicAuth(auth string) (string, string, bool) {
-	parts := strings.Split(auth, " ")
-	if len(parts) != 2 || parts[0] != "Basic" {
-		return "", "", false
-	}
-
-	c, err := base64.StdEncoding.DecodeString(parts[1])
-	if err != nil {
-		return "", "", false
-	}
-
-	username, password, ok := strings.Cut(string(c), ":")
-	if !ok {
-		return "", "", false
-	}
-
-	return username, password, true
 }
