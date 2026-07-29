@@ -14,8 +14,6 @@ import CartDesktop from "./pages/CartDesktop";
 import CheckoutMobile from "./pages/CheckoutMobile";
 import CheckoutDesktop from "./pages/CheckoutDesktop";
 import OrderConfirmation from "./pages/OrderConfirmation";
-import Admin from "./pages/Admin";
-import { Navigate } from "react-router-dom";
 
 const queryClient = new QueryClient();
 
@@ -27,8 +25,6 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Navigate to="/admin" replace />} />
-            <Route path="/admin" element={<Admin />} />
             <Route path="/restaurant/:restaurantId" element={<Restaurant />} />
             <Route path="/mobile-restaurant/:restaurantId" element={<MobileRestaurant />} />
             <Route path="/cart" element={<CartDesktop />} />

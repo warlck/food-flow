@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const SALES_API_BASE_URL = import.meta.env.VITE_SALES_API_URL || '';
+const AUTH_API_BASE_URL = import.meta.env.VITE_AUTH_API_URL || '';
 const AUTH_KID = import.meta.env.VITE_AUTH_KID || '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1';
 const TOKEN_STORAGE_KEY = 'foodflow.admin-token';
 
@@ -93,7 +94,7 @@ class AdminApi {
 
     // The current auth service exposes a development token endpoint keyed by its
     // public KID. This keeps local admin development aligned with the Go service.
-    const response = await fetch(`${API_BASE_URL}/v1/auth/token/${AUTH_KID}`, {
+    const response = await fetch(`${AUTH_API_BASE_URL}/v1/auth/token/${AUTH_KID}`, {
       headers: { Authorization: `Basic ${window.btoa('foodflow-admin:local')}` },
     });
     if (!response.ok) throw new Error('Admin authentication is unavailable. Start the auth service and try again.');
@@ -109,7 +110,7 @@ class AdminApi {
     headers.set('Content-Type', 'application/json');
     if (authenticated) headers.set('Authorization', `Bearer ${await this.getToken()}`);
 
-    const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+    const response = await fetch(`${SALES_API_BASE_URL}${path}`, { ...init, headers });
     if (response.status === 401 && authenticated) {
       this.token = null;
       window.localStorage.removeItem(TOKEN_STORAGE_KEY);
