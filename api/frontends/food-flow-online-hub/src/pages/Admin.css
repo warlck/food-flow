@@ -54,8 +54,8 @@
 
 .admin-input { border-color: #d7e0d8; background: #fbfcfa; }
 .admin-input:focus { border-color: #4e8a6c; box-shadow: 0 0 0 3px rgba(45,121,89,.10); }
-.admin-primary { background: var(--admin-green); color: white; box-shadow: 0 6px 16px rgba(24,94,65,.17); }
-.admin-primary:hover { background: var(--admin-green-dark); }
+.admin-primary { background: var(--admin-green) !important; color: white; box-shadow: 0 6px 16px rgba(24,94,65,.17); }
+.admin-primary:hover { background: var(--admin-green-dark) !important; }
 
 .admin-empty-pattern {
   background-color: #f6f9f5;
@@ -71,8 +71,7 @@
 }
 
 @media (max-width: 767px) {
-  .admin-sidebar { position: static; width: 100%; height: 68px; flex-direction: row; align-items: center; padding: 0 16px; }
-  .admin-sidebar nav { display: none; }
+  .admin-sidebar { display: none; }
   .admin-main { margin-left: 0; }
   .admin-content { padding: 20px 16px 40px; }
   .admin-topbar { position: sticky; top: 0; z-index: 20; }
