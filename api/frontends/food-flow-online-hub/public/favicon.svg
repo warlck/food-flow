@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF6B35" />
+      <stop offset="50%" stop-color="#F7C59F" />
+      <stop offset="100%" stop-color="#00A896" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#bg-grad)" />
+  <g fill="#FFFFFF" transform="translate(106, 80) scale(0.6)">
+    <!-- Fork & Flame Motif -->
+    <path d="M 230 40 C 230 40 280 120 280 180 C 280 230 240 260 200 260 C 180 260 160 250 150 235 C 150 235 200 220 200 180 C 200 150 170 120 170 120 C 170 120 160 160 130 180 C 100 200 60 180 60 130 C 60 80 120 30 180 10 C 200 3 230 40 230 40 Z" />
+    <path d="M 120 220 L 120 420 C 120 435 105 450 90 450 C 75 450 60 435 60 420 L 60 220 Z" opacity="0.9" />
+    <!-- Tines -->
+    <path d="M 50 120 L 50 200 C 50 230 130 230 130 200 L 130 120 C 130 110 120 110 120 120 L 120 180 L 100 180 L 100 120 C 100 110 90 110 90 120 L 90 180 L 70 180 L 70 120 C 70 110 60 110 50 120 Z" />
+  </g>
+</svg>
