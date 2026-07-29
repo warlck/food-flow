@@ -18,6 +18,13 @@ import (
 	"github.com/warlck/food-flow/business/types/money"
 )
 
+var equateTime = cmp.Comparer(func(x, y time.Time) bool {
+	if x.IsZero() || y.IsZero() {
+		return x.IsZero() == y.IsZero()
+	}
+	return x.Truncate(time.Microsecond).Equal(y.Truncate(time.Microsecond))
+})
+
 func Test_Order(t *testing.T) {
 	t.Parallel()
 
@@ -147,35 +154,20 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				expResp := exp.([]orderbus.Order)
 
 				for i := range gotResp {
-					// Normalize timestamps
-					if gotResp[i].DateCreated.Format(time.RFC3339) == expResp[i].DateCreated.Format(time.RFC3339) {
-						expResp[i].DateCreated = gotResp[i].DateCreated
-					}
-
-					if gotResp[i].DateUpdated.Format(time.RFC3339) == expResp[i].DateUpdated.Format(time.RFC3339) {
-						expResp[i].DateUpdated = gotResp[i].DateUpdated
-					}
-
-					// Normalize item timestamps and OrderIDs
+					// Normalize item OrderIDs from database
 					for j := range gotResp[i].Items {
 						if j < len(expResp[i].Items) {
-							// Normalize OrderID and DateCreated from database
 							expResp[i].Items[j].OrderID = gotResp[i].Items[j].OrderID
-							expResp[i].Items[j].DateCreated = gotResp[i].Items[j].DateCreated
 						}
 					}
 
-					// Normalize address timestamps and OrderID if present
+					// Normalize address OrderID if present
 					if gotResp[i].DeliveryAddress != nil && expResp[i].DeliveryAddress != nil {
-						if gotResp[i].DeliveryAddress.DateCreated.Format(time.RFC3339) == expResp[i].DeliveryAddress.DateCreated.Format(time.RFC3339) {
-							expResp[i].DeliveryAddress.DateCreated = gotResp[i].DeliveryAddress.DateCreated
-						}
-						// Normalize OrderID from database
 						expResp[i].DeliveryAddress.OrderID = gotResp[i].DeliveryAddress.OrderID
 					}
 				}
 
-				return cmp.Diff(gotResp, expResp)
+				return cmp.Diff(gotResp, expResp, equateTime)
 			},
 		},
 		{
@@ -197,41 +189,24 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 
 				expResp := exp.(orderbus.Order)
 
-				// Normalize timestamps
-				if gotResp.DateCreated.Format(time.RFC3339) == expResp.DateCreated.Format(time.RFC3339) {
-					expResp.DateCreated = gotResp.DateCreated
-				}
-
-				if gotResp.DateUpdated.Format(time.RFC3339) == expResp.DateUpdated.Format(time.RFC3339) {
-					expResp.DateUpdated = gotResp.DateUpdated
-				}
-
 				// Normalize monetary values from database (rounded to 2 decimals)
 				expResp.Subtotal = gotResp.Subtotal
 				expResp.Tax = gotResp.Tax
 				expResp.Total = gotResp.Total
 
-				// Normalize item timestamps and OrderIDs
+				// Normalize item OrderIDs from database
 				for i := range gotResp.Items {
 					if i < len(expResp.Items) {
-						if gotResp.Items[i].DateCreated.Format(time.RFC3339) == expResp.Items[i].DateCreated.Format(time.RFC3339) {
-							expResp.Items[i].DateCreated = gotResp.Items[i].DateCreated
-						}
-						// Normalize OrderID from database
 						expResp.Items[i].OrderID = gotResp.Items[i].OrderID
 					}
 				}
 
-				// Normalize address timestamps and OrderID if present
+				// Normalize address OrderID if present
 				if gotResp.DeliveryAddress != nil && expResp.DeliveryAddress != nil {
-					if gotResp.DeliveryAddress.DateCreated.Format(time.RFC3339) == expResp.DeliveryAddress.DateCreated.Format(time.RFC3339) {
-						expResp.DeliveryAddress.DateCreated = gotResp.DeliveryAddress.DateCreated
-					}
-					// Normalize OrderID from database
 					expResp.DeliveryAddress.OrderID = gotResp.DeliveryAddress.OrderID
 				}
 
-				return cmp.Diff(gotResp, expResp)
+				return cmp.Diff(gotResp, expResp, equateTime)
 			},
 		},
 	}
@@ -418,11 +393,6 @@ func updateStatus(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.T
 
 				expResp := exp.(orderbus.Order)
 
-				// Normalize DateCreated if timestamps match RFC3339
-				if gotResp.DateCreated.Format(time.RFC3339) == expResp.DateCreated.Format(time.RFC3339) {
-					expResp.DateCreated = gotResp.DateCreated
-				}
-
 				// Normalize DateUpdated since it changes
 				expResp.DateUpdated = gotResp.DateUpdated
 
@@ -443,7 +413,7 @@ func updateStatus(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.T
 					expResp.DeliveryAddress.OrderID = gotResp.DeliveryAddress.OrderID
 				}
 
-				return cmp.Diff(gotResp, expResp)
+				return cmp.Diff(gotResp, expResp, equateTime)
 			},
 		},
 	}
@@ -495,11 +465,6 @@ func cancel(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 
 				expResp := exp.(orderbus.Order)
 
-				// Normalize DateCreated if timestamps match RFC3339
-				if gotResp.DateCreated.Format(time.RFC3339) == expResp.DateCreated.Format(time.RFC3339) {
-					expResp.DateCreated = gotResp.DateCreated
-				}
-
 				// Normalize DateUpdated since it changes
 				expResp.DateUpdated = gotResp.DateUpdated
 
@@ -508,11 +473,10 @@ func cancel(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				expResp.Tax = gotResp.Tax
 				expResp.Total = gotResp.Total
 
-				// Normalize item OrderIDs and DateCreated from database
+				// Normalize item OrderIDs from database
 				for i := range gotResp.Items {
 					if i < len(expResp.Items) {
 						expResp.Items[i].OrderID = gotResp.Items[i].OrderID
-						expResp.Items[i].DateCreated = gotResp.Items[i].DateCreated
 					}
 				}
 
@@ -521,7 +485,7 @@ func cancel(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 					expResp.DeliveryAddress.OrderID = gotResp.DeliveryAddress.OrderID
 				}
 
-				return cmp.Diff(gotResp, expResp)
+				return cmp.Diff(gotResp, expResp, equateTime)
 			},
 		},
 	}
