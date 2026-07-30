@@ -3,7 +3,7 @@ import {
   BarChart3, Bell, BookOpen, Boxes, Building2, Check, ChevronDown, ChevronRight,
   ChefHat, CircleAlert, Clock3, Grid2X2, HelpCircle, ImageOff, LayoutDashboard, List,
   Loader2, MapPin, Menu, MoreHorizontal, PackageCheck, Pencil, Plus, ReceiptText,
-  RefreshCw, Search, Settings, ShoppingBag, Sparkles, Store, Trash2, UtensilsCrossed,
+  Puzzle, RefreshCw, Search, Settings, ShoppingBag, Sparkles, Store, Trash2, UtensilsCrossed,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -15,8 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  AdminCategory, AdminMenuItem, AdminRestaurant, AdminWorkspace, CategoryInput,
-  MenuItemInput, RestaurantInput, adminApi,
+  AddonInput, AdminAddon, AdminCategory, AdminMenuItem, AdminRestaurant, AdminWorkspace,
+  CategoryInput, MenuItemInput, RestaurantInput, adminApi,
 } from '@/lib/admin-api';
 import './Admin.css';
 
@@ -24,6 +24,7 @@ type EditorState =
   | { kind: 'restaurant'; value?: AdminRestaurant }
   | { kind: 'category'; value?: AdminCategory }
   | { kind: 'item'; value?: AdminMenuItem }
+  | { kind: 'addon'; value?: AdminAddon; categoryId?: string }
   | null;
 
 const NAME_PATTERN = /^[\p{L}\p{N}' -]{3,100}$/u;
@@ -59,8 +60,15 @@ const demoItems: AdminMenuItem[] = [
   { id: 'item-6', name: 'Pistachio morning bun', description: 'Laminated pastry with pistachio praline and citrus sugar.', price: 8, categoryId: 'cat-bakes', restaurantId: demoRestaurant.id, imageUrl: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=900&q=80', available: false },
 ];
 
+const demoAddons: AdminAddon[] = [
+  { id: 'addon-1', name: 'Extra avocado', description: 'Fresh sliced avocado', price: 4, maxQuantity: 2, categoryId: 'cat-breakfast', restaurantId: demoRestaurant.id, available: true },
+  { id: 'addon-2', name: 'Smoked salmon', description: 'House cured salmon', price: 6, maxQuantity: 2, categoryId: 'cat-breakfast', restaurantId: demoRestaurant.id, available: true },
+  { id: 'addon-3', name: 'Soft egg', description: 'Jammy free range egg', price: 3, maxQuantity: 3, categoryId: 'cat-bowls', restaurantId: demoRestaurant.id, available: true },
+  { id: 'addon-4', name: 'Extra greens', description: 'Seasonal dressed leaves', price: 2.5, maxQuantity: 2, categoryId: 'cat-bowls', restaurantId: demoRestaurant.id, available: false },
+];
+
 function demoWorkspace(): AdminWorkspace {
-  return { restaurant: demoRestaurant, categories: demoCategories, menuItems: demoItems };
+  return { restaurant: demoRestaurant, categories: demoCategories, menuItems: demoItems, addons: demoAddons };
 }
 
 function formatCurrency(value: number) {
@@ -94,6 +102,7 @@ export default function Admin() {
   const [isDemo, setIsDemo] = useState(false);
   const [editor, setEditor] = useState<EditorState>(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [addonCategory, setAddonCategory] = useState('');
   const [availability, setAvailability] = useState('all');
   const [query, setQuery] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
@@ -104,11 +113,13 @@ export default function Admin() {
     try {
       const data = await adminApi.getWorkspace(restaurantId);
       setWorkspace(data);
+      setAddonCategory((current) => data.categories.some((category) => category.id === current) ? current : data.categories[0]?.id ?? '');
       setIsDemo(false);
     } catch (error) {
       if (!workspace) {
         const preview = demoWorkspace();
         setWorkspace(preview);
+        setAddonCategory(preview.categories[0]?.id ?? '');
         setRestaurants([preview.restaurant]);
         setSelectedId(preview.restaurant.id);
         setIsDemo(true);
@@ -140,6 +151,7 @@ export default function Admin() {
         setRestaurants([preview.restaurant]);
         setSelectedId(preview.restaurant.id);
         setWorkspace(preview);
+        setAddonCategory(preview.categories[0]?.id ?? '');
         setIsDemo(true);
         setLoading(false);
       }
@@ -199,6 +211,7 @@ export default function Admin() {
     setSelectedCategory('all');
     if (id === demoRestaurant.id) {
       setWorkspace(demoWorkspace());
+      setAddonCategory(demoCategories[0]?.id ?? '');
       setIsDemo(true);
     } else {
       await loadWorkspace(id);
@@ -212,6 +225,27 @@ export default function Admin() {
       return toast.success('Menu item deleted');
     }
     await mutateWorkspace(() => adminApi.deleteMenuItem(item.id), 'Menu item deleted');
+  };
+
+  const toggleAddonAvailability = async (addon: AdminAddon, available: boolean) => {
+    setWorkspace((current) => current ? { ...current, addons: current.addons.map((entry) => entry.id === addon.id ? { ...entry, available } : entry) } : current);
+    if (isDemo) return toast.success(available ? 'Add-on is now available' : 'Add-on marked unavailable');
+    try {
+      await adminApi.updateAddon(addon.id, { available });
+      toast.success(available ? 'Add-on is now available' : 'Add-on marked unavailable');
+    } catch (error) {
+      setWorkspace((current) => current ? { ...current, addons: current.addons.map((entry) => entry.id === addon.id ? { ...entry, available: addon.available } : entry) } : current);
+      toast.error(error instanceof Error ? error.message : 'Add-on availability could not be changed');
+    }
+  };
+
+  const deleteAddon = async (addon: AdminAddon) => {
+    if (!window.confirm(`Delete ${addon.name}? This removes it from every item in this category.`)) return;
+    if (isDemo) {
+      setWorkspace((current) => current ? { ...current, addons: current.addons.filter((entry) => entry.id !== addon.id) } : current);
+      return toast.success('Add-on deleted');
+    }
+    await mutateWorkspace(() => adminApi.deleteAddon(addon.id), 'Add-on deleted');
   };
 
   const selectedCategoryName = selectedCategory === 'all' ? 'All menu items' : workspace?.categories.find((category) => category.id === selectedCategory)?.name ?? 'Menu items';
@@ -312,13 +346,24 @@ export default function Admin() {
           ) : (
             <>
               <section className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
-                <Stat icon={Boxes} label="Categories" value={workspace.categories.length} note="Menu sections" />
+                <Stat icon={Boxes} label="Categories" value={workspace.categories.length} note={`${workspace.addons.length} add-ons configured`} />
                 <Stat icon={ShoppingBag} label="Menu items" value={workspace.menuItems.length} note={`${formatCurrency(workspace.menuItems.reduce((sum, item) => sum + item.price, 0) / Math.max(workspace.menuItems.length, 1))} avg. price`} />
                 <Stat icon={PackageCheck} label="Available now" value={`${availabilityPercent}%`} note={`${availableItems} items can be ordered`} progress={availabilityPercent} />
                 <Stat icon={CircleAlert} label="Needs attention" value={unavailableItems} note={unavailableItems ? 'Unavailable items' : 'Everything looks good'} attention={unavailableItems > 0} />
               </section>
 
               <SetupGuide restaurant={workspace.restaurant} categoryCount={workspace.categories.length} itemCount={workspace.menuItems.length} />
+
+              <AddonManager
+                categories={workspace.categories}
+                addons={workspace.addons}
+                selectedCategory={addonCategory}
+                onCategoryChange={setAddonCategory}
+                onCreate={() => setEditor({ kind: 'addon', categoryId: addonCategory || workspace.categories[0]?.id })}
+                onEdit={(addon) => setEditor({ kind: 'addon', value: addon })}
+                onDelete={deleteAddon}
+                onAvailability={toggleAddonAvailability}
+              />
 
               <section className="admin-panel mt-6 overflow-hidden rounded-2xl">
                 <div className="flex flex-col border-b border-[#E5E7EB] lg:flex-row">
@@ -394,7 +439,7 @@ export default function Admin() {
             if (isDemo) {
               const created = { ...demoRestaurant, ...restaurantInput, id: existingId ?? `demo-${Date.now()}` };
               setRestaurants((current) => existingId ? current.map((entry) => entry.id === existingId ? created : entry) : [...current, created]);
-              setWorkspace((current) => existingId && current ? { ...current, restaurant: created } : { restaurant: created, categories: [], menuItems: [] });
+              setWorkspace((current) => existingId && current ? { ...current, restaurant: created } : { restaurant: created, categories: [], menuItems: [], addons: [] });
               setSelectedId(created.id); setEditor(null); toast.success(existingId ? 'Restaurant updated' : 'Restaurant created'); return;
             }
             if (existingId) await mutateWorkspace(() => adminApi.updateRestaurant(existingId, restaurantInput), 'Restaurant updated');
@@ -423,6 +468,17 @@ export default function Admin() {
               setEditor(null); toast.success(existingId ? 'Menu item updated' : 'Menu item created'); return;
             }
             await mutateWorkspace(() => existingId ? adminApi.updateMenuItem(existingId, itemInput) : adminApi.createMenuItem(itemInput), existingId ? 'Menu item updated' : 'Menu item created');
+          }
+          if (kind === 'addon' && workspace) {
+            const addonInput = input as AddonInput;
+            validateName(addonInput.name);
+            if (isDemo) {
+              setWorkspace((current) => current ? { ...current, addons: existingId ? current.addons.map((entry) => entry.id === existingId ? { ...entry, ...addonInput } : entry) : [...current.addons, { ...addonInput, id: `demo-addon-${Date.now()}`, available: true }] } : current);
+              setAddonCategory(addonInput.categoryId);
+              setEditor(null); toast.success(existingId ? 'Add-on updated' : 'Add-on created'); return;
+            }
+            await mutateWorkspace(() => existingId ? adminApi.updateAddon(existingId, { name: addonInput.name, description: addonInput.description, price: addonInput.price, maxQuantity: addonInput.maxQuantity }) : adminApi.createAddon(addonInput), existingId ? 'Add-on updated' : 'Add-on created');
+            setAddonCategory(addonInput.categoryId);
           }
         }}
       />
@@ -466,6 +522,84 @@ function SetupGuide({ restaurant, categoryCount, itemCount }: { restaurant: Admi
           ))}
         </div>
       </div>
+    </section>
+  );
+}
+
+function AddonManager({ categories, addons, selectedCategory, onCategoryChange, onCreate, onEdit, onDelete, onAvailability }: {
+  categories: AdminCategory[];
+  addons: AdminAddon[];
+  selectedCategory: string;
+  onCategoryChange: (id: string) => void;
+  onCreate: () => void;
+  onEdit: (addon: AdminAddon) => void;
+  onDelete: (addon: AdminAddon) => void;
+  onAvailability: (addon: AdminAddon, value: boolean) => void;
+}) {
+  const category = categories.find((entry) => entry.id === selectedCategory) ?? categories[0];
+  const visibleAddons = category ? addons.filter((addon) => addon.categoryId === category.id) : [];
+
+  return (
+    <section className="admin-panel mt-6 overflow-hidden rounded-2xl">
+      <div className="flex flex-col gap-4 border-b border-[#E5E7EB] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]"><Puzzle size={19} /></div>
+          <div className="min-w-0">
+            <h2 className="text-[17px] font-bold tracking-[-.02em]">Category add-ons</h2>
+            <p className="mt-0.5 text-[11px] text-[#6B7280]">Options are shared by every menu item in the selected category.</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {categories.length > 0 && (
+            <Select value={category?.id ?? ''} onValueChange={onCategoryChange}>
+              <SelectTrigger className="admin-input h-9 min-w-[180px] flex-1 rounded-lg text-xs sm:flex-none"><SelectValue placeholder="Choose category" /></SelectTrigger>
+              <SelectContent>{categories.map((entry) => <SelectItem key={entry.id} value={entry.id}>{entry.name}</SelectItem>)}</SelectContent>
+            </Select>
+          )}
+          <Button className="admin-primary h-9 gap-2 rounded-lg px-3.5 text-xs" onClick={onCreate} disabled={!category}>
+            <Plus size={15} /> Add add-on
+          </Button>
+        </div>
+      </div>
+
+      {!category ? (
+        <div className="flex min-h-[150px] flex-col items-center justify-center px-5 py-8 text-center">
+          <Puzzle size={22} className="text-[#FF8C42]" />
+          <h3 className="mt-2 text-sm font-bold">Create a category first</h3>
+          <p className="mt-1 text-[11px] text-[#6B7280]">Add-ons belong to a menu category and will appear on all of its items.</p>
+        </div>
+      ) : visibleAddons.length ? (
+        <div className="grid gap-3 bg-[#FAFAFA] p-4 sm:grid-cols-2 xl:grid-cols-3">
+          {visibleAddons.map((addon) => (
+            <article key={addon.id} className="admin-addon-card rounded-xl border border-[#E5E7EB] bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="truncate text-[13px] font-bold text-[#333333]">{addon.name}</h3>
+                  <p className="mt-1 line-clamp-1 text-[10px] text-[#6B7280]">{addon.description || 'No description added yet.'}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <span className="text-[12px] font-bold text-[#FF4500]">+{formatCurrency(addon.price)}</span>
+                  <ItemMenu onEdit={() => onEdit(addon)} onDelete={() => onDelete(addon)} noun="add-on" />
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between border-t border-[#F3F4F6] pt-3">
+                <div>
+                  <div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${addon.available ? 'bg-[#4CAF50]' : 'bg-[#F44336]'}`} /><span className={`text-[10px] font-semibold ${addon.available ? 'text-[#2E7D32]' : 'text-[#C62828]'}`}>{addon.available ? 'Available' : 'Unavailable'}</span></div>
+                  <p className="mt-1 text-[9px] text-[#9CA3AF]">Up to {addon.maxQuantity} per item</p>
+                </div>
+                <Switch checked={addon.available} onCheckedChange={(value) => onAvailability(addon, value)} aria-label={`Toggle ${addon.name} availability`} />
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="flex min-h-[150px] flex-col items-center justify-center px-5 py-8 text-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]"><Puzzle size={18} /></div>
+          <h3 className="mt-2 text-sm font-bold">No add-ons for {category.name}</h3>
+          <p className="mt-1 text-[11px] text-[#6B7280]">Offer extras such as toppings, sides, sauces or size upgrades.</p>
+          <Button variant="outline" className="mt-3 h-8 gap-1.5 text-[11px] hover:border-[#FF8C42] hover:text-[#FF4500]" onClick={onCreate}><Plus size={13} /> Create first add-on</Button>
+        </div>
+      )}
     </section>
   );
 }
@@ -526,11 +660,11 @@ function MenuCard({ item, category, view, onEdit, onDelete, onAvailability }: { 
   );
 }
 
-function ItemMenu({ onEdit, onDelete, contrast }: { onEdit: () => void; onDelete: () => void; contrast?: boolean }) {
+function ItemMenu({ onEdit, onDelete, contrast, noun = 'item' }: { onEdit: () => void; onDelete: () => void; contrast?: boolean; noun?: string }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild><button className={`flex h-7 w-7 items-center justify-center rounded-lg ${contrast ? 'bg-white/90 text-[#374151] shadow-sm' : 'text-[#6B7280] hover:bg-[#F3F4F6]'}`} aria-label="Item actions"><MoreHorizontal size={16} /></button></DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-36"><DropdownMenuItem onClick={onEdit} className="gap-2 text-xs"><Pencil size={13} /> Edit item</DropdownMenuItem><DropdownMenuItem onClick={onDelete} className="gap-2 text-xs text-red-600"><Trash2 size={13} /> Delete</DropdownMenuItem></DropdownMenuContent>
+      <DropdownMenuTrigger asChild><button className={`flex h-7 w-7 items-center justify-center rounded-lg ${contrast ? 'bg-white/90 text-[#374151] shadow-sm' : 'text-[#6B7280] hover:bg-[#F3F4F6]'}`} aria-label={`${noun === 'item' ? 'Item' : 'Add-on'} actions`}><MoreHorizontal size={16} /></button></DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-36"><DropdownMenuItem onClick={onEdit} className="gap-2 text-xs"><Pencil size={13} /> Edit {noun}</DropdownMenuItem><DropdownMenuItem onClick={onDelete} className="gap-2 text-xs text-red-600"><Trash2 size={13} /> Delete</DropdownMenuItem></DropdownMenuContent>
     </DropdownMenu>
   );
 }
@@ -539,11 +673,12 @@ function EmptyRestaurant({ onCreate }: { onCreate: () => void }) {
   return <div className="admin-panel admin-empty-pattern flex min-h-[480px] flex-col items-center justify-center rounded-2xl px-5 text-center"><div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#FFF1EB] text-[#FF4500]"><Store size={28} /></div><h2 className="text-xl font-bold">Create your first restaurant</h2><p className="mt-2 max-w-md text-sm leading-relaxed text-[#6B7280]">Add the essentials, then build categories and menu items in a workspace designed to keep everything connected.</p><Button className="admin-primary mt-5 gap-2" onClick={onCreate}><Plus size={16} /> Create restaurant</Button></div>;
 }
 
-function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: EditorState; workspace: AdminWorkspace | null; isDemo: boolean; onClose: () => void; onSave: (kind: 'restaurant' | 'category' | 'item', input: RestaurantInput | CategoryInput | MenuItemInput, existingId?: string) => Promise<void> }) {
+function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: EditorState; workspace: AdminWorkspace | null; isDemo: boolean; onClose: () => void; onSave: (kind: 'restaurant' | 'category' | 'item' | 'addon', input: RestaurantInput | CategoryInput | MenuItemInput | AddonInput, existingId?: string) => Promise<void> }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const kind = editor?.kind;
   const existing = editor?.value;
+  const addonCategoryId = editor?.kind === 'addon' ? (editor.value as AdminAddon | undefined)?.categoryId ?? editor.categoryId ?? workspace?.categories[0]?.id ?? '' : '';
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setSaving(true); setError('');
@@ -552,20 +687,21 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
       if (kind === 'restaurant') await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), address: String(data.get('address')), phone: String(data.get('phone')), email: String(data.get('email')), imageUrl: String(data.get('imageUrl')) }, existing?.id);
       if (kind === 'category' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), restaurantId: workspace.restaurant.id }, existing?.id);
       if (kind === 'item' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), price: Number(data.get('price')), categoryId: String(data.get('categoryId')), restaurantId: workspace.restaurant.id, imageUrl: String(data.get('imageUrl')) }, existing?.id);
+      if (kind === 'addon' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), price: Number(data.get('price')), maxQuantity: Number(data.get('maxQuantity')), categoryId: String(data.get('categoryId')), restaurantId: workspace.restaurant.id }, existing?.id);
     } catch (submitError) { setError(submitError instanceof Error ? submitError.message : 'Could not save changes'); }
     finally { setSaving(false); }
   };
 
-  const titles = { restaurant: existing ? 'Edit restaurant' : 'Create a restaurant', category: existing ? 'Edit category' : 'Create a category', item: existing ? 'Edit menu item' : 'Create a menu item' };
-  const descriptions = { restaurant: 'The profile guests see across your storefront.', category: 'Group related items so your menu is easy to browse.', item: 'Add the details your team and guests need.' };
+  const titles = { restaurant: existing ? 'Edit restaurant' : 'Create a restaurant', category: existing ? 'Edit category' : 'Create a category', item: existing ? 'Edit menu item' : 'Create a menu item', addon: existing ? 'Edit add-on' : 'Create an add-on' };
+  const descriptions = { restaurant: 'The profile guests see across your storefront.', category: 'Group related items so your menu is easy to browse.', item: 'Add the details your team and guests need.', addon: 'Offer an optional extra across every item in a category.' };
 
   return (
     <Dialog open={Boolean(editor)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[92vh] overflow-y-auto border-[#E5E7EB] p-0 sm:max-w-[560px]">
         {kind && <form onSubmit={submit}>
-          <DialogHeader className="border-b border-[#E5E7EB] px-6 py-5 text-left"><div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]">{kind === 'restaurant' ? <Building2 size={18} /> : kind === 'category' ? <Boxes size={18} /> : <UtensilsCrossed size={18} />}</div><DialogTitle className="text-xl tracking-[-.025em]">{titles[kind]}</DialogTitle><DialogDescription className="text-xs">{descriptions[kind]}</DialogDescription></DialogHeader>
+          <DialogHeader className="border-b border-[#E5E7EB] px-6 py-5 text-left"><div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]">{kind === 'restaurant' ? <Building2 size={18} /> : kind === 'category' ? <Boxes size={18} /> : kind === 'addon' ? <Puzzle size={18} /> : <UtensilsCrossed size={18} />}</div><DialogTitle className="text-xl tracking-[-.025em]">{titles[kind]}</DialogTitle><DialogDescription className="text-xs">{descriptions[kind]}</DialogDescription></DialogHeader>
           <div className="space-y-4 px-6 py-5">
-            <Field label={kind === 'restaurant' ? 'Restaurant name' : kind === 'category' ? 'Category name' : 'Item name'} htmlFor="name" required hint="3–100 characters"><Input id="name" name="name" defaultValue={existing?.name ?? ''} required minLength={3} maxLength={100} placeholder={kind === 'restaurant' ? 'e.g. Juniper Kitchen' : kind === 'category' ? 'e.g. Seasonal plates' : 'e.g. Garden harvest bowl'} className="admin-input" /></Field>
+            <Field label={kind === 'restaurant' ? 'Restaurant name' : kind === 'category' ? 'Category name' : kind === 'addon' ? 'Add-on name' : 'Item name'} htmlFor="name" required hint="3–100 characters"><Input id="name" name="name" defaultValue={existing?.name ?? ''} required minLength={3} maxLength={100} placeholder={kind === 'restaurant' ? 'e.g. Juniper Kitchen' : kind === 'category' ? 'e.g. Seasonal plates' : kind === 'addon' ? 'e.g. Extra avocado' : 'e.g. Garden harvest bowl'} className="admin-input" /></Field>
             <Field label="Description" htmlFor="description" hint="Recommended"><Textarea id="description" name="description" defaultValue={existing?.description ?? ''} rows={3} placeholder="Add a concise, useful description" className="admin-input resize-none" /></Field>
             {kind === 'restaurant' && <>
               <Field label="Address" htmlFor="address" required><Input id="address" name="address" defaultValue={(existing as AdminRestaurant | undefined)?.address ?? ''} required placeholder="Street, city and postal code" className="admin-input" /></Field>
@@ -576,10 +712,24 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
               <div className="grid gap-4 sm:grid-cols-2"><Field label="Price" htmlFor="price" required><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">$</span><Input id="price" name="price" type="number" min="0.01" step="0.01" defaultValue={(existing as AdminMenuItem | undefined)?.price ?? ''} required placeholder="0.00" className="admin-input pl-7" /></div></Field><Field label="Category" htmlFor="categoryId" required><Select name="categoryId" defaultValue={(existing as AdminMenuItem | undefined)?.categoryId ?? workspace.categories[0]?.id}><SelectTrigger className="admin-input"><SelectValue placeholder="Choose category" /></SelectTrigger><SelectContent>{workspace.categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}</SelectContent></Select></Field></div>
               <Field label="Dish image URL" htmlFor="imageUrl" hint="Optional"><Input id="imageUrl" name="imageUrl" type="url" defaultValue={(existing as AdminMenuItem | undefined)?.imageUrl ?? ''} placeholder="https://images.example.com/dish.jpg" className="admin-input" /></Field>
             </>}
+            {kind === 'addon' && workspace && <>
+              {existing ? (
+                <div className="rounded-lg border border-[#F3E1D9] bg-[#FFF7F3] px-3 py-2.5 text-[11px] text-[#6B4E3D]">
+                  Shared across <strong>{workspace.categories.find((category) => category.id === addonCategoryId)?.name ?? 'this category'}</strong>
+                  <input type="hidden" name="categoryId" value={addonCategoryId} />
+                </div>
+              ) : (
+                <Field label="Category" htmlFor="categoryId" required><Select name="categoryId" defaultValue={addonCategoryId}><SelectTrigger className="admin-input"><SelectValue placeholder="Choose category" /></SelectTrigger><SelectContent>{workspace.categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}</SelectContent></Select></Field>
+              )}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Additional price" htmlFor="price" required><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">$</span><Input id="price" name="price" type="number" min="0.01" step="0.01" defaultValue={(existing as AdminAddon | undefined)?.price ?? ''} required placeholder="0.00" className="admin-input pl-7" /></div></Field>
+                <Field label="Maximum quantity" htmlFor="maxQuantity" required hint="Per order item"><Input id="maxQuantity" name="maxQuantity" type="number" min="1" max="20" step="1" defaultValue={(existing as AdminAddon | undefined)?.maxQuantity ?? 1} required className="admin-input" /></Field>
+              </div>
+            </>}
             {isDemo && <div className="rounded-lg bg-[#FFF8E7] px-3 py-2.5 text-[11px] leading-relaxed text-[#6B4E16]">Preview mode changes stay in this browser session. Connect the API to save them permanently.</div>}
             {error && <div className="rounded-lg bg-red-50 px-3 py-2.5 text-xs text-red-700">{error}</div>}
           </div>
-          <div className="flex items-center justify-end gap-2 border-t border-[#E5E7EB] bg-[#FAFAFA] px-6 py-4"><Button type="button" variant="outline" onClick={onClose} className="h-9 text-xs">Cancel</Button><Button type="submit" disabled={saving} className="admin-primary h-9 min-w-[112px] gap-2 text-xs">{saving && <Loader2 size={14} className="animate-spin" />}{existing ? 'Save changes' : `Create ${kind}`}</Button></div>
+          <div className="flex items-center justify-end gap-2 border-t border-[#E5E7EB] bg-[#FAFAFA] px-6 py-4"><Button type="button" variant="outline" onClick={onClose} className="h-9 text-xs">Cancel</Button><Button type="submit" disabled={saving} className="admin-primary h-9 min-w-[112px] gap-2 text-xs">{saving && <Loader2 size={14} className="animate-spin" />}{existing ? 'Save changes' : kind === 'addon' ? 'Create add-on' : `Create ${kind}`}</Button></div>
         </form>}
       </DialogContent>
     </Dialog>

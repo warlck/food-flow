@@ -51,6 +51,8 @@
 .admin-menu-card:hover { border-color: #fed7c7; box-shadow: 0 12px 32px rgba(17, 24, 39, .1); transform: translateY(-2px); }
 .admin-menu-image { background: linear-gradient(145deg, #f3f4f6, #e5e7eb); }
 .admin-menu-image::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(17, 24, 39, .18)); pointer-events: none; }
+.admin-addon-card { transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+.admin-addon-card:hover { border-color: #fed7c7; box-shadow: 0 8px 24px rgba(17, 24, 39, .07); transform: translateY(-1px); }
 
 .admin-input { border-color: #d1d5db; background: #ffffff; }
 .admin-input:focus { border-color: var(--admin-primary); box-shadow: 0 0 0 3px rgba(255, 69, 0, .1); }

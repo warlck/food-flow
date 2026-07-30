@@ -39,15 +39,30 @@ export interface AdminMenuItem {
   dateUpdated?: string;
 }
 
+export interface AdminAddon {
+  id: string;
+  categoryId: string;
+  restaurantId: string;
+  name: string;
+  description: string;
+  price: number;
+  available: boolean;
+  maxQuantity: number;
+  dateCreated?: string;
+  dateUpdated?: string;
+}
+
 export interface AdminWorkspace {
   restaurant: AdminRestaurant;
   categories: AdminCategory[];
   menuItems: AdminMenuItem[];
+  addons: AdminAddon[];
 }
 
 export type RestaurantInput = Pick<AdminRestaurant, 'name' | 'description' | 'address' | 'phone' | 'email' | 'imageUrl'>;
 export type CategoryInput = Pick<AdminCategory, 'name' | 'description' | 'restaurantId'>;
 export type MenuItemInput = Pick<AdminMenuItem, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'imageUrl'>;
+export type AddonInput = Pick<AdminAddon, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'maxQuantity'>;
 
 interface ApiPage<T> {
   items: T[];
@@ -133,7 +148,10 @@ class AdminApi {
   }
 
   async getWorkspace(restaurantId: string): Promise<AdminWorkspace> {
-    const details = await this.request<ApiRestaurantDetails>(`/v1/restaurants/${restaurantId}/details`, {}, false);
+    const [details, addonPage] = await Promise.all([
+      this.request<ApiRestaurantDetails>(`/v1/restaurants/${restaurantId}/details`, {}, false),
+      this.listAddons(restaurantId),
+    ]);
     const categories = details.categories.map((category) => ({
       id: category.id,
       name: category.name,
@@ -149,7 +167,7 @@ class AdminApi {
       })),
     );
     const { categories: _categories, ...restaurant } = details;
-    return { restaurant, categories, menuItems };
+    return { restaurant, categories, menuItems, addons: addonPage.items };
   }
 
   createRestaurant(input: RestaurantInput) {
@@ -182,6 +200,28 @@ class AdminApi {
 
   deleteMenuItem(id: string) {
     return this.request<void>(`/v1/menuitems/${id}`, { method: 'DELETE' });
+  }
+
+  listAddons(restaurantId: string) {
+    const params = new URLSearchParams({
+      page: '1',
+      rows: '100',
+      orderBy: 'name,ASC',
+      restaurant_id: restaurantId,
+    });
+    return this.request<ApiPage<AdminAddon>>(`/v1/addons?${params}`);
+  }
+
+  createAddon(input: AddonInput) {
+    return this.request<AdminAddon>('/v1/addons', { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  updateAddon(id: string, input: Partial<Omit<AddonInput, 'categoryId' | 'restaurantId'>> & { available?: boolean }) {
+    return this.request<AdminAddon>(`/v1/addons/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  deleteAddon(id: string) {
+    return this.request<void>(`/v1/addons/${id}`, { method: 'DELETE' });
   }
 }
 
