@@ -1,6 +1,7 @@
 package apitest
 
 import (
+	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
@@ -29,6 +30,11 @@ type MenuItem struct {
 	menuitembus.MenuItem
 }
 
+// Addon extends the addonbus.Addon for api test support.
+type Addon struct {
+	addonbus.Addon
+}
+
 // Order extends the orderbus.Order for api test support.
 type Order struct {
 	orderbus.Order
@@ -41,6 +47,7 @@ type SeedData struct {
 	Restaurants []Restaurant
 	Categories  []Category
 	MenuItems   []MenuItem
+	Addons      []Addon
 	Orders      []Order
 }
 
