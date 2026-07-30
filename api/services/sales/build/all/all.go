@@ -2,6 +2,7 @@
 package all
 
 import (
+	addonapi "github.com/warlck/food-flow/app/domain/addonapp"
 	categoryapi "github.com/warlck/food-flow/app/domain/categoryapp"
 	checkapi "github.com/warlck/food-flow/app/domain/checkapp"
 	menuitemapi "github.com/warlck/food-flow/app/domain/menuitemapp"
@@ -57,6 +58,12 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		Log:         cfg.Log,
 	})
 
+	addonapi.Routes(app, addonapi.Config{
+		AuthClient: cfg.AuthClient,
+		AddonBus:   cfg.AddonBus,
+		Log:        cfg.Log,
+	})
+
 	orderapi.Routes(app, orderapi.Config{
 		Build:               cfg.Build,
 		Log:                 cfg.Log,
@@ -66,3 +73,4 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		StripeWebhookSecret: cfg.StripeWebhookSecret,
 	})
 }
+
