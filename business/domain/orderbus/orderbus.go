@@ -100,7 +100,11 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 			return Order{}, ErrDeliveryCoordinatesRequired
 		}
 
-		quote, err := deliveryQuote(restaurant, *no.DeliveryAddress.Latitude, *no.DeliveryAddress.Longitude)
+		if restaurant.Latitude == nil || restaurant.Longitude == nil {
+			return Order{}, ErrRestaurantLocationMissing
+		}
+
+		quote, err := deliveryQuote(*restaurant.Latitude, *restaurant.Longitude, *no.DeliveryAddress.Latitude, *no.DeliveryAddress.Longitude, restaurant.MaxDeliveryDistanceKm)
 		if err != nil {
 			return Order{}, err
 		}

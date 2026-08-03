@@ -1,13 +1,10 @@
 package orderbus
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"math"
 
-	"github.com/google/uuid"
-	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/types/money"
 )
 
@@ -69,25 +66,16 @@ type DeliveryQuote struct {
 	WithinLimit           bool        // Whether the destination can be served
 }
 
-// DeliveryQuote calculates the delivery quote for a destination coordinate.
-func (b *Business) DeliveryQuote(ctx context.Context, restaurantID uuid.UUID, lat float64, lng float64) (DeliveryQuote, error) {
-	rest, err := b.restaurantBus.QueryByID(ctx, restaurantID)
-	if err != nil {
-		return DeliveryQuote{}, fmt.Errorf("restaurant query: %w", err)
-	}
-
-	return deliveryQuote(rest, lat, lng)
+// DeliveryQuote calculates the delivery quote given restaurant and destination coordinates.
+func (b *Business) DeliveryQuote(restLat, restLng, destLat, destLng float64, maxDeliveryDistanceKm float64) (DeliveryQuote, error) {
+	return deliveryQuote(restLat, restLng, destLat, destLng, maxDeliveryDistanceKm)
 }
 
-// deliveryQuote calculates the delivery quote for a restaurant and destination.
-func deliveryQuote(rest restaurantbus.Restaurant, lat float64, lng float64) (DeliveryQuote, error) {
-	if rest.Latitude == nil || rest.Longitude == nil {
-		return DeliveryQuote{}, ErrRestaurantLocationMissing
-	}
+// deliveryQuote calculates the delivery quote given restaurant and destination coordinates.
+func deliveryQuote(restLat, restLng, destLat, destLng float64, maxDeliveryDistanceKm float64) (DeliveryQuote, error) {
+	distance := DistanceKm(restLat, restLng, destLat, destLng)
 
-	distance := DistanceKm(*rest.Latitude, *rest.Longitude, lat, lng)
-
-	withinLimit := rest.MaxDeliveryDistanceKm <= 0 || distance <= rest.MaxDeliveryDistanceKm
+	withinLimit := maxDeliveryDistanceKm <= 0 || distance <= maxDeliveryDistanceKm
 
 	fee, err := money.Parse(CalculateDeliveryFee(distance))
 	if err != nil {
@@ -97,7 +85,7 @@ func deliveryQuote(rest restaurantbus.Restaurant, lat float64, lng float64) (Del
 	return DeliveryQuote{
 		DistanceKm:            roundToTwoDecimals(distance),
 		DeliveryFee:           fee,
-		MaxDeliveryDistanceKm: rest.MaxDeliveryDistanceKm,
+		MaxDeliveryDistanceKm: maxDeliveryDistanceKm,
 		WithinLimit:           withinLimit,
 	}, nil
 }

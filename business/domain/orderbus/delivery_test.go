@@ -70,3 +70,30 @@ func Test_CalculateDeliveryFee(t *testing.T) {
 		})
 	}
 }
+
+func Test_DeliveryQuote(t *testing.T) {
+	t.Parallel()
+
+	bus := &orderbus.Business{}
+
+	// Test case within delivery limit
+	quote, err := bus.DeliveryQuote(1.29305, 103.86020, 1.29305, 103.86020, 10.0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !quote.WithinLimit {
+		t.Fatalf("expected within limit to be true")
+	}
+	if quote.DeliveryFee.Value() != 0 {
+		t.Fatalf("expected 0 delivery fee, got %.2f", quote.DeliveryFee.Value())
+	}
+
+	// Test case exceeding delivery limit
+	quoteExceed, err := bus.DeliveryQuote(1.29305, 103.86020, 1.35208, 103.94400, 5.0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if quoteExceed.WithinLimit {
+		t.Fatalf("expected within limit to be false for distance exceeding max limit")
+	}
+}
