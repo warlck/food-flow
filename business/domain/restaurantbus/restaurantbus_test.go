@@ -208,15 +208,18 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 		{
 			Name: "basic",
 			ExpResp: restaurantbus.Restaurant{
-				ID:          sd.Restaurants[0].ID,
-				Name:        name.MustParse("Updated Rest Name"),
-				Description: "Updated description for this restaurant",
-				Address:     "456 New Street",
-				Phone:       "+1-555-9999",
-				Email:       "updated@example.com",
-				ImageURL:    "updated.jpg",
-				Enabled:     false,
-				DateCreated: sd.Restaurants[0].DateCreated,
+				ID:                    sd.Restaurants[0].ID,
+				Name:                  name.MustParse("Updated Rest Name"),
+				Description:           "Updated description for this restaurant",
+				Address:               "456 New Street",
+				Phone:                 "+1-555-9999",
+				Email:                 "updated@example.com",
+				ImageURL:              "updated.jpg",
+				Enabled:               false,
+				Latitude:              sd.Restaurants[0].Latitude,
+				Longitude:             sd.Restaurants[0].Longitude,
+				MaxDeliveryDistanceKm: sd.Restaurants[0].MaxDeliveryDistanceKm,
+				DateCreated:           sd.Restaurants[0].DateCreated,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				ur := restaurantbus.UpdateRestaurant{
