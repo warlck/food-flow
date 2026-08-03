@@ -51,6 +51,8 @@ type dbDeliveryAddress struct {
 	State                string    `db:"state"`
 	PostalCode           string    `db:"postal_code"`
 	DeliveryInstructions string    `db:"delivery_instructions"`
+	Latitude             *float64  `db:"latitude"`
+	Longitude            *float64  `db:"longitude"`
 	DateCreated          time.Time `db:"date_created"`
 }
 
@@ -174,6 +176,8 @@ func toDBDeliveryAddress(bus orderbus.DeliveryAddress, orderID uuid.UUID) dbDeli
 		State:                bus.State,
 		PostalCode:           bus.PostalCode,
 		DeliveryInstructions: bus.DeliveryInstructions,
+		Latitude:             bus.Latitude,
+		Longitude:            bus.Longitude,
 		DateCreated:          bus.DateCreated.UTC(),
 	}
 }
@@ -187,6 +191,8 @@ func toBusDeliveryAddress(dbo dbDeliveryAddress, orderID uuid.UUID) orderbus.Del
 		State:                dbo.State,
 		PostalCode:           dbo.PostalCode,
 		DeliveryInstructions: dbo.DeliveryInstructions,
+		Latitude:             dbo.Latitude,
+		Longitude:            dbo.Longitude,
 		DateCreated:          dbo.DateCreated.In(time.Local),
 	}
 }

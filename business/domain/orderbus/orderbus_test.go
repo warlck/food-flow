@@ -2,6 +2,7 @@ package orderbus_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"testing"
@@ -288,9 +289,14 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				OrderStatus:   orderbus.OrderStatusPending,
 				PaymentStatus: orderbus.PaymentStatusPending,
 				PaymentMethod: orderbus.PaymentMethodCreditCard,
-				DeliveryFee:   money.MustParse(5.00),
+				DeliveryFee: money.MustParse(orderbus.CalculateDeliveryFee(orderbus.DistanceKm(
+					*sd.Restaurants[0].Latitude, *sd.Restaurants[0].Longitude, 1.30719, 103.87434,
+				))),
 			},
 			ExcFunc: func(ctx context.Context) any {
+				lat := 1.30719
+				lng := 103.87434
+
 				no := orderbus.NewOrder{
 					RestaurantID:  sd.Restaurants[0].ID.String(),
 					CustomerName:  "Jane Smith",
@@ -309,6 +315,8 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 						City:       "Anytown",
 						State:      "CA",
 						PostalCode: "12345",
+						Latitude:   &lat,
+						Longitude:  &lng,
 					},
 				}
 
@@ -337,6 +345,95 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				expResp.DateUpdated = gotResp.DateUpdated
 
 				return cmp.Diff(gotResp, expResp)
+			},
+		},
+		{
+			Name:    "delivery-missing-coordinates",
+			ExpResp: orderbus.ErrDeliveryCoordinatesRequired,
+			ExcFunc: func(ctx context.Context) any {
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "No Coords",
+					CustomerEmail: "nocoords@example.com",
+					CustomerPhone: "555-9999",
+					OrderType:     orderbus.OrderTypeDelivery,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   1,
+						},
+					},
+					DeliveryAddress: &orderbus.NewDeliveryAddress{
+						Street:     "123 Main St",
+						City:       "Anytown",
+						State:      "CA",
+						PostalCode: "12345",
+					},
+				}
+
+				_, err := busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "expected an error"
+				}
+
+				if !errors.Is(gotErr, exp.(error)) {
+					return "different error"
+				}
+
+				return ""
+			},
+		},
+		{
+			Name:    "delivery-out-of-range",
+			ExpResp: orderbus.ErrDeliveryOutOfRange,
+			ExcFunc: func(ctx context.Context) any {
+				// Roughly 150 km away from the seeded restaurant,
+				// beyond its 10 km delivery limit.
+				lat := 2.64305
+				lng := 103.86020
+
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Far Away",
+					CustomerEmail: "far@example.com",
+					CustomerPhone: "555-8888",
+					OrderType:     orderbus.OrderTypeDelivery,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   1,
+						},
+					},
+					DeliveryAddress: &orderbus.NewDeliveryAddress{
+						Street:     "1 Far Road",
+						City:       "Faraway",
+						State:      "CA",
+						PostalCode: "99999",
+						Latitude:   &lat,
+						Longitude:  &lng,
+					},
+				}
+
+				_, err := busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "expected an error"
+				}
+
+				if !errors.Is(gotErr, exp.(error)) {
+					return "different error"
+				}
+
+				return ""
 			},
 		},
 	}
