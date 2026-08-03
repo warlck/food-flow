@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
@@ -125,6 +126,31 @@ func (a *app) updateStatus(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 
 	return web.Respond(ctx, w, ToAppOrder(ord), http.StatusOK)
+}
+
+// deliveryQuote calculates the delivery fee and range check for a destination.
+func (a *app) deliveryQuote(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	restaurantID, err := uuid.Parse(r.URL.Query().Get("restaurantId"))
+	if err != nil {
+		return errs.NewFieldErrors("restaurantId", err)
+	}
+
+	lat, err := strconv.ParseFloat(r.URL.Query().Get("lat"), 64)
+	if err != nil {
+		return errs.NewFieldErrors("lat", err)
+	}
+
+	lng, err := strconv.ParseFloat(r.URL.Query().Get("lng"), 64)
+	if err != nil {
+		return errs.NewFieldErrors("lng", err)
+	}
+
+	quote, err := a.orderBus.DeliveryQuote(ctx, restaurantID, lat, lng)
+	if err != nil {
+		return fmt.Errorf("deliveryquote: restaurantID[%s]: %w", restaurantID, err)
+	}
+
+	return web.Respond(ctx, w, ToAppDeliveryQuote(quote), http.StatusOK)
 }
 
 // cancel cancels an order.
