@@ -86,7 +86,7 @@ const CheckoutDesktop: React.FC = () => {
 
   // Calculate totals
   const subtotal = getTotalPrice();
-  const deliveryFee = orderType === "delivery" ? deliveryQuote?.deliveryFee ?? 0 : 0;
+  const deliveryFee = orderType === "delivery" && deliveryQuote?.withinLimit ? deliveryQuote.deliveryFee : 0;
   const tax = subtotal * 0.1; // 10% tax
   const total = subtotal + deliveryFee + tax;
 
@@ -794,7 +794,7 @@ const CheckoutDesktop: React.FC = () => {
                           <div className="flex justify-between">
                             <span className="text-gray-600">Delivery Fee</span>
                             <span className="font-medium">
-                              {deliveryQuote
+                              {deliveryQuote && deliveryQuote.withinLimit
                                 ? deliveryQuote.deliveryFee > 0
                                   ? `$${deliveryQuote.deliveryFee.toFixed(2)}`
                                   : "Free"

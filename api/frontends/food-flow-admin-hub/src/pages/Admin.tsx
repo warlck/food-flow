@@ -686,18 +686,46 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
     const data = new FormData(event.currentTarget);
     try {
       if (kind === 'restaurant') {
-        const latitude = String(data.get('latitude') ?? '').trim();
-        const longitude = String(data.get('longitude') ?? '').trim();
+        const addressStr = String(data.get('address') ?? '').trim();
+        let latitudeVal: number | null = (existing as AdminRestaurant | undefined)?.latitude ?? null;
+        let longitudeVal: number | null = (existing as AdminRestaurant | undefined)?.longitude ?? null;
+
+        if (addressStr) {
+          try {
+            const isPostalCode = /^\d{6}$/.test(addressStr);
+            const geoUrl = new URL('https://nominatim.openstreetmap.org/search');
+            geoUrl.searchParams.set('q', isPostalCode ? `${addressStr}, Singapore` : addressStr);
+            geoUrl.searchParams.set('format', 'jsonv2');
+            geoUrl.searchParams.set('addressdetails', '1');
+            geoUrl.searchParams.set('countrycodes', 'sg');
+            geoUrl.searchParams.set('accept-language', 'en');
+            geoUrl.searchParams.set('limit', '1');
+
+            const res = await fetch(geoUrl.toString(), {
+              headers: { Accept: 'application/json', 'Accept-Language': 'en' },
+            });
+            if (res.ok) {
+              const geoData = await res.json();
+              if (Array.isArray(geoData) && geoData.length > 0) {
+                latitudeVal = parseFloat(geoData[0].lat);
+                longitudeVal = parseFloat(geoData[0].lon);
+              }
+            }
+          } catch (e) {
+            console.error('Failed to resolve address coordinates:', e);
+          }
+        }
+
         const maxDeliveryDistanceKm = String(data.get('maxDeliveryDistanceKm') ?? '').trim();
         await onSave(kind, {
           name: String(data.get('name')),
           description: String(data.get('description')),
-          address: String(data.get('address')),
+          address: addressStr,
           phone: String(data.get('phone')),
           email: String(data.get('email')),
           imageUrl: String(data.get('imageUrl')),
-          latitude: latitude === '' ? null : Number(latitude),
-          longitude: longitude === '' ? null : Number(longitude),
+          latitude: latitudeVal,
+          longitude: longitudeVal,
           maxDeliveryDistanceKm: maxDeliveryDistanceKm === '' ? 0 : Number(maxDeliveryDistanceKm),
         }, existing?.id);
       }
@@ -723,10 +751,8 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
               <Field label="Address" htmlFor="address" required><Input id="address" name="address" defaultValue={(existing as AdminRestaurant | undefined)?.address ?? ''} required placeholder="Street, city and postal code" className="admin-input" /></Field>
               <div className="grid gap-4 sm:grid-cols-2"><Field label="Phone" htmlFor="phone" required><Input id="phone" name="phone" defaultValue={(existing as AdminRestaurant | undefined)?.phone ?? ''} required placeholder="+65 6123 4567" className="admin-input" /></Field><Field label="Email" htmlFor="email" required><Input id="email" name="email" type="email" defaultValue={(existing as AdminRestaurant | undefined)?.email ?? ''} required placeholder="hello@restaurant.com" className="admin-input" /></Field></div>
               <Field label="Cover image URL" htmlFor="imageUrl" hint="Optional"><Input id="imageUrl" name="imageUrl" type="url" defaultValue={(existing as AdminRestaurant | undefined)?.imageUrl ?? ''} placeholder="https://images.example.com/restaurant.jpg" className="admin-input" /></Field>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Latitude" htmlFor="latitude" hint="Delivery origin"><Input id="latitude" name="latitude" type="number" step="any" min="-90" max="90" defaultValue={(existing as AdminRestaurant | undefined)?.latitude ?? ''} placeholder="1.29305" className="admin-input" /></Field>
-                <Field label="Longitude" htmlFor="longitude" hint="Delivery origin"><Input id="longitude" name="longitude" type="number" step="any" min="-180" max="180" defaultValue={(existing as AdminRestaurant | undefined)?.longitude ?? ''} placeholder="103.86020" className="admin-input" /></Field>
-              </div>
+              <input type="hidden" name="latitude" value={(existing as AdminRestaurant | undefined)?.latitude ?? ''} />
+              <input type="hidden" name="longitude" value={(existing as AdminRestaurant | undefined)?.longitude ?? ''} />
               <Field label="Max delivery distance (km)" htmlFor="maxDeliveryDistanceKm" hint="0 for unlimited"><Input id="maxDeliveryDistanceKm" name="maxDeliveryDistanceKm" type="number" min="0" step="0.1" defaultValue={(existing as AdminRestaurant | undefined)?.maxDeliveryDistanceKm ?? 0} placeholder="0" className="admin-input" /></Field>
             </>}
             {kind === 'item' && workspace && <>
