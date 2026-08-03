@@ -34,7 +34,7 @@ const deliveryFormSchema = z.object({
   phone: z.string().min(10, { message: "Phone number must be at least 10 characters" }),
   street: z.string().min(5, { message: "Street address must be at least 5 characters" }),
   city: z.string().min(2, { message: "City must be at least 2 characters" }),
-  state: z.string().min(2, { message: "State must be at least 2 characters" }),
+  state: z.string().optional(),
   postalCode: z.string().min(5, { message: "Postal code must be at least 5 characters" }),
   deliveryInstructions: z.string().optional(),
 });
@@ -73,7 +73,7 @@ const CheckoutMobile: React.FC = () => {
       email: "",
       phone: "",
       street: "",
-      city: "",
+      city: "Singapore",
       state: "",
       postalCode: "",
       deliveryInstructions: "",
@@ -348,7 +348,7 @@ const CheckoutMobile: React.FC = () => {
                             <FormItem>
                               <FormLabel>City</FormLabel>
                               <FormControl>
-                                <Input placeholder="New York" className="border-2 focus:border-food-primary" {...field} />
+                                <Input placeholder="Singapore" className="border-2 focus:border-food-primary" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -357,32 +357,18 @@ const CheckoutMobile: React.FC = () => {
 
                         <FormField
                           control={deliveryForm.control}
-                          name="state"
+                          name="postalCode"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>State</FormLabel>
+                              <FormLabel>Postal Code</FormLabel>
                               <FormControl>
-                                <Input placeholder="NY" className="border-2 focus:border-food-primary" {...field} />
+                                <Input placeholder="e.g. 048582" className="border-2 focus:border-food-primary" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
                       </div>
-
-                      <FormField
-                        control={deliveryForm.control}
-                        name="postalCode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Postal Code</FormLabel>
-                            <FormControl>
-                              <Input placeholder="10001" className="border-2 focus:border-food-primary" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
 
                       <FormField
                         control={deliveryForm.control}

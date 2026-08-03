@@ -41,7 +41,7 @@ const deliveryFormSchema = z.object({
   phone: z.string().min(10, { message: "Phone number must be at least 10 characters" }),
   street: z.string().min(5, { message: "Street address must be at least 5 characters" }),
   city: z.string().min(2, { message: "City must be at least 2 characters" }),
-  state: z.string().min(2, { message: "State must be at least 2 characters" }),
+  state: z.string().optional(),
   postalCode: z.string().min(5, { message: "Postal code must be at least 5 characters" }),
   deliveryInstructions: z.string().optional(),
 });
@@ -98,7 +98,7 @@ const CheckoutDesktop: React.FC = () => {
       email: "",
       phone: "",
       street: "",
-      city: "",
+      city: "Singapore",
       state: "",
       postalCode: "",
       deliveryInstructions: "",
@@ -138,7 +138,7 @@ const CheckoutDesktop: React.FC = () => {
       const results = await searchAddress(query);
       setSearchResults(results);
       if (results.length === 0) {
-        toast.error("No addresses found. Try a more specific search.");
+        toast.error("No addresses found in Singapore. Try a 6-digit postal code or street name.");
       }
     } catch (error) {
       console.error("Address search failed:", error);
@@ -156,8 +156,7 @@ const CheckoutDesktop: React.FC = () => {
     // Pre-fill address fields from the geocoded result; the customer can
     // still adjust them manually.
     if (result.address.street) deliveryForm.setValue("street", result.address.street);
-    if (result.address.city) deliveryForm.setValue("city", result.address.city);
-    if (result.address.state) deliveryForm.setValue("state", result.address.state);
+    deliveryForm.setValue("city", result.address.city || "Singapore");
     if (result.address.postalCode) deliveryForm.setValue("postalCode", result.address.postalCode);
 
     // Fetch the delivery fee quote for the selected destination
@@ -522,7 +521,7 @@ const CheckoutDesktop: React.FC = () => {
                             )}
                           />
 
-                          <div className="grid grid-cols-3 gap-6">
+                          <div className="grid grid-cols-2 gap-6">
                             <FormField
                               control={deliveryForm.control}
                               name="city"
@@ -530,21 +529,7 @@ const CheckoutDesktop: React.FC = () => {
                                 <FormItem>
                                   <FormLabel className="text-base">City</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="New York" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-
-                            <FormField
-                              control={deliveryForm.control}
-                              name="state"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-base">State</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="NY" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
+                                    <Input placeholder="Singapore" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -558,7 +543,7 @@ const CheckoutDesktop: React.FC = () => {
                                 <FormItem>
                                   <FormLabel className="text-base">Postal Code</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="10001" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
+                                    <Input placeholder="e.g. 048582" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
