@@ -65,9 +65,8 @@ const Checkout: React.FC = () => {
   
   // Calculate totals
   const subtotal = getTotalPrice();
-  const deliveryFee = orderType === "delivery" ? DEFAULT_DELIVERY_FEE : 0;
   const tax = subtotal * 0.1; // 10% tax
-  const total = subtotal + deliveryFee + tax;
+  const total = subtotal + tax;
 
   // Setup forms based on order type
   const deliveryForm = useForm<z.infer<typeof deliveryFormSchema>>({
@@ -547,7 +546,7 @@ const Checkout: React.FC = () => {
                   {orderType === "delivery" && (
                     <div className="flex justify-between text-sm">
                       <span>Delivery Fee</span>
-                      <span>${deliveryFee.toFixed(2)}</span>
+                      <span className="text-gray-500">Calculated at checkout</span>
                     </div>
                   )}
                   

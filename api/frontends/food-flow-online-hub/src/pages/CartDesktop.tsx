@@ -23,9 +23,8 @@ const CartDesktop: React.FC = () => {
   const navigate = useNavigate();
 
   const subtotal = getTotalPrice();
-  const deliveryFee = orderType === 'delivery' ? DEFAULT_DELIVERY_FEE : 0;
   const tax = subtotal * 0.1; // 10% tax
-  const total = subtotal + deliveryFee + tax;
+  const total = subtotal + tax;
 
   const handleApplyPromo = () => {
     setIsApplying(true);
@@ -218,7 +217,7 @@ const CartDesktop: React.FC = () => {
                       {orderType === 'delivery' && (
                         <div className="flex justify-between items-center">
                           <span className="text-gray-600">Delivery Fee</span>
-                          <span className="font-semibold text-lg">${deliveryFee.toFixed(2)}</span>
+                          <span className="font-semibold text-sm text-gray-500">Calculated at checkout</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center">
