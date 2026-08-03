@@ -681,16 +681,94 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
   const existing = editor?.value;
   const addonCategoryId = editor?.kind === 'addon' ? (editor.value as AdminAddon | undefined)?.categoryId ?? editor.categoryId ?? workspace?.categories[0]?.id ?? '' : '';
 
+  // Address search & resolution state for restaurant profile
+  const [addressInput, setAddressInput] = useState<string>((existing as AdminRestaurant | undefined)?.address ?? '');
+  const [lat, setLat] = useState<number | null>((existing as AdminRestaurant | undefined)?.latitude ?? null);
+  const [lon, setLon] = useState<number | null>((existing as AdminRestaurant | undefined)?.longitude ?? null);
+  const [isGeocoding, setIsGeocoding] = useState<boolean>(false);
+  const [geoResults, setGeoResults] = useState<{ display_name: string; lat: string; lon: string }[]>([]);
+  const [geoError, setGeoError] = useState<string>('');
+
+  useEffect(() => {
+    if (editor?.kind === 'restaurant') {
+      const rest = editor.value as AdminRestaurant | undefined;
+      setAddressInput(rest?.address ?? '');
+      setLat(rest?.latitude ?? null);
+      setLon(rest?.longitude ?? null);
+      setGeoResults([]);
+      setGeoError('');
+    }
+  }, [editor]);
+
+  const handleResolveAddress = async () => {
+    const query = addressInput.trim();
+    if (!query) return;
+    setIsGeocoding(true);
+    setGeoError('');
+    setGeoResults([]);
+
+    try {
+      const isPostalCode = /^\d{6}$/.test(query);
+      const geoUrl = new URL('https://nominatim.openstreetmap.org/search');
+      geoUrl.searchParams.set('q', isPostalCode ? `${query}, Singapore` : query);
+      geoUrl.searchParams.set('format', 'jsonv2');
+      geoUrl.searchParams.set('addressdetails', '1');
+      geoUrl.searchParams.set('countrycodes', 'sg');
+      geoUrl.searchParams.set('accept-language', 'en');
+      geoUrl.searchParams.set('limit', '5');
+
+      const res = await fetch(geoUrl.toString(), {
+        headers: { Accept: 'application/json', 'Accept-Language': 'en' },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          if (data.length === 1) {
+            const chosenLat = parseFloat(data[0].lat);
+            const chosenLon = parseFloat(data[0].lon);
+            setLat(chosenLat);
+            setLon(chosenLon);
+            setAddressInput(data[0].display_name);
+            toast.success('Address verified successfully');
+          } else {
+            setGeoResults(data);
+          }
+        } else {
+          setGeoError('No matching address found. Please refine the address and try again.');
+        }
+      } else {
+        setGeoError('Failed to contact address lookup service.');
+      }
+    } catch (e) {
+      console.error('Error resolving address:', e);
+      setGeoError('Failed to resolve address. Please try again.');
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+  const handleSelectResult = (item: { display_name: string; lat: string; lon: string }) => {
+    const chosenLat = parseFloat(item.lat);
+    const chosenLon = parseFloat(item.lon);
+    setLat(chosenLat);
+    setLon(chosenLon);
+    setAddressInput(item.display_name);
+    setGeoResults([]);
+    setGeoError('');
+    toast.success('Address selected');
+  };
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setSaving(true); setError('');
     const data = new FormData(event.currentTarget);
     try {
       if (kind === 'restaurant') {
-        const addressStr = String(data.get('address') ?? '').trim();
-        let latitudeVal: number | null = (existing as AdminRestaurant | undefined)?.latitude ?? null;
-        let longitudeVal: number | null = (existing as AdminRestaurant | undefined)?.longitude ?? null;
+        const addressStr = addressInput.trim();
+        let latitudeVal: number | null = lat;
+        let longitudeVal: number | null = lon;
 
-        if (addressStr) {
+        if (addressStr && (latitudeVal === null || longitudeVal === null)) {
           try {
             const isPostalCode = /^\d{6}$/.test(addressStr);
             const geoUrl = new URL('https://nominatim.openstreetmap.org/search');
@@ -748,11 +826,89 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
             <Field label={kind === 'restaurant' ? 'Restaurant name' : kind === 'category' ? 'Category name' : kind === 'addon' ? 'Add-on name' : 'Item name'} htmlFor="name" required hint="3–100 characters"><Input id="name" name="name" defaultValue={existing?.name ?? ''} required minLength={3} maxLength={100} placeholder={kind === 'restaurant' ? 'e.g. Juniper Kitchen' : kind === 'category' ? 'e.g. Seasonal plates' : kind === 'addon' ? 'e.g. Extra avocado' : 'e.g. Garden harvest bowl'} className="admin-input" /></Field>
             <Field label="Description" htmlFor="description" hint="Recommended"><Textarea id="description" name="description" defaultValue={existing?.description ?? ''} rows={3} placeholder="Add a concise, useful description" className="admin-input resize-none" /></Field>
             {kind === 'restaurant' && <>
-              <Field label="Address" htmlFor="address" required><Input id="address" name="address" defaultValue={(existing as AdminRestaurant | undefined)?.address ?? ''} required placeholder="Street, city and postal code" className="admin-input" /></Field>
+              <Field label="Address" htmlFor="address" required hint="Enter street or 6-digit postal code">
+                <div className="flex gap-2">
+                  <Input
+                    id="address"
+                    name="address"
+                    value={addressInput}
+                    onChange={(e) => {
+                      setAddressInput(e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleResolveAddress();
+                      }
+                    }}
+                    required
+                    placeholder="Street, city and postal code"
+                    className="admin-input flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleResolveAddress}
+                    disabled={isGeocoding || !addressInput.trim()}
+                    className="border-[#E5E7EB] bg-white text-xs font-medium text-[#374151] hover:bg-[#F9FAFB] hover:text-[#111827] shrink-0"
+                  >
+                    {isGeocoding ? <Loader2 size={14} className="animate-spin mr-1" /> : <Search size={14} className="mr-1" />}
+                    Search
+                  </Button>
+                </div>
+              </Field>
+
+              {/* Geo Candidate Selection */}
+              {geoResults.length > 0 && (
+                <div className="rounded-xl border border-[#E5E7EB] bg-white p-2 shadow-sm space-y-1">
+                  <div className="px-2 py-1 text-[11px] font-semibold text-[#6B7280]">Select matching address:</div>
+                  <div className="max-h-40 overflow-y-auto divide-y divide-[#F3F4F6]">
+                    {geoResults.map((item, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleSelectResult(item)}
+                        className="w-full text-left px-3 py-2 text-xs text-[#374151] hover:bg-[#FFF5F0] hover:text-[#FF4500] transition-colors rounded-lg flex items-center justify-between"
+                      >
+                        <span className="truncate mr-2">{item.display_name}</span>
+                        <span className="shrink-0 text-[10px] text-[#9CA3AF]">Lat: {parseFloat(item.lat).toFixed(4)}, Lon: {parseFloat(item.lon).toFixed(4)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {geoError && (
+                <div className="flex items-center gap-1.5 text-xs text-[#DC2626] bg-[#FEF2F2] border border-[#FCA5A5] rounded-lg p-2.5">
+                  <CircleAlert size={14} className="shrink-0" />
+                  <span>{geoError}</span>
+                </div>
+              )}
+
+              {/* Address Resolution Status Indicator */}
+              {lat !== null && lon !== null ? (
+                <div className="flex items-center justify-between rounded-xl border border-[#D1FAE5] bg-[#ECFDF5] px-3.5 py-2 text-xs text-[#065F46]">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#10B981] text-white">
+                      <Check size={12} />
+                    </div>
+                    <div>
+                      <span className="font-semibold text-xs">Address verified for delivery</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-[#059669] bg-[#A7F3D0] px-2 py-0.5 rounded-full">Verified</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded-xl border border-[#FDE68A] bg-[#FFFBEB] px-3.5 py-2 text-xs text-[#92400E]">
+                  <CircleAlert size={14} className="shrink-0 text-[#D97706]" />
+                  <span>Click <strong>Search</strong> to verify this address for delivery.</span>
+                </div>
+              )}
+
               <div className="grid gap-4 sm:grid-cols-2"><Field label="Phone" htmlFor="phone" required><Input id="phone" name="phone" defaultValue={(existing as AdminRestaurant | undefined)?.phone ?? ''} required placeholder="+65 6123 4567" className="admin-input" /></Field><Field label="Email" htmlFor="email" required><Input id="email" name="email" type="email" defaultValue={(existing as AdminRestaurant | undefined)?.email ?? ''} required placeholder="hello@restaurant.com" className="admin-input" /></Field></div>
               <Field label="Cover image URL" htmlFor="imageUrl" hint="Optional"><Input id="imageUrl" name="imageUrl" type="url" defaultValue={(existing as AdminRestaurant | undefined)?.imageUrl ?? ''} placeholder="https://images.example.com/restaurant.jpg" className="admin-input" /></Field>
-              <input type="hidden" name="latitude" value={(existing as AdminRestaurant | undefined)?.latitude ?? ''} />
-              <input type="hidden" name="longitude" value={(existing as AdminRestaurant | undefined)?.longitude ?? ''} />
+              <input type="hidden" name="latitude" value={lat ?? ''} />
+              <input type="hidden" name="longitude" value={lon ?? ''} />
               <Field label="Max delivery distance (km)" htmlFor="maxDeliveryDistanceKm" hint="0 for unlimited"><Input id="maxDeliveryDistanceKm" name="maxDeliveryDistanceKm" type="number" min="0" step="0.1" defaultValue={(existing as AdminRestaurant | undefined)?.maxDeliveryDistanceKm ?? 0} placeholder="0" className="admin-input" /></Field>
             </>}
             {kind === 'item' && workspace && <>
