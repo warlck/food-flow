@@ -99,7 +99,7 @@ const CheckoutDesktop: React.FC = () => {
       phone: "",
       street: "",
       city: "Singapore",
-      state: "",
+      state: "SG",
       postalCode: "",
       deliveryInstructions: "",
     },
@@ -157,6 +157,7 @@ const CheckoutDesktop: React.FC = () => {
     // still adjust them manually.
     if (result.address.street) deliveryForm.setValue("street", result.address.street);
     deliveryForm.setValue("city", result.address.city || "Singapore");
+    deliveryForm.setValue("state", result.address.state || "SG");
     if (result.address.postalCode) deliveryForm.setValue("postalCode", result.address.postalCode);
 
     // Fetch the delivery fee quote for the selected destination
@@ -217,7 +218,7 @@ const CheckoutDesktop: React.FC = () => {
         deliveryAddress: orderType === "delivery" && selectedLocation ? {
           street: orderData.street,
           city: orderData.city,
-          state: orderData.state,
+          state: orderData.state && orderData.state.trim() !== "" ? orderData.state.trim() : "SG",
           postalCode: orderData.postalCode,
           deliveryInstructions: orderData.deliveryInstructions,
           latitude: selectedLocation.latitude,
@@ -521,7 +522,7 @@ const CheckoutDesktop: React.FC = () => {
                             )}
                           />
 
-                          <div className="grid grid-cols-2 gap-6">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <FormField
                               control={deliveryForm.control}
                               name="city"
@@ -530,6 +531,20 @@ const CheckoutDesktop: React.FC = () => {
                                   <FormLabel className="text-base">City</FormLabel>
                                   <FormControl>
                                     <Input placeholder="Singapore" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={deliveryForm.control}
+                              name="state"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-base">State (Optional)</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="SG" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>

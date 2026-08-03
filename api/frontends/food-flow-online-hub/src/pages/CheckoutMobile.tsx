@@ -74,7 +74,7 @@ const CheckoutMobile: React.FC = () => {
       phone: "",
       street: "",
       city: "Singapore",
-      state: "",
+      state: "SG",
       postalCode: "",
       deliveryInstructions: "",
     },
@@ -340,7 +340,7 @@ const CheckoutMobile: React.FC = () => {
                         )}
                       />
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-3 gap-3">
                         <FormField
                           control={deliveryForm.control}
                           name="city"
@@ -357,12 +357,26 @@ const CheckoutMobile: React.FC = () => {
 
                         <FormField
                           control={deliveryForm.control}
+                          name="state"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>State</FormLabel>
+                              <FormControl>
+                                <Input placeholder="SG" className="border-2 focus:border-food-primary" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={deliveryForm.control}
                           name="postalCode"
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Postal Code</FormLabel>
                               <FormControl>
-                                <Input placeholder="e.g. 048582" className="border-2 focus:border-food-primary" {...field} />
+                                <Input placeholder="048582" className="border-2 focus:border-food-primary" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>

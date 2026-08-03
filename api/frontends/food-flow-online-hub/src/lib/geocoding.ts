@@ -86,6 +86,7 @@ export async function searchAddress(query: string): Promise<GeocodingResult[]> {
 
     const postalCode = addr?.postcode || (isPostalCode ? trimmedQuery : "");
     const city = addr?.city || addr?.town || addr?.village || "Singapore";
+    const state = addr?.state || (addr as unknown as Record<string, string> | undefined)?.region || (addr as unknown as Record<string, string> | undefined)?.county || "SG";
 
     return {
       displayName: item.display_name,
@@ -94,7 +95,7 @@ export async function searchAddress(query: string): Promise<GeocodingResult[]> {
       address: {
         street,
         city,
-        state: "",
+        state,
         postalCode,
       },
     };
