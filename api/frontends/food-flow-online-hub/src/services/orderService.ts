@@ -159,15 +159,22 @@ export const orderService = {
 
   // Get a delivery fee quote for a destination
   getDeliveryQuote: async (
-    restaurantId: string,
-    latitude: number,
-    longitude: number,
+    restLat: number,
+    restLng: number,
+    lat: number,
+    lng: number,
+    maxDeliveryDistanceKm?: number,
   ): Promise<DeliveryQuote> => {
     const params = new URLSearchParams({
-      restaurantId,
-      lat: latitude.toString(),
-      lng: longitude.toString(),
+      restLat: restLat.toString(),
+      restLng: restLng.toString(),
+      lat: lat.toString(),
+      lng: lng.toString(),
     });
+
+    if (maxDeliveryDistanceKm !== undefined) {
+      params.append('maxDeliveryDistanceKm', maxDeliveryDistanceKm.toString());
+    }
 
     const response = await fetch(`${API_BASE_URL}/v1/orders/delivery-quote?${params}`, {
       method: 'GET',

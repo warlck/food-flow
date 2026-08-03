@@ -41,6 +41,9 @@ export interface Restaurant {
       close: string;
     };
   };
+  latitude?: number;
+  longitude?: number;
+  maxDeliveryDistanceKm?: number;
   deliveryFee: number;
   minimumOrder: number;
   estimatedDeliveryTime: {

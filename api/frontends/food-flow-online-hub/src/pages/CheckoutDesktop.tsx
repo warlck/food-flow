@@ -27,6 +27,7 @@ import {
 import { orderService, Order, DeliveryQuote } from "@/services/orderService";
 import { searchAddress, GeocodingResult } from "@/lib/geocoding";
 import StripePaymentForm from "@/components/StripePaymentForm";
+import { useRestaurantDetails } from "@/hooks/useRestaurantDetails";
 
 // Initialize Stripe (may be null when key isn't configured)
 const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
@@ -65,6 +66,7 @@ const DEFAULT_RESTAURANT_ADDRESS = "123 Main Street, City, State 12345";
 const CheckoutDesktop: React.FC = () => {
   const navigate = useNavigate();
   const { items, getTotalPrice, clearCart, orderType, restaurantId } = useCart();
+  const { data: restaurant } = useRestaurantDetails(restaurantId || "");
   const [step, setStep] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<"creditCard" | "payAtLocation">("creditCard");
   const [orderDetails, setOrderDetails] = useState<Record<string, unknown>>({});
@@ -159,9 +161,15 @@ const CheckoutDesktop: React.FC = () => {
     if (result.address.postalCode) deliveryForm.setValue("postalCode", result.address.postalCode);
 
     // Fetch the delivery fee quote for the selected destination
-    if (restaurantId) {
+    if (restaurantId && restaurant?.latitude !== undefined && restaurant?.longitude !== undefined) {
       try {
-        const quote = await orderService.getDeliveryQuote(restaurantId, result.latitude, result.longitude);
+        const quote = await orderService.getDeliveryQuote(
+          restaurant.latitude,
+          restaurant.longitude,
+          result.latitude,
+          result.longitude,
+          restaurant.maxDeliveryDistanceKm
+        );
         setDeliveryQuote(quote);
         if (!quote.withinLimit) {
           toast.error(`This address is ${quote.distanceKm.toFixed(1)} km away, outside the ${quote.maxDeliveryDistanceKm} km delivery area.`);
@@ -171,6 +179,8 @@ const CheckoutDesktop: React.FC = () => {
         setDeliveryQuote(null);
         toast.error("Could not calculate the delivery fee for this address.");
       }
+    } else if (restaurantId) {
+      toast.error("Restaurant location data is missing, cannot calculate delivery fee.");
     }
   };
 
