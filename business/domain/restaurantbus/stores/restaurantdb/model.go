@@ -10,30 +10,36 @@ import (
 )
 
 type restaurant struct {
-	ID          uuid.UUID `db:"restaurant_id"`
-	Name        string    `db:"name"`
-	Description string    `db:"description"`
-	Address     string    `db:"address"`
-	Phone       string    `db:"phone"`
-	Email       string    `db:"email"`
-	ImageURL    string    `db:"image_url"`
-	Enabled     bool      `db:"enabled"`
-	DateCreated time.Time `db:"date_created"`
-	DateUpdated time.Time `db:"date_updated"`
+	ID                    uuid.UUID `db:"restaurant_id"`
+	Name                  string    `db:"name"`
+	Description           string    `db:"description"`
+	Address               string    `db:"address"`
+	Phone                 string    `db:"phone"`
+	Email                 string    `db:"email"`
+	ImageURL              string    `db:"image_url"`
+	Enabled               bool      `db:"enabled"`
+	Latitude              *float64  `db:"latitude"`
+	Longitude             *float64  `db:"longitude"`
+	MaxDeliveryDistanceKm float64   `db:"max_delivery_distance_km"`
+	DateCreated           time.Time `db:"date_created"`
+	DateUpdated           time.Time `db:"date_updated"`
 }
 
 func toDBRestaurant(bus restaurantbus.Restaurant) restaurant {
 	return restaurant{
-		ID:          bus.ID,
-		Name:        bus.Name.String(),
-		Description: bus.Description,
-		Address:     bus.Address,
-		Phone:       bus.Phone,
-		Email:       bus.Email,
-		ImageURL:    bus.ImageURL,
-		Enabled:     bus.Enabled,
-		DateCreated: bus.DateCreated.UTC(),
-		DateUpdated: bus.DateUpdated.UTC(),
+		ID:                    bus.ID,
+		Name:                  bus.Name.String(),
+		Description:           bus.Description,
+		Address:               bus.Address,
+		Phone:                 bus.Phone,
+		Email:                 bus.Email,
+		ImageURL:              bus.ImageURL,
+		Enabled:               bus.Enabled,
+		Latitude:              bus.Latitude,
+		Longitude:             bus.Longitude,
+		MaxDeliveryDistanceKm: bus.MaxDeliveryDistanceKm,
+		DateCreated:           bus.DateCreated.UTC(),
+		DateUpdated:           bus.DateUpdated.UTC(),
 	}
 }
 
@@ -44,16 +50,19 @@ func toBusRestaurant(db restaurant) (restaurantbus.Restaurant, error) {
 	}
 
 	bus := restaurantbus.Restaurant{
-		ID:          db.ID,
-		Name:        nme,
-		Description: db.Description,
-		Address:     db.Address,
-		Phone:       db.Phone,
-		Email:       db.Email,
-		ImageURL:    db.ImageURL,
-		Enabled:     db.Enabled,
-		DateCreated: db.DateCreated.In(time.Local),
-		DateUpdated: db.DateUpdated.In(time.Local),
+		ID:                    db.ID,
+		Name:                  nme,
+		Description:           db.Description,
+		Address:               db.Address,
+		Phone:                 db.Phone,
+		Email:                 db.Email,
+		ImageURL:              db.ImageURL,
+		Enabled:               db.Enabled,
+		Latitude:              db.Latitude,
+		Longitude:             db.Longitude,
+		MaxDeliveryDistanceKm: db.MaxDeliveryDistanceKm,
+		DateCreated:           db.DateCreated.In(time.Local),
+		DateUpdated:           db.DateUpdated.In(time.Local),
 	}
 
 	return bus, nil

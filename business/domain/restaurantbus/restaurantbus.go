@@ -47,16 +47,19 @@ func (b *Business) Create(ctx context.Context, nr NewRestaurant) (Restaurant, er
 	now := time.Now()
 
 	res := Restaurant{
-		ID:          uuid.New(),
-		Name:        nr.Name,
-		Description: nr.Description,
-		Address:     nr.Address,
-		Phone:       nr.Phone,
-		Email:       nr.Email,
-		ImageURL:    nr.ImageURL,
-		Enabled:     true,
-		DateCreated: now,
-		DateUpdated: now,
+		ID:                    uuid.New(),
+		Name:                  nr.Name,
+		Description:           nr.Description,
+		Address:               nr.Address,
+		Phone:                 nr.Phone,
+		Email:                 nr.Email,
+		ImageURL:              nr.ImageURL,
+		Enabled:               true,
+		Latitude:              nr.Latitude,
+		Longitude:             nr.Longitude,
+		MaxDeliveryDistanceKm: nr.MaxDeliveryDistanceKm,
+		DateCreated:           now,
+		DateUpdated:           now,
 	}
 
 	if err := b.storer.Create(ctx, res); err != nil {
@@ -94,6 +97,18 @@ func (b *Business) Update(ctx context.Context, res Restaurant, ur UpdateRestaura
 
 	if ur.Enabled != nil {
 		res.Enabled = *ur.Enabled
+	}
+
+	if ur.Latitude != nil {
+		res.Latitude = ur.Latitude
+	}
+
+	if ur.Longitude != nil {
+		res.Longitude = ur.Longitude
+	}
+
+	if ur.MaxDeliveryDistanceKm != nil {
+		res.MaxDeliveryDistanceKm = *ur.MaxDeliveryDistanceKm
 	}
 
 	res.DateUpdated = time.Now()
