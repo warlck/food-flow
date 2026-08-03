@@ -94,6 +94,8 @@ func create201(sd apitest.SeedData) []apitest.Table {
 					State:                "CA",
 					PostalCode:           "12345",
 					DeliveryInstructions: "Leave at door",
+					Latitude:             ptr(1.30719),
+					Longitude:            ptr(103.87434),
 				},
 			},
 			GotResp: &orderapp.Order{},
@@ -231,4 +233,9 @@ func create400(sd apitest.SeedData) []apitest.Table {
 func create401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{}
 	return table
+}
+
+// ptr is a helper function for getting the address of a value.
+func ptr[T any](v T) *T {
+	return &v
 }
