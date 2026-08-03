@@ -316,9 +316,11 @@ const CartMobile: React.FC = () => {
                 </div>
               </div>
             </Button>
-            <p className="text-center text-sm text-gray-500 mt-3">
-              Estimated {orderType === 'delivery' ? 'delivery' : 'pickup'} time: {getEstimatedTime()}
-            </p>
+            {orderType === 'pickup' && (
+              <p className="text-center text-sm text-gray-500 mt-3">
+                Estimated pickup time: {getEstimatedTime()}
+              </p>
+            )}
           </div>
         )}
       </div>

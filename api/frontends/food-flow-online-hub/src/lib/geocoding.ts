@@ -51,10 +51,14 @@ export async function searchAddress(query: string): Promise<GeocodingResult[]> {
   url.searchParams.set("format", "jsonv2");
   url.searchParams.set("addressdetails", "1");
   url.searchParams.set("countrycodes", "sg");
+  url.searchParams.set("accept-language", "en");
   url.searchParams.set("limit", "5");
 
   const response = await fetch(url.toString(), {
-    headers: { Accept: "application/json" },
+    headers: { 
+      Accept: "application/json",
+      "Accept-Language": "en",
+    },
   });
 
   if (!response.ok) {

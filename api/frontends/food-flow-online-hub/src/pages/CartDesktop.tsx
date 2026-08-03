@@ -257,9 +257,11 @@ const CartDesktop: React.FC = () => {
                       <ArrowRight className="w-5 h-5 ml-2" />
                     </Button>
 
-                    <p className="text-center text-sm text-gray-500 mt-3">
-                      Estimated {orderType === 'delivery' ? 'delivery' : 'pickup'}: {getEstimatedTime()}
-                    </p>
+                    {orderType === 'pickup' && (
+                      <p className="text-center text-sm text-gray-500 mt-3">
+                        Estimated pickup: {getEstimatedTime()}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               </div>
