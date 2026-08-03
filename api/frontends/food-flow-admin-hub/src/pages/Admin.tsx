@@ -41,7 +41,8 @@ const demoRestaurant: AdminRestaurant = {
   id: 'demo-restaurant', name: 'Juniper & Grain', description: 'Seasonal plates and thoughtful pantry staples.',
   address: '28 Greenwood Avenue, Singapore', phone: '+65 6123 7788', email: 'hello@junipergrain.co',
   imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80',
-  enabled: true, dateCreated: '2026-07-21T08:00:00Z', dateUpdated: '2026-07-28T08:00:00Z',
+  enabled: true, latitude: 1.3319, longitude: 103.8072, maxDeliveryDistanceKm: 8,
+  dateCreated: '2026-07-21T08:00:00Z', dateUpdated: '2026-07-28T08:00:00Z',
 };
 
 const demoCategories: AdminCategory[] = [
@@ -684,7 +685,22 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
     event.preventDefault(); setSaving(true); setError('');
     const data = new FormData(event.currentTarget);
     try {
-      if (kind === 'restaurant') await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), address: String(data.get('address')), phone: String(data.get('phone')), email: String(data.get('email')), imageUrl: String(data.get('imageUrl')) }, existing?.id);
+      if (kind === 'restaurant') {
+        const latitude = String(data.get('latitude') ?? '').trim();
+        const longitude = String(data.get('longitude') ?? '').trim();
+        const maxDeliveryDistanceKm = String(data.get('maxDeliveryDistanceKm') ?? '').trim();
+        await onSave(kind, {
+          name: String(data.get('name')),
+          description: String(data.get('description')),
+          address: String(data.get('address')),
+          phone: String(data.get('phone')),
+          email: String(data.get('email')),
+          imageUrl: String(data.get('imageUrl')),
+          latitude: latitude === '' ? null : Number(latitude),
+          longitude: longitude === '' ? null : Number(longitude),
+          maxDeliveryDistanceKm: maxDeliveryDistanceKm === '' ? 0 : Number(maxDeliveryDistanceKm),
+        }, existing?.id);
+      }
       if (kind === 'category' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), restaurantId: workspace.restaurant.id }, existing?.id);
       if (kind === 'item' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), price: Number(data.get('price')), categoryId: String(data.get('categoryId')), restaurantId: workspace.restaurant.id, imageUrl: String(data.get('imageUrl')) }, existing?.id);
       if (kind === 'addon' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), price: Number(data.get('price')), maxQuantity: Number(data.get('maxQuantity')), categoryId: String(data.get('categoryId')), restaurantId: workspace.restaurant.id }, existing?.id);
@@ -707,6 +723,11 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
               <Field label="Address" htmlFor="address" required><Input id="address" name="address" defaultValue={(existing as AdminRestaurant | undefined)?.address ?? ''} required placeholder="Street, city and postal code" className="admin-input" /></Field>
               <div className="grid gap-4 sm:grid-cols-2"><Field label="Phone" htmlFor="phone" required><Input id="phone" name="phone" defaultValue={(existing as AdminRestaurant | undefined)?.phone ?? ''} required placeholder="+65 6123 4567" className="admin-input" /></Field><Field label="Email" htmlFor="email" required><Input id="email" name="email" type="email" defaultValue={(existing as AdminRestaurant | undefined)?.email ?? ''} required placeholder="hello@restaurant.com" className="admin-input" /></Field></div>
               <Field label="Cover image URL" htmlFor="imageUrl" hint="Optional"><Input id="imageUrl" name="imageUrl" type="url" defaultValue={(existing as AdminRestaurant | undefined)?.imageUrl ?? ''} placeholder="https://images.example.com/restaurant.jpg" className="admin-input" /></Field>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Latitude" htmlFor="latitude" hint="Delivery origin"><Input id="latitude" name="latitude" type="number" step="any" min="-90" max="90" defaultValue={(existing as AdminRestaurant | undefined)?.latitude ?? ''} placeholder="1.29305" className="admin-input" /></Field>
+                <Field label="Longitude" htmlFor="longitude" hint="Delivery origin"><Input id="longitude" name="longitude" type="number" step="any" min="-180" max="180" defaultValue={(existing as AdminRestaurant | undefined)?.longitude ?? ''} placeholder="103.86020" className="admin-input" /></Field>
+              </div>
+              <Field label="Max delivery distance (km)" htmlFor="maxDeliveryDistanceKm" hint="0 for unlimited"><Input id="maxDeliveryDistanceKm" name="maxDeliveryDistanceKm" type="number" min="0" step="0.1" defaultValue={(existing as AdminRestaurant | undefined)?.maxDeliveryDistanceKm ?? 0} placeholder="0" className="admin-input" /></Field>
             </>}
             {kind === 'item' && workspace && <>
               <div className="grid gap-4 sm:grid-cols-2"><Field label="Price" htmlFor="price" required><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">$</span><Input id="price" name="price" type="number" min="0.01" step="0.01" defaultValue={(existing as AdminMenuItem | undefined)?.price ?? ''} required placeholder="0.00" className="admin-input pl-7" /></div></Field><Field label="Category" htmlFor="categoryId" required><Select name="categoryId" defaultValue={(existing as AdminMenuItem | undefined)?.categoryId ?? workspace.categories[0]?.id}><SelectTrigger className="admin-input"><SelectValue placeholder="Choose category" /></SelectTrigger><SelectContent>{workspace.categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}</SelectContent></Select></Field></div>
