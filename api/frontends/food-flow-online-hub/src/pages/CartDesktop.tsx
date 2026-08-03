@@ -61,7 +61,7 @@ const CartDesktop: React.FC = () => {
 
   const getEstimatedTime = () => {
     if (orderType === 'delivery') {
-      return `${DEFAULT_DELIVERY_TIME.min}-${DEFAULT_DELIVERY_TIME.max} minutes`;
+      return 'Calculated at checkout';
     } else {
       return `${DEFAULT_PICKUP_TIME.min}-${DEFAULT_PICKUP_TIME.max} minutes`;
     }
@@ -147,7 +147,7 @@ const CartDesktop: React.FC = () => {
                           <p className="font-semibold text-gray-900">Delivery</p>
                         </div>
                         <p className="text-sm text-gray-500 ml-13">Delivered to your address</p>
-                        <p className="font-semibold text-gray-900 mt-2">${DEFAULT_DELIVERY_FEE.toFixed(2)} fee</p>
+                        <p className="text-sm font-medium text-gray-500 mt-2">Calculated at checkout</p>
                       </label>
                     </div>
                     
