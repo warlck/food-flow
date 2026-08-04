@@ -40,6 +40,9 @@ func Routes(app *web.App, cfg Config) {
 	// NOTE: This route is unauthenticated as the ordering needs to stay public
 	app.HandleFunc(http.MethodPost, version, "/orders", api.create)
 
+	// Delivery fee quote for checkout (anonymous checkout flow)
+	app.HandleFunc(http.MethodGet, version, "/orders/delivery-quote", api.deliveryQuote)
+
 	// Order queries
 	// NOTE: Order confirmation page fetches order by id without auth in dev.
 	app.HandleFunc(http.MethodGet, version, "/orders", api.query, authen)

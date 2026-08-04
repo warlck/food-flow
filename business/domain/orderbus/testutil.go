@@ -17,6 +17,11 @@ func TestSeedOrders(ctx context.Context, n int, restaurantID uuid.UUID, menuItem
 		var deliveryAddr *NewDeliveryAddress
 
 		if i%2 == 0 {
+			// Coordinates roughly 2 km from the seeded test restaurants,
+			// inside their default 10 km delivery limit.
+			lat := 1.30719
+			lng := 103.87434
+
 			orderType = OrderTypeDelivery
 			deliveryAddr = &NewDeliveryAddress{
 				Street:               fmt.Sprintf("%d Main St", i+100),
@@ -24,6 +29,8 @@ func TestSeedOrders(ctx context.Context, n int, restaurantID uuid.UUID, menuItem
 				State:                "CA",
 				PostalCode:           "12345",
 				DeliveryInstructions: "Leave at door",
+				Latitude:             &lat,
+				Longitude:            &lng,
 			}
 		}
 

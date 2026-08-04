@@ -217,7 +217,7 @@ const OrderConfirmation: React.FC = () => {
                 <CardContent>
                   <p className="text-gray-700">{order.deliveryAddress.street}</p>
                   <p className="text-gray-700">
-                    {order.deliveryAddress.city}, {order.deliveryAddress.state} {order.deliveryAddress.postalCode}
+                    {order.deliveryAddress.city}{order.deliveryAddress.state ? `, ${order.deliveryAddress.state}` : ''} {order.deliveryAddress.postalCode}
                   </p>
                   {order.deliveryAddress.deliveryInstructions && (
                     <p className="text-gray-600 mt-2 italic">

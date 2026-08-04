@@ -78,10 +78,10 @@ func (s *Store) Create(ctx context.Context, order orderbus.Order) error {
 		const addressSQL = `
 		INSERT INTO delivery_addresses (
 			address_id, order_id, street, city, state, postal_code,
-			delivery_instructions, date_created
+			delivery_instructions, latitude, longitude, date_created
 		) VALUES (
 			:address_id, :order_id, :street, :city, :state, :postal_code,
-			:delivery_instructions, :date_created
+			:delivery_instructions, :latitude, :longitude, :date_created
 		)`
 
 		if err := sqldb.NamedExecContext(ctx, s.log, tx, addressSQL, toDBDeliveryAddress(*order.DeliveryAddress, order.ID)); err != nil {
@@ -314,7 +314,7 @@ func (s *Store) queryDeliveryAddress(ctx context.Context, orderID uuid.UUID) (db
 	const q = `
 	SELECT
 		address_id, order_id, street, city, state, postal_code,
-		delivery_instructions, date_created
+		delivery_instructions, latitude, longitude, date_created
 	FROM
 		delivery_addresses
 	WHERE

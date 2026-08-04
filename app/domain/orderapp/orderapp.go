@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
@@ -125,6 +126,44 @@ func (a *app) updateStatus(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 
 	return web.Respond(ctx, w, ToAppOrder(ord), http.StatusOK)
+}
+
+// deliveryQuote calculates the delivery fee and range check for a destination.
+func (a *app) deliveryQuote(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	restLat, err := strconv.ParseFloat(r.URL.Query().Get("restLat"), 64)
+	if err != nil {
+		return errs.NewFieldErrors("restLat", err)
+	}
+
+	restLng, err := strconv.ParseFloat(r.URL.Query().Get("restLng"), 64)
+	if err != nil {
+		return errs.NewFieldErrors("restLng", err)
+	}
+
+	lat, err := strconv.ParseFloat(r.URL.Query().Get("lat"), 64)
+	if err != nil {
+		return errs.NewFieldErrors("lat", err)
+	}
+
+	lng, err := strconv.ParseFloat(r.URL.Query().Get("lng"), 64)
+	if err != nil {
+		return errs.NewFieldErrors("lng", err)
+	}
+
+	var maxDeliveryDistanceKm float64
+	if maxStr := r.URL.Query().Get("maxDeliveryDistanceKm"); maxStr != "" {
+		maxDeliveryDistanceKm, err = strconv.ParseFloat(maxStr, 64)
+		if err != nil {
+			return errs.NewFieldErrors("maxDeliveryDistanceKm", err)
+		}
+	}
+
+	quote, err := a.orderBus.DeliveryQuote(restLat, restLng, lat, lng, maxDeliveryDistanceKm)
+	if err != nil {
+		return fmt.Errorf("deliveryquote: %w", err)
+	}
+
+	return web.Respond(ctx, w, ToAppDeliveryQuote(quote), http.StatusOK)
 }
 
 // cancel cancels an order.

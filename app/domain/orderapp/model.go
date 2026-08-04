@@ -46,13 +46,15 @@ type OrderItem struct {
 
 // DeliveryAddress represents a delivery address for an order.
 type DeliveryAddress struct {
-	ID                   string `json:"id"`
-	Street               string `json:"street"`
-	City                 string `json:"city"`
-	State                string `json:"state"`
-	PostalCode           string `json:"postalCode"`
-	DeliveryInstructions string `json:"deliveryInstructions,omitempty"`
-	DateCreated          string `json:"dateCreated"`
+	ID                   string   `json:"id"`
+	Street               string   `json:"street"`
+	City                 string   `json:"city"`
+	State                string   `json:"state"`
+	PostalCode           string   `json:"postalCode"`
+	DeliveryInstructions string   `json:"deliveryInstructions,omitempty"`
+	Latitude             *float64 `json:"latitude,omitempty"`
+	Longitude            *float64 `json:"longitude,omitempty"`
+	DateCreated          string   `json:"dateCreated"`
 }
 
 // Encode implements the encoder interface.
@@ -85,6 +87,8 @@ func ToAppOrder(bus orderbus.Order) Order {
 			State:                bus.DeliveryAddress.State,
 			PostalCode:           bus.DeliveryAddress.PostalCode,
 			DeliveryInstructions: bus.DeliveryAddress.DeliveryInstructions,
+			Latitude:             bus.DeliveryAddress.Latitude,
+			Longitude:            bus.DeliveryAddress.Longitude,
 			DateCreated:          bus.DeliveryAddress.DateCreated.Format(time.RFC3339),
 		}
 	}
@@ -146,11 +150,13 @@ type NewOrderItem struct {
 
 // NewDeliveryAddress defines the data needed to add a delivery address.
 type NewDeliveryAddress struct {
-	Street               string `json:"street" validate:"required"`
-	City                 string `json:"city" validate:"required"`
-	State                string `json:"state" validate:"required"`
-	PostalCode           string `json:"postalCode" validate:"required"`
-	DeliveryInstructions string `json:"deliveryInstructions"`
+	Street               string   `json:"street" validate:"required"`
+	City                 string   `json:"city" validate:"required"`
+	State                string   `json:"state" validate:"required"`
+	PostalCode           string   `json:"postalCode" validate:"required"`
+	DeliveryInstructions string   `json:"deliveryInstructions"`
+	Latitude             *float64 `json:"latitude" validate:"required,latitude"`
+	Longitude            *float64 `json:"longitude" validate:"required,longitude"`
 }
 
 // Decode implements the decoder interface.
@@ -190,6 +196,8 @@ func toBusNewOrder(app NewOrder) (orderbus.NewOrder, error) {
 			State:                app.DeliveryAddress.State,
 			PostalCode:           app.DeliveryAddress.PostalCode,
 			DeliveryInstructions: app.DeliveryAddress.DeliveryInstructions,
+			Latitude:             app.DeliveryAddress.Latitude,
+			Longitude:            app.DeliveryAddress.Longitude,
 		}
 	}
 
@@ -206,6 +214,32 @@ func toBusNewOrder(app NewOrder) (orderbus.NewOrder, error) {
 	}
 
 	return bus, nil
+}
+
+// =============================================================================
+
+// DeliveryQuote represents a delivery fee quote for API responses.
+type DeliveryQuote struct {
+	DistanceKm            float64 `json:"distanceKm"`
+	DeliveryFee           float64 `json:"deliveryFee"`
+	MaxDeliveryDistanceKm float64 `json:"maxDeliveryDistanceKm"`
+	WithinLimit           bool    `json:"withinLimit"`
+}
+
+// Encode implements the encoder interface.
+func (app DeliveryQuote) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// ToAppDeliveryQuote converts a business layer delivery quote to an app layer quote.
+func ToAppDeliveryQuote(bus orderbus.DeliveryQuote) DeliveryQuote {
+	return DeliveryQuote{
+		DistanceKm:            bus.DistanceKm,
+		DeliveryFee:           bus.DeliveryFee.Value(),
+		MaxDeliveryDistanceKm: bus.MaxDeliveryDistanceKm,
+		WithinLimit:           bus.WithinLimit,
+	}
 }
 
 // =============================================================================

@@ -84,6 +84,8 @@ type DeliveryAddress struct {
 	State                string    // State/Province
 	PostalCode           string    // Postal/ZIP code
 	DeliveryInstructions string    // Delivery-specific instructions
+	Latitude             *float64  // Destination latitude
+	Longitude            *float64  // Destination longitude
 	DateCreated          time.Time // When address was added
 }
 
@@ -116,6 +118,8 @@ type NewDeliveryAddress struct {
 	State                string
 	PostalCode           string
 	DeliveryInstructions string
+	Latitude             *float64
+	Longitude            *float64
 }
 
 // UpdateOrderStatus contains data for updating order status

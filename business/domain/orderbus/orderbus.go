@@ -44,7 +44,8 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 	}
 
 	// Validate restaurant exists
-	if _, err := b.restaurantBus.QueryByID(ctx, restaurantID); err != nil {
+	restaurant, err := b.restaurantBus.QueryByID(ctx, restaurantID)
+	if err != nil {
 		return Order{}, fmt.Errorf("restaurant validation: %w", err)
 	}
 
@@ -92,10 +93,27 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 	// Round subtotal to 2 decimal places to avoid precision errors
 	subtotal = roundToTwoDecimals(subtotal)
 
-	// Calculate delivery fee
+	// Calculate delivery fee based on the distance to the destination.
 	var deliveryFee float64
 	if no.OrderType == OrderTypeDelivery {
-		deliveryFee = 5.00 // Fixed delivery fee for now
+		if no.DeliveryAddress.Latitude == nil || no.DeliveryAddress.Longitude == nil {
+			return Order{}, ErrDeliveryCoordinatesRequired
+		}
+
+		if restaurant.Latitude == nil || restaurant.Longitude == nil {
+			return Order{}, ErrRestaurantLocationMissing
+		}
+
+		quote, err := deliveryQuote(*restaurant.Latitude, *restaurant.Longitude, *no.DeliveryAddress.Latitude, *no.DeliveryAddress.Longitude, restaurant.MaxDeliveryDistanceKm)
+		if err != nil {
+			return Order{}, err
+		}
+
+		if !quote.WithinLimit {
+			return Order{}, fmt.Errorf("%w: %.2f km exceeds %.2f km limit", ErrDeliveryOutOfRange, quote.DistanceKm, quote.MaxDeliveryDistanceKm)
+		}
+
+		deliveryFee = quote.DeliveryFee.Value()
 	}
 
 	// Calculate tax (example: 8%) and round to 2 decimal places
@@ -131,6 +149,8 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 			State:                no.DeliveryAddress.State,
 			PostalCode:           no.DeliveryAddress.PostalCode,
 			DeliveryInstructions: no.DeliveryAddress.DeliveryInstructions,
+			Latitude:             no.DeliveryAddress.Latitude,
+			Longitude:            no.DeliveryAddress.Longitude,
 			DateCreated:          now,
 		}
 	}

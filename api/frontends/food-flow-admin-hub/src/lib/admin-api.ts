@@ -12,6 +12,9 @@ export interface AdminRestaurant {
   email: string;
   imageUrl: string;
   enabled: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
+  maxDeliveryDistanceKm: number;
   dateCreated: string;
   dateUpdated: string;
 }
@@ -59,7 +62,7 @@ export interface AdminWorkspace {
   addons: AdminAddon[];
 }
 
-export type RestaurantInput = Pick<AdminRestaurant, 'name' | 'description' | 'address' | 'phone' | 'email' | 'imageUrl'>;
+export type RestaurantInput = Pick<AdminRestaurant, 'name' | 'description' | 'address' | 'phone' | 'email' | 'imageUrl' | 'latitude' | 'longitude' | 'maxDeliveryDistanceKm'>;
 export type CategoryInput = Pick<AdminCategory, 'name' | 'description' | 'restaurantId'>;
 export type MenuItemInput = Pick<AdminMenuItem, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'imageUrl'>;
 export type AddonInput = Pick<AdminAddon, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'maxQuantity'>;

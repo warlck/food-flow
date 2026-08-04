@@ -23,6 +23,9 @@ export function transformApiRestaurant(apiData: ApiRestaurantDetails): Restauran
       saturday: { open: "11:00", close: "23:00" },
       sunday: { open: "11:00", close: "22:00" },
     },
+    latitude: apiData.latitude,
+    longitude: apiData.longitude,
+    maxDeliveryDistanceKm: apiData.maxDeliveryDistanceKm,
     deliveryFee: 2.50,
     minimumOrder: 20.00,
     estimatedDeliveryTime: {

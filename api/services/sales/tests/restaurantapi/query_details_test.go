@@ -92,17 +92,20 @@ func queryByIDWithDetails200(sd apitest.SeedData) []apitest.Table {
 	})
 
 	expected := &restaurantapi.RestaurantWithMenuCategories{
-		ID:          sd.Restaurants[0].ID.String(),
-		Name:        sd.Restaurants[0].Name.String(),
-		Description: sd.Restaurants[0].Description,
-		Address:     sd.Restaurants[0].Address,
-		Phone:       sd.Restaurants[0].Phone,
-		Email:       sd.Restaurants[0].Email,
-		ImageURL:    sd.Restaurants[0].ImageURL,
-		Enabled:     sd.Restaurants[0].Enabled,
-		Categories:  expectedCategories,
-		DateCreated: sd.Restaurants[0].DateCreated.Format("2006-01-02T15:04:05Z07:00"),
-		DateUpdated: sd.Restaurants[0].DateUpdated.Format("2006-01-02T15:04:05Z07:00"),
+		ID:                    sd.Restaurants[0].ID.String(),
+		Name:                  sd.Restaurants[0].Name.String(),
+		Description:           sd.Restaurants[0].Description,
+		Address:               sd.Restaurants[0].Address,
+		Phone:                 sd.Restaurants[0].Phone,
+		Email:                 sd.Restaurants[0].Email,
+		ImageURL:              sd.Restaurants[0].ImageURL,
+		Enabled:               sd.Restaurants[0].Enabled,
+		Latitude:              sd.Restaurants[0].Latitude,
+		Longitude:             sd.Restaurants[0].Longitude,
+		MaxDeliveryDistanceKm: sd.Restaurants[0].MaxDeliveryDistanceKm,
+		Categories:            expectedCategories,
+		DateCreated:           sd.Restaurants[0].DateCreated.Format("2006-01-02T15:04:05Z07:00"),
+		DateUpdated:           sd.Restaurants[0].DateUpdated.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
 	table := []apitest.Table{

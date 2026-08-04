@@ -40,6 +40,9 @@ export interface ApiRestaurantDetails {
   email: string;
   imageUrl: string;
   enabled: boolean;
+  latitude?: number;
+  longitude?: number;
+  maxDeliveryDistanceKm?: number;
   categories: ApiCategory[];
   dateCreated: string;
   dateUpdated: string;

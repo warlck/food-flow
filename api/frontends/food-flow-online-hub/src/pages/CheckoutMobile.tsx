@@ -34,7 +34,7 @@ const deliveryFormSchema = z.object({
   phone: z.string().min(10, { message: "Phone number must be at least 10 characters" }),
   street: z.string().min(5, { message: "Street address must be at least 5 characters" }),
   city: z.string().min(2, { message: "City must be at least 2 characters" }),
-  state: z.string().min(2, { message: "State must be at least 2 characters" }),
+  state: z.string().optional(),
   postalCode: z.string().min(5, { message: "Postal code must be at least 5 characters" }),
   deliveryInstructions: z.string().optional(),
 });
@@ -62,9 +62,8 @@ const CheckoutMobile: React.FC = () => {
   
   // Calculate totals
   const subtotal = getTotalPrice();
-  const deliveryFee = orderType === "delivery" ? DEFAULT_DELIVERY_FEE : 0;
   const tax = subtotal * 0.1; // 10% tax
-  const total = subtotal + deliveryFee + tax;
+  const total = subtotal + tax;
 
   // Setup forms based on order type
   const deliveryForm = useForm<z.infer<typeof deliveryFormSchema>>({
@@ -74,8 +73,8 @@ const CheckoutMobile: React.FC = () => {
       email: "",
       phone: "",
       street: "",
-      city: "",
-      state: "",
+      city: "Singapore",
+      state: "SG",
       postalCode: "",
       deliveryInstructions: "",
     },
@@ -341,7 +340,7 @@ const CheckoutMobile: React.FC = () => {
                         )}
                       />
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-3 gap-3">
                         <FormField
                           control={deliveryForm.control}
                           name="city"
@@ -349,7 +348,7 @@ const CheckoutMobile: React.FC = () => {
                             <FormItem>
                               <FormLabel>City</FormLabel>
                               <FormControl>
-                                <Input placeholder="New York" className="border-2 focus:border-food-primary" {...field} />
+                                <Input placeholder="Singapore" className="border-2 focus:border-food-primary" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -363,27 +362,27 @@ const CheckoutMobile: React.FC = () => {
                             <FormItem>
                               <FormLabel>State</FormLabel>
                               <FormControl>
-                                <Input placeholder="NY" className="border-2 focus:border-food-primary" {...field} />
+                                <Input placeholder="SG" className="border-2 focus:border-food-primary" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={deliveryForm.control}
+                          name="postalCode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Postal Code</FormLabel>
+                              <FormControl>
+                                <Input placeholder="048582" className="border-2 focus:border-food-primary" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
                       </div>
-
-                      <FormField
-                        control={deliveryForm.control}
-                        name="postalCode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Postal Code</FormLabel>
-                            <FormControl>
-                              <Input placeholder="10001" className="border-2 focus:border-food-primary" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
 
                       <FormField
                         control={deliveryForm.control}
@@ -612,10 +611,10 @@ const CheckoutMobile: React.FC = () => {
                 <span>Subtotal</span>
                 <span>${subtotal.toFixed(2)}</span>
               </div>
-              {deliveryFee > 0 && (
+              {orderType === "delivery" && (
                 <div className="flex justify-between text-sm">
                   <span>Delivery Fee</span>
-                  <span>${deliveryFee.toFixed(2)}</span>
+                  <span className="text-gray-500">Calculated at checkout</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">

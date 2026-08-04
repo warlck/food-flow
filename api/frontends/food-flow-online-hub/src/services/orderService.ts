@@ -39,6 +39,8 @@ export interface DeliveryAddressRequest {
   state: string;
   postalCode: string;
   deliveryInstructions?: string;
+  latitude: number;
+  longitude: number;
 }
 
 export interface Order {
@@ -79,6 +81,15 @@ export interface DeliveryAddress {
   state: string;
   postalCode: string;
   deliveryInstructions?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface DeliveryQuote {
+  distanceKm: number;
+  deliveryFee: number;
+  maxDeliveryDistanceKm: number;
+  withinLimit: boolean;
 }
 
 export interface PaymentIntentResponse {
@@ -141,6 +152,40 @@ export const orderService = {
         .json()
         .catch(() => ({ message: 'Failed to create payment intent' }));
       throw new Error(error.message || error.error || 'Failed to create payment intent');
+    }
+
+    return response.json();
+  },
+
+  // Get a delivery fee quote for a destination
+  getDeliveryQuote: async (
+    restLat: number,
+    restLng: number,
+    lat: number,
+    lng: number,
+    maxDeliveryDistanceKm?: number,
+  ): Promise<DeliveryQuote> => {
+    const params = new URLSearchParams({
+      restLat: restLat.toString(),
+      restLng: restLng.toString(),
+      lat: lat.toString(),
+      lng: lng.toString(),
+    });
+
+    if (maxDeliveryDistanceKm !== undefined) {
+      params.append('maxDeliveryDistanceKm', maxDeliveryDistanceKm.toString());
+    }
+
+    const response = await fetch(`${API_BASE_URL}/v1/orders/delivery-quote?${params}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ message: 'Failed to fetch delivery quote' }));
+      throw new Error(error.message || error.error || 'Failed to fetch delivery quote');
     }
 
     return response.json();

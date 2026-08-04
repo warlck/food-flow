@@ -12,16 +12,19 @@ import (
 
 // Restaurant represents information about a restaurant for API responses.
 type Restaurant struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Address     string `json:"address"`
-	Phone       string `json:"phone"`
-	Email       string `json:"email"`
-	ImageURL    string `json:"imageUrl"`
-	Enabled     bool   `json:"enabled"`
-	DateCreated string `json:"dateCreated"`
-	DateUpdated string `json:"dateUpdated"`
+	ID                    string   `json:"id"`
+	Name                  string   `json:"name"`
+	Description           string   `json:"description"`
+	Address               string   `json:"address"`
+	Phone                 string   `json:"phone"`
+	Email                 string   `json:"email"`
+	ImageURL              string   `json:"imageUrl"`
+	Enabled               bool     `json:"enabled"`
+	Latitude              *float64 `json:"latitude,omitempty"`
+	Longitude             *float64 `json:"longitude,omitempty"`
+	MaxDeliveryDistanceKm float64  `json:"maxDeliveryDistanceKm"`
+	DateCreated           string   `json:"dateCreated"`
+	DateUpdated           string   `json:"dateUpdated"`
 }
 
 // Encode implements the encoder interface.
@@ -33,16 +36,19 @@ func (app Restaurant) Encode() ([]byte, string, error) {
 // ToAppRestaurant converts a business layer restaurant to an app layer restaurant.
 func ToAppRestaurant(bus restaurantbus.Restaurant) Restaurant {
 	return Restaurant{
-		ID:          bus.ID.String(),
-		Name:        bus.Name.String(),
-		Description: bus.Description,
-		Address:     bus.Address,
-		Phone:       bus.Phone,
-		Email:       bus.Email,
-		ImageURL:    bus.ImageURL,
-		Enabled:     bus.Enabled,
-		DateCreated: bus.DateCreated.Format(time.RFC3339),
-		DateUpdated: bus.DateUpdated.Format(time.RFC3339),
+		ID:                    bus.ID.String(),
+		Name:                  bus.Name.String(),
+		Description:           bus.Description,
+		Address:               bus.Address,
+		Phone:                 bus.Phone,
+		Email:                 bus.Email,
+		ImageURL:              bus.ImageURL,
+		Enabled:               bus.Enabled,
+		Latitude:              bus.Latitude,
+		Longitude:             bus.Longitude,
+		MaxDeliveryDistanceKm: bus.MaxDeliveryDistanceKm,
+		DateCreated:           bus.DateCreated.Format(time.RFC3339),
+		DateUpdated:           bus.DateUpdated.Format(time.RFC3339),
 	}
 }
 
@@ -60,12 +66,15 @@ func ToAppRestaurants(restaurants []restaurantbus.Restaurant) []Restaurant {
 
 // NewRestaurant defines the data needed to add a new restaurant.
 type NewRestaurant struct {
-	Name        string `json:"name" validate:"required"`
-	Description string `json:"description"`
-	Address     string `json:"address" validate:"required"`
-	Phone       string `json:"phone" validate:"required"`
-	Email       string `json:"email" validate:"required,email"`
-	ImageURL    string `json:"imageUrl"`
+	Name                  string   `json:"name" validate:"required"`
+	Description           string   `json:"description"`
+	Address               string   `json:"address" validate:"required"`
+	Phone                 string   `json:"phone" validate:"required"`
+	Email                 string   `json:"email" validate:"required,email"`
+	ImageURL              string   `json:"imageUrl"`
+	Latitude              *float64 `json:"latitude" validate:"omitempty,latitude"`
+	Longitude             *float64 `json:"longitude" validate:"omitempty,longitude"`
+	MaxDeliveryDistanceKm float64  `json:"maxDeliveryDistanceKm" validate:"gte=0"`
 }
 
 // Decode implements the decoder interface.
@@ -89,12 +98,15 @@ func toBusNewRestaurant(app NewRestaurant) (restaurantbus.NewRestaurant, error) 
 	}
 
 	bus := restaurantbus.NewRestaurant{
-		Name:        nme,
-		Description: app.Description,
-		Address:     app.Address,
-		Phone:       app.Phone,
-		Email:       app.Email,
-		ImageURL:    app.ImageURL,
+		Name:                  nme,
+		Description:           app.Description,
+		Address:               app.Address,
+		Phone:                 app.Phone,
+		Email:                 app.Email,
+		ImageURL:              app.ImageURL,
+		Latitude:              app.Latitude,
+		Longitude:             app.Longitude,
+		MaxDeliveryDistanceKm: app.MaxDeliveryDistanceKm,
 	}
 
 	return bus, nil
@@ -104,13 +116,16 @@ func toBusNewRestaurant(app NewRestaurant) (restaurantbus.NewRestaurant, error) 
 
 // UpdateRestaurant defines the data needed to update a restaurant.
 type UpdateRestaurant struct {
-	Name        *string `json:"name"`
-	Description *string `json:"description"`
-	Address     *string `json:"address"`
-	Phone       *string `json:"phone"`
-	Email       *string `json:"email" validate:"omitempty,email"`
-	ImageURL    *string `json:"imageUrl"`
-	Enabled     *bool   `json:"enabled"`
+	Name                  *string  `json:"name"`
+	Description           *string  `json:"description"`
+	Address               *string  `json:"address"`
+	Phone                 *string  `json:"phone"`
+	Email                 *string  `json:"email" validate:"omitempty,email"`
+	ImageURL              *string  `json:"imageUrl"`
+	Enabled               *bool    `json:"enabled"`
+	Latitude              *float64 `json:"latitude" validate:"omitempty,latitude"`
+	Longitude             *float64 `json:"longitude" validate:"omitempty,longitude"`
+	MaxDeliveryDistanceKm *float64 `json:"maxDeliveryDistanceKm" validate:"omitempty,gte=0"`
 }
 
 // Decode implements the decoder interface.
@@ -138,13 +153,16 @@ func toBusUpdateRestaurant(app UpdateRestaurant) (restaurantbus.UpdateRestaurant
 	}
 
 	bus := restaurantbus.UpdateRestaurant{
-		Name:        nme,
-		Description: app.Description,
-		Address:     app.Address,
-		Phone:       app.Phone,
-		Email:       app.Email,
-		ImageURL:    app.ImageURL,
-		Enabled:     app.Enabled,
+		Name:                  nme,
+		Description:           app.Description,
+		Address:               app.Address,
+		Phone:                 app.Phone,
+		Email:                 app.Email,
+		ImageURL:              app.ImageURL,
+		Enabled:               app.Enabled,
+		Latitude:              app.Latitude,
+		Longitude:             app.Longitude,
+		MaxDeliveryDistanceKm: app.MaxDeliveryDistanceKm,
 	}
 
 	return bus, nil
@@ -188,17 +206,20 @@ type Category struct {
 // RestaurantWithMenuCategories represents information about restaurant including menu item categories
 // of the restaurant. Each category object embeds all the menuItems that in that category
 type RestaurantWithMenuCategories struct {
-	ID          string     `json:"id"`
-	Name        string     `json:"name"`
-	Description string     `json:"description"`
-	Address     string     `json:"address"`
-	Phone       string     `json:"phone"`
-	Email       string     `json:"email"`
-	ImageURL    string     `json:"imageUrl"`
-	Enabled     bool       `json:"enabled"`
-	Categories  []Category `json:"categories"`
-	DateCreated string     `json:"dateCreated"`
-	DateUpdated string     `json:"dateUpdated"`
+	ID                    string     `json:"id"`
+	Name                  string     `json:"name"`
+	Description           string     `json:"description"`
+	Address               string     `json:"address"`
+	Phone                 string     `json:"phone"`
+	Email                 string     `json:"email"`
+	ImageURL              string     `json:"imageUrl"`
+	Enabled               bool       `json:"enabled"`
+	Latitude              *float64   `json:"latitude,omitempty"`
+	Longitude             *float64   `json:"longitude,omitempty"`
+	MaxDeliveryDistanceKm float64    `json:"maxDeliveryDistanceKm"`
+	Categories            []Category `json:"categories"`
+	DateCreated           string     `json:"dateCreated"`
+	DateUpdated           string     `json:"dateUpdated"`
 }
 
 // Encode implements the encoder interface.

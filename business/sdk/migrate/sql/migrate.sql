@@ -196,3 +196,14 @@ CREATE TABLE order_item_addons (
 CREATE INDEX idx_addons_category_id ON addons(category_id);
 CREATE INDEX idx_addons_restaurant_id ON addons(restaurant_id);
 CREATE INDEX idx_order_item_addons_order_item_id ON order_item_addons(order_item_id);
+
+-- Version: 1.13
+-- Description: Add delivery location coordinates and per-restaurant delivery distance limit
+ALTER TABLE restaurants
+    ADD COLUMN latitude                   DOUBLE PRECISION NULL,
+    ADD COLUMN longitude                  DOUBLE PRECISION NULL,
+    ADD COLUMN max_delivery_distance_km   DOUBLE PRECISION NOT NULL DEFAULT 0;
+
+ALTER TABLE delivery_addresses
+    ADD COLUMN latitude  DOUBLE PRECISION NULL,
+    ADD COLUMN longitude DOUBLE PRECISION NULL;

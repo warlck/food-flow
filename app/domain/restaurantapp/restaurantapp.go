@@ -138,17 +138,20 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 
 	// Build the restaurant with nested data
 	appRestaurant := RestaurantWithMenuCategories{
-		ID:          res.ID.String(),
-		Name:        res.Name.String(),
-		Description: res.Description,
-		Address:     res.Address,
-		Phone:       res.Phone,
-		Email:       res.Email,
-		ImageURL:    res.ImageURL,
-		Enabled:     res.Enabled,
-		DateCreated: res.DateCreated.Format("2006-01-02T15:04:05Z07:00"),
-		DateUpdated: res.DateUpdated.Format("2006-01-02T15:04:05Z07:00"),
-		Categories:  make([]Category, 0, len(categories)),
+		ID:                    res.ID.String(),
+		Name:                  res.Name.String(),
+		Description:           res.Description,
+		Address:               res.Address,
+		Phone:                 res.Phone,
+		Email:                 res.Email,
+		ImageURL:              res.ImageURL,
+		Enabled:               res.Enabled,
+		Latitude:              res.Latitude,
+		Longitude:             res.Longitude,
+		MaxDeliveryDistanceKm: res.MaxDeliveryDistanceKm,
+		DateCreated:           res.DateCreated.Format("2006-01-02T15:04:05Z07:00"),
+		DateUpdated:           res.DateUpdated.Format("2006-01-02T15:04:05Z07:00"),
+		Categories:            make([]Category, 0, len(categories)),
 	}
 
 	// For each category, fetch its menu items

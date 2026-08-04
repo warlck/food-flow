@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { MapPin, Clock, CreditCard, CheckCircle, User, Phone, Mail, Home, MapPinCheck, Package, Loader2 } from "lucide-react";
+import { MapPin, Clock, CreditCard, CheckCircle, User, Phone, Mail, Home, MapPinCheck, Package, Loader2, Search } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 
@@ -24,8 +24,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { orderService, Order } from "@/services/orderService";
+import { orderService, Order, DeliveryQuote } from "@/services/orderService";
+import { searchAddress, GeocodingResult } from "@/lib/geocoding";
 import StripePaymentForm from "@/components/StripePaymentForm";
+import { useRestaurantDetails } from "@/hooks/useRestaurantDetails";
 
 // Initialize Stripe (may be null when key isn't configured)
 const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
@@ -39,7 +41,7 @@ const deliveryFormSchema = z.object({
   phone: z.string().min(10, { message: "Phone number must be at least 10 characters" }),
   street: z.string().min(5, { message: "Street address must be at least 5 characters" }),
   city: z.string().min(2, { message: "City must be at least 2 characters" }),
-  state: z.string().min(2, { message: "State must be at least 2 characters" }),
+  state: z.string().optional(),
   postalCode: z.string().min(5, { message: "Postal code must be at least 5 characters" }),
   deliveryInstructions: z.string().optional(),
 });
@@ -57,7 +59,6 @@ const paymentFormSchema = z.object({
   cardCvc: z.string().optional(),
 });
 
-const DEFAULT_DELIVERY_FEE = 3.99;
 const DEFAULT_DELIVERY_TIME = { min: 30, max: 45 };
 const DEFAULT_PICKUP_TIME = { min: 15, max: 25 };
 const DEFAULT_RESTAURANT_ADDRESS = "123 Main Street, City, State 12345";
@@ -65,6 +66,7 @@ const DEFAULT_RESTAURANT_ADDRESS = "123 Main Street, City, State 12345";
 const CheckoutDesktop: React.FC = () => {
   const navigate = useNavigate();
   const { items, getTotalPrice, clearCart, orderType, restaurantId } = useCart();
+  const { data: restaurant } = useRestaurantDetails(restaurantId || "");
   const [step, setStep] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<"creditCard" | "payAtLocation">("creditCard");
   const [orderDetails, setOrderDetails] = useState<Record<string, unknown>>({});
@@ -74,10 +76,17 @@ const CheckoutDesktop: React.FC = () => {
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
-  
+
+  // Delivery destination state
+  const [addressQuery, setAddressQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<GeocodingResult | null>(null);
+  const [deliveryQuote, setDeliveryQuote] = useState<DeliveryQuote | null>(null);
+
   // Calculate totals
   const subtotal = getTotalPrice();
-  const deliveryFee = orderType === "delivery" ? DEFAULT_DELIVERY_FEE : 0;
+  const deliveryFee = orderType === "delivery" && deliveryQuote?.withinLimit ? deliveryQuote.deliveryFee : 0;
   const tax = subtotal * 0.1; // 10% tax
   const total = subtotal + deliveryFee + tax;
 
@@ -89,8 +98,8 @@ const CheckoutDesktop: React.FC = () => {
       email: "",
       phone: "",
       street: "",
-      city: "",
-      state: "",
+      city: "Singapore",
+      state: "SG",
       postalCode: "",
       deliveryInstructions: "",
     },
@@ -115,8 +124,79 @@ const CheckoutDesktop: React.FC = () => {
     },
   });
 
+  // Address search handlers
+  const handleAddressSearch = async () => {
+    const query = addressQuery.trim();
+    if (!query) {
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchResults([]);
+
+    try {
+      const results = await searchAddress(query);
+      setSearchResults(results);
+      if (results.length === 0) {
+        toast.error("No addresses found in Singapore. Try a 6-digit postal code or street name.");
+      }
+    } catch (error) {
+      console.error("Address search failed:", error);
+      toast.error("Address search failed. Please try again.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSelectAddress = async (result: GeocodingResult) => {
+    setSelectedLocation(result);
+    setSearchResults([]);
+    setAddressQuery(result.displayName);
+
+    // Pre-fill address fields from the geocoded result; the customer can
+    // still adjust them manually.
+    if (result.address.street) deliveryForm.setValue("street", result.address.street);
+    deliveryForm.setValue("city", result.address.city || "Singapore");
+    deliveryForm.setValue("state", result.address.state || "SG");
+    if (result.address.postalCode) deliveryForm.setValue("postalCode", result.address.postalCode);
+
+    // Fetch the delivery fee quote for the selected destination
+    if (restaurantId && restaurant?.latitude !== undefined && restaurant?.longitude !== undefined) {
+      try {
+        const quote = await orderService.getDeliveryQuote(
+          restaurant.latitude,
+          restaurant.longitude,
+          result.latitude,
+          result.longitude,
+          restaurant.maxDeliveryDistanceKm
+        );
+        setDeliveryQuote(quote);
+        if (!quote.withinLimit) {
+          toast.error(`This address is ${quote.distanceKm.toFixed(1)} km away, outside the ${quote.maxDeliveryDistanceKm} km delivery area.`);
+        }
+      } catch (error) {
+        console.error("Failed to fetch delivery quote:", error);
+        setDeliveryQuote(null);
+        toast.error("Could not calculate the delivery fee for this address.");
+      }
+    } else if (restaurantId) {
+      toast.error("Restaurant location data is missing, cannot calculate delivery fee.");
+    }
+  };
+
   // Submit handlers
   const onSubmitCustomerInfo = async (data: z.infer<typeof deliveryFormSchema> | z.infer<typeof pickupFormSchema>) => {
+    if (orderType === "delivery") {
+      if (!selectedLocation) {
+        toast.error("Please search and select your delivery address.");
+        return;
+      }
+      if (deliveryQuote && !deliveryQuote.withinLimit) {
+        toast.error("The selected address is outside the delivery area.");
+        return;
+      }
+    }
+
     setOrderDetails({ ...orderDetails, ...data });
     setIsCreatingOrder(true);
 
@@ -135,12 +215,14 @@ const CheckoutDesktop: React.FC = () => {
           quantity: item.quantity,
           specialInstructions: item.specialInstructions,
         })),
-        deliveryAddress: orderType === "delivery" ? {
+        deliveryAddress: orderType === "delivery" && selectedLocation ? {
           street: orderData.street,
           city: orderData.city,
-          state: orderData.state,
+          state: orderData.state && orderData.state.trim() !== "" ? orderData.state.trim() : "SG",
           postalCode: orderData.postalCode,
-          deliveryInstructions: orderData.deliveryInstructions
+          deliveryInstructions: orderData.deliveryInstructions,
+          latitude: selectedLocation.latitude,
+          longitude: selectedLocation.longitude,
         } : undefined,
       });
 
@@ -354,6 +436,75 @@ const CheckoutDesktop: React.FC = () => {
                             />
                           </div>
 
+                          <div className="space-y-3">
+                            <Label className="flex items-center space-x-2 text-base">
+                              <Search className="w-5 h-5" />
+                              <span>Find Your Address</span>
+                            </Label>
+                            <div className="flex space-x-2">
+                              <Input
+                                placeholder="Search for your delivery address..."
+                                value={addressQuery}
+                                onChange={(e) => setAddressQuery(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleAddressSearch();
+                                  }
+                                }}
+                                className="border-2 focus:border-food-primary h-12 text-base"
+                              />
+                              <Button
+                                type="button"
+                                onClick={handleAddressSearch}
+                                disabled={isSearching}
+                                variant="outline"
+                                className="h-12 px-6 text-food-primary border-food-primary hover:bg-food-primary/10"
+                              >
+                                {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                              </Button>
+                            </div>
+
+                            {searchResults.length > 0 && (
+                              <div className="border-2 rounded-xl divide-y max-h-48 overflow-y-auto">
+                                {searchResults.map((result, index) => (
+                                  <button
+                                    key={index}
+                                    type="button"
+                                    onClick={() => handleSelectAddress(result)}
+                                    className="w-full text-left px-4 py-3 hover:bg-food-primary/5 text-sm text-gray-700 transition-colors"
+                                  >
+                                    {result.displayName}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
+                            {selectedLocation && (
+                              <div className={`flex items-start space-x-2 rounded-xl border p-3 text-sm ${
+                                deliveryQuote && !deliveryQuote.withinLimit
+                                  ? "border-red-200 bg-red-50 text-red-800"
+                                  : "border-green-200 bg-green-50 text-green-800"
+                              }`}>
+                                <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
+                                <div>
+                                  <div className="font-medium">Delivery destination</div>
+                                  <div>{selectedLocation.displayName}</div>
+                                  {deliveryQuote && (
+                                    <div className="mt-1">
+                                      {deliveryQuote.distanceKm.toFixed(1)} km away
+                                      {deliveryQuote.withinLimit
+                                        ? deliveryQuote.deliveryFee > 0
+                                          ? ` • $${deliveryQuote.deliveryFee.toFixed(2)} delivery fee`
+                                          : " • Free delivery"
+                                        : ` • Outside the ${deliveryQuote.maxDeliveryDistanceKm} km delivery area`}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
                           <FormField
                             control={deliveryForm.control}
                             name="street"
@@ -371,7 +522,7 @@ const CheckoutDesktop: React.FC = () => {
                             )}
                           />
 
-                          <div className="grid grid-cols-3 gap-6">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <FormField
                               control={deliveryForm.control}
                               name="city"
@@ -379,7 +530,7 @@ const CheckoutDesktop: React.FC = () => {
                                 <FormItem>
                                   <FormLabel className="text-base">City</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="New York" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
+                                    <Input placeholder="Singapore" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -391,9 +542,9 @@ const CheckoutDesktop: React.FC = () => {
                               name="state"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel className="text-base">State</FormLabel>
+                                  <FormLabel className="text-base">State (Optional)</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="NY" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
+                                    <Input placeholder="SG" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -407,7 +558,7 @@ const CheckoutDesktop: React.FC = () => {
                                 <FormItem>
                                   <FormLabel className="text-base">Postal Code</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="10001" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
+                                    <Input placeholder="e.g. 048582" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -654,10 +805,16 @@ const CheckoutDesktop: React.FC = () => {
                           <span className="text-gray-600">Subtotal</span>
                           <span className="font-medium">${subtotal.toFixed(2)}</span>
                         </div>
-                        {deliveryFee > 0 && (
+                        {orderType === "delivery" && (
                           <div className="flex justify-between">
                             <span className="text-gray-600">Delivery Fee</span>
-                            <span className="font-medium">${deliveryFee.toFixed(2)}</span>
+                            <span className="font-medium">
+                              {deliveryQuote && deliveryQuote.withinLimit
+                                ? deliveryQuote.deliveryFee > 0
+                                  ? `$${deliveryQuote.deliveryFee.toFixed(2)}`
+                                  : "Free"
+                                : "Select address"}
+                            </span>
                           </div>
                         )}
                         <div className="flex justify-between">

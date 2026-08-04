@@ -23,9 +23,8 @@ const CartDesktop: React.FC = () => {
   const navigate = useNavigate();
 
   const subtotal = getTotalPrice();
-  const deliveryFee = orderType === 'delivery' ? DEFAULT_DELIVERY_FEE : 0;
   const tax = subtotal * 0.1; // 10% tax
-  const total = subtotal + deliveryFee + tax;
+  const total = subtotal + tax;
 
   const handleApplyPromo = () => {
     setIsApplying(true);
@@ -62,7 +61,7 @@ const CartDesktop: React.FC = () => {
 
   const getEstimatedTime = () => {
     if (orderType === 'delivery') {
-      return `${DEFAULT_DELIVERY_TIME.min}-${DEFAULT_DELIVERY_TIME.max} minutes`;
+      return 'Calculated at checkout';
     } else {
       return `${DEFAULT_PICKUP_TIME.min}-${DEFAULT_PICKUP_TIME.max} minutes`;
     }
@@ -148,7 +147,7 @@ const CartDesktop: React.FC = () => {
                           <p className="font-semibold text-gray-900">Delivery</p>
                         </div>
                         <p className="text-sm text-gray-500 ml-13">Delivered to your address</p>
-                        <p className="font-semibold text-gray-900 mt-2">${DEFAULT_DELIVERY_FEE.toFixed(2)} fee</p>
+                        <p className="text-sm font-medium text-gray-500 mt-2">Calculated at checkout</p>
                       </label>
                     </div>
                     
@@ -218,7 +217,7 @@ const CartDesktop: React.FC = () => {
                       {orderType === 'delivery' && (
                         <div className="flex justify-between items-center">
                           <span className="text-gray-600">Delivery Fee</span>
-                          <span className="font-semibold text-lg">${deliveryFee.toFixed(2)}</span>
+                          <span className="font-semibold text-sm text-gray-500">Calculated at checkout</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center">
@@ -258,9 +257,11 @@ const CartDesktop: React.FC = () => {
                       <ArrowRight className="w-5 h-5 ml-2" />
                     </Button>
 
-                    <p className="text-center text-sm text-gray-500 mt-3">
-                      Estimated {orderType === 'delivery' ? 'delivery' : 'pickup'}: {getEstimatedTime()}
-                    </p>
+                    {orderType === 'pickup' && (
+                      <p className="text-center text-sm text-gray-500 mt-3">
+                        Estimated pickup: {getEstimatedTime()}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               </div>
