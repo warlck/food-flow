@@ -41,16 +41,7 @@ const Footer: React.FC = () => {
                   </Link>
                 </li>
               )}
-              <li>
-                <Link to="/login" className="text-gray-300 hover:text-food-primary">
-                  Login
-                </Link>
-              </li>
-              <li>
-                <Link to="/signup" className="text-gray-300 hover:text-food-primary">
-                  Sign Up
-                </Link>
-              </li>
+
               <li>
                 <Link to="/track-order" className="text-gray-300 hover:text-food-primary">
                   Track Order
