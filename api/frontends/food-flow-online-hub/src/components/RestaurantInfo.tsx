@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Restaurant } from '@/types';
-import { Clock, MapPin, Phone, Mail, Star, Truck, DollarSign, Timer } from 'lucide-react';
+import { Clock, MapPin, Phone, Mail, Star } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface RestaurantInfoProps {
@@ -103,23 +103,6 @@ const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ restaurant }) => {
         </div>
       </div>
 
-      {/* Additional Info */}
-      <div className="container mx-auto px-4 mb-8">
-        <div className="flex flex-wrap gap-4 justify-center md:justify-start text-sm">
-          <div className="flex items-center">
-            <Truck className="h-4 w-4 text-food-primary mr-1" />
-            <span>Delivery Fee: ${restaurant.deliveryFee.toFixed(2)}</span>
-          </div>
-          <div className="flex items-center">
-            <DollarSign className="h-4 w-4 text-food-primary mr-1" />
-            <span>Minimum Order: ${restaurant.minimumOrder.toFixed(2)}</span>
-          </div>
-          <div className="flex items-center">
-            <Timer className="h-4 w-4 text-food-primary mr-1" />
-            <span>Est. Delivery: {restaurant.estimatedDeliveryTime.min}-{restaurant.estimatedDeliveryTime.max} min</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
