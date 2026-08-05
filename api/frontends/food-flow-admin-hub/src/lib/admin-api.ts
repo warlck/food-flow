@@ -62,6 +62,68 @@ export interface AdminWorkspace {
   addons: AdminAddon[];
 }
 
+export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+export type PaymentStatus = 'pending' | 'processing' | 'paid' | 'failed' | 'refunded';
+export type OrderType = 'pickup' | 'delivery';
+
+export interface AdminOrderItem {
+  id: string;
+  menuItemId: string;
+  menuItemName: string;
+  menuItemPrice: number;
+  quantity: number;
+  specialInstructions?: string;
+  dateCreated: string;
+}
+
+export interface AdminDeliveryAddress {
+  id: string;
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  deliveryInstructions?: string;
+  latitude?: number;
+  longitude?: number;
+  dateCreated: string;
+}
+
+export interface AdminOrder {
+  id: string;
+  restaurantId: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  orderType: OrderType;
+  orderStatus: OrderStatus;
+  paymentStatus: PaymentStatus;
+  paymentMethod: string;
+  subtotal: number;
+  deliveryFee: number;
+  tax: number;
+  total: number;
+  specialInstructions?: string;
+  stripePaymentIntentId?: string;
+  items: AdminOrderItem[];
+  deliveryAddress?: AdminDeliveryAddress;
+  dateCreated: string;
+  dateUpdated: string;
+}
+
+export interface OrderFilters {
+  orderStatus?: OrderStatus;
+  paymentStatus?: PaymentStatus;
+  orderType?: OrderType;
+  customerEmail?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface OrderStatusInput {
+  orderStatus?: OrderStatus;
+  paymentStatus?: PaymentStatus;
+}
+
 export type RestaurantInput = Pick<AdminRestaurant, 'name' | 'description' | 'address' | 'phone' | 'email' | 'imageUrl' | 'latitude' | 'longitude' | 'maxDeliveryDistanceKm'>;
 export type CategoryInput = Pick<AdminCategory, 'name' | 'description' | 'restaurantId'>;
 export type MenuItemInput = Pick<AdminMenuItem, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'imageUrl'>;
@@ -225,6 +287,30 @@ class AdminApi {
 
   deleteAddon(id: string) {
     return this.request<void>(`/v1/addons/${id}`, { method: 'DELETE' });
+  }
+
+  listOrders(restaurantId: string, filters: OrderFilters = {}) {
+    const params = new URLSearchParams({
+      page: '1',
+      rows: '100',
+      orderBy: 'date,DESC',
+      restaurant_id: restaurantId,
+    });
+    if (filters.orderStatus) params.set('order_status', filters.orderStatus);
+    if (filters.paymentStatus) params.set('payment_status', filters.paymentStatus);
+    if (filters.orderType) params.set('order_type', filters.orderType);
+    if (filters.customerEmail) params.set('customer_email', filters.customerEmail);
+    if (filters.startDate) params.set('start_date', filters.startDate);
+    if (filters.endDate) params.set('end_date', filters.endDate);
+    return this.request<ApiPage<AdminOrder>>(`/v1/orders?${params}`);
+  }
+
+  updateOrderStatus(id: string, input: OrderStatusInput) {
+    return this.request<AdminOrder>(`/v1/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify(input) });
+  }
+
+  cancelOrder(id: string) {
+    return this.request<void>(`/v1/orders/${id}/cancel`, { method: 'POST' });
   }
 }
 
