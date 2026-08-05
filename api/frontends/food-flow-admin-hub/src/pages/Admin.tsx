@@ -1,9 +1,9 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  BarChart3, Bell, BookOpen, Boxes, Building2, Check, ChevronDown, ChevronRight,
-  ChefHat, CircleAlert, Clock3, Grid2X2, HelpCircle, ImageOff, LayoutDashboard, List,
-  Loader2, MapPin, Menu, MoreHorizontal, PackageCheck, Pencil, Plus, ReceiptText,
-  Puzzle, RefreshCw, Search, Settings, ShoppingBag, Sparkles, Store, Trash2, UtensilsCrossed,
+  ArrowRight, Banknote, BarChart3, Bell, Bike, BookOpen, Boxes, Building2, Check, ChevronDown, ChevronRight,
+  ChefHat, CircleAlert, Clock3, CreditCard, Grid2X2, HelpCircle, ImageOff, LayoutDashboard, List,
+  Loader2, Mail, MapPin, Menu, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, ReceiptText,
+  Puzzle, RefreshCw, Search, Settings, ShoppingBag, Sparkles, Store, Trash2, UtensilsCrossed, XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -15,8 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  AddonInput, AdminAddon, AdminCategory, AdminMenuItem, AdminRestaurant, AdminWorkspace,
-  CategoryInput, MenuItemInput, RestaurantInput, adminApi,
+  AddonInput, AdminAddon, AdminCategory, AdminMenuItem, AdminOrder, AdminRestaurant, AdminWorkspace,
+  CategoryInput, MenuItemInput, OrderStatus, OrderType, PaymentStatus, RestaurantInput, adminApi,
 } from '@/lib/admin-api';
 import './Admin.css';
 
@@ -29,12 +29,63 @@ type EditorState =
 
 const NAME_PATTERN = /^[\p{L}\p{N}' -]{3,100}$/u;
 
-const navItems = [
+type Section = 'menu' | 'orders';
+
+const navItems: { icon: typeof LayoutDashboard; label: string; section?: Section; soon?: boolean }[] = [
   { icon: LayoutDashboard, label: 'Overview' },
-  { icon: BookOpen, label: 'Menu & inventory', active: true },
-  { icon: ReceiptText, label: 'Orders', soon: true },
+  { icon: BookOpen, label: 'Menu & inventory', section: 'menu' },
+  { icon: ReceiptText, label: 'Orders', section: 'orders' },
   { icon: BarChart3, label: 'Sales & insights', soon: true },
   { icon: Settings, label: 'Settings' },
+];
+
+const ORDER_STATUS_FLOW: Record<OrderStatus, OrderStatus | null> = {
+  pending: 'confirmed',
+  confirmed: 'preparing',
+  preparing: 'ready',
+  ready: 'completed',
+  completed: null,
+  cancelled: null,
+};
+
+const NEXT_STATUS_LABELS: Partial<Record<OrderStatus, string>> = {
+  confirmed: 'Confirm order',
+  preparing: 'Start preparing',
+  ready: 'Mark ready',
+  completed: 'Complete order',
+};
+
+const ORDER_STATUS_STYLES: Record<OrderStatus, string> = {
+  pending: 'bg-[#FFF8E7] text-[#B45309]',
+  confirmed: 'bg-[#EFF6FF] text-[#1D4ED8]',
+  preparing: 'bg-[#FFF1EB] text-[#FF4500]',
+  ready: 'bg-[#F0FDF4] text-[#15803D]',
+  completed: 'bg-[#E8F5E9] text-[#2E7D32]',
+  cancelled: 'bg-[#FFEBEE] text-[#C62828]',
+};
+
+const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
+  pending: 'bg-[#F3F4F6] text-[#4B5563]',
+  processing: 'bg-[#EFF6FF] text-[#1D4ED8]',
+  paid: 'bg-[#E8F5E9] text-[#2E7D32]',
+  failed: 'bg-[#FFEBEE] text-[#C62828]',
+  refunded: 'bg-[#F3E8FF] text-[#7E22CE]',
+};
+
+const ORDER_STATUS_OPTIONS: { value: 'all' | OrderStatus; label: string }[] = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'preparing', label: 'Preparing' },
+  { value: 'ready', label: 'Ready' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
+
+const ORDER_TYPE_OPTIONS: { value: 'all' | OrderType; label: string }[] = [
+  { value: 'all', label: 'All types' },
+  { value: 'pickup', label: 'Pickup' },
+  { value: 'delivery', label: 'Delivery' },
 ];
 
 const demoRestaurant: AdminRestaurant = {
@@ -76,6 +127,10 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-SG', { style: 'currency', currency: 'SGD' }).format(value);
 }
 
+function formatOrderTime(value: string) {
+  return new Intl.DateTimeFormat('en-SG', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+}
+
 function initials(name: string) {
   return name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
 }
@@ -107,6 +162,16 @@ export default function Admin() {
   const [availability, setAvailability] = useState('all');
   const [query, setQuery] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [section, setSection] = useState<Section>('menu');
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersLoaded, setOrdersLoaded] = useState(false);
+  const [ordersRefreshKey, setOrdersRefreshKey] = useState(0);
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | OrderStatus>('all');
+  const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | OrderType>('all');
+  const [orderQuery, setOrderQuery] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
+  const [orderActionBusy, setOrderActionBusy] = useState(false);
 
   const loadWorkspace = useCallback(async (restaurantId: string, quiet = false) => {
     if (!restaurantId) return;
@@ -210,6 +275,9 @@ export default function Admin() {
   const handleRestaurantChange = async (id: string) => {
     setSelectedId(id);
     setSelectedCategory('all');
+    setOrders([]);
+    setOrdersLoaded(false);
+    setSelectedOrder(null);
     if (id === demoRestaurant.id) {
       setWorkspace(demoWorkspace());
       setAddonCategory(demoCategories[0]?.id ?? '');
@@ -249,6 +317,83 @@ export default function Admin() {
     await mutateWorkspace(() => adminApi.deleteAddon(addon.id), 'Add-on deleted');
   };
 
+  useEffect(() => {
+    if (section !== 'orders' || !selectedId || isDemo) return;
+    let active = true;
+    setOrdersLoading(true);
+    adminApi.listOrders(selectedId, {
+      orderStatus: orderStatusFilter === 'all' ? undefined : orderStatusFilter,
+      orderType: orderTypeFilter === 'all' ? undefined : orderTypeFilter,
+    })
+      .then((page) => {
+        if (!active) return;
+        setOrders(page.items);
+        setOrdersLoaded(true);
+      })
+      .catch((error) => {
+        if (!active) return;
+        toast.error(error instanceof Error ? error.message : 'Could not load orders');
+      })
+      .finally(() => {
+        if (active) setOrdersLoading(false);
+      });
+    return () => { active = false; };
+  }, [section, selectedId, orderStatusFilter, orderTypeFilter, ordersRefreshKey, isDemo]);
+
+  const visibleOrders = useMemo(() => {
+    const normalizedQuery = orderQuery.trim().toLowerCase();
+    if (!normalizedQuery) return orders;
+    return orders.filter((order) =>
+      `${order.customerName} ${order.customerEmail} ${order.customerPhone} ${order.id}`.toLowerCase().includes(normalizedQuery));
+  }, [orders, orderQuery]);
+
+  const applyOrderUpdate = (updated: AdminOrder) => {
+    setOrders((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
+    setSelectedOrder((current) => (current?.id === updated.id ? updated : current));
+  };
+
+  const advanceOrder = async (order: AdminOrder) => {
+    const next = ORDER_STATUS_FLOW[order.orderStatus];
+    if (!next) return;
+    setOrderActionBusy(true);
+    try {
+      const updated = await adminApi.updateOrderStatus(order.id, { orderStatus: next });
+      applyOrderUpdate(updated);
+      toast.success(`Order #${order.id.slice(0, 8)} marked ${next}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Order status could not be updated');
+    } finally {
+      setOrderActionBusy(false);
+    }
+  };
+
+  const markOrderPaid = async (order: AdminOrder) => {
+    setOrderActionBusy(true);
+    try {
+      const updated = await adminApi.updateOrderStatus(order.id, { paymentStatus: 'paid' });
+      applyOrderUpdate(updated);
+      toast.success(`Order #${order.id.slice(0, 8)} marked as paid`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Payment status could not be updated');
+    } finally {
+      setOrderActionBusy(false);
+    }
+  };
+
+  const cancelOrder = async (order: AdminOrder) => {
+    if (!window.confirm(`Cancel order #${order.id.slice(0, 8)} for ${order.customerName}?`)) return;
+    setOrderActionBusy(true);
+    try {
+      await adminApi.cancelOrder(order.id);
+      applyOrderUpdate({ ...order, orderStatus: 'cancelled' });
+      toast.success(`Order #${order.id.slice(0, 8)} cancelled`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Order could not be cancelled');
+    } finally {
+      setOrderActionBusy(false);
+    }
+  };
+
   const selectedCategoryName = selectedCategory === 'all' ? 'All menu items' : workspace?.categories.find((category) => category.id === selectedCategory)?.name ?? 'Menu items';
 
   return (
@@ -277,9 +422,9 @@ export default function Admin() {
 
         <nav className="space-y-1">
           <div className="admin-nav-label px-3 pb-2 text-[10px] font-bold uppercase tracking-[.16em] text-[#9CA3AF]">Workspace</div>
-          {navItems.map(({ icon: Icon, label, active, soon }) => (
-            <button key={label} className={`admin-nav-item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold ${active ? 'active' : ''}`}>
-              <Icon size={18} strokeWidth={active ? 2.3 : 1.8} />
+          {navItems.map(({ icon: Icon, label, section: navSection, soon }) => (
+            <button key={label} onClick={() => navSection && setSection(navSection)} className={`admin-nav-item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold ${navSection === section ? 'active' : ''}`}>
+              <Icon size={18} strokeWidth={navSection === section ? 2.3 : 1.8} />
               <span className="admin-nav-label flex-1">{label}</span>
               {soon && <span className="admin-nav-label rounded-full border border-current/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider opacity-70">Soon</span>}
             </button>
@@ -314,9 +459,11 @@ export default function Admin() {
           </div>
           <div className="flex items-center gap-2">
             <button className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#4B5563]"><Bell size={17} /><span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#FF4500]" /></button>
-            <Button className="admin-primary h-9 gap-2 rounded-lg px-3.5 text-xs font-semibold" onClick={() => setEditor({ kind: 'item' })} disabled={!workspace?.categories.length}>
-              <Plus size={16} /> <span className="hidden sm:inline">New menu item</span><span className="sm:hidden">New</span>
-            </Button>
+            {section === 'menu' && (
+              <Button className="admin-primary h-9 gap-2 rounded-lg px-3.5 text-xs font-semibold" onClick={() => setEditor({ kind: 'item' })} disabled={!workspace?.categories.length}>
+                <Plus size={16} /> <span className="hidden sm:inline">New menu item</span><span className="sm:hidden">New</span>
+              </Button>
+            )}
           </div>
         </header>
 
@@ -328,6 +475,8 @@ export default function Admin() {
             </div>
           )}
 
+          {section === 'menu' ? (
+            <>
           <section className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
               <div className="mb-1.5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.14em] text-[#FF4500]"><BookOpen size={13} /> Menu workspace</div>
@@ -425,6 +574,23 @@ export default function Admin() {
               </section>
             </>
           )}
+            </>
+          ) : (
+            <OrdersSection
+              orders={visibleOrders}
+              loading={ordersLoading}
+              loaded={ordersLoaded}
+              isDemo={isDemo}
+              statusFilter={orderStatusFilter}
+              onStatusFilter={setOrderStatusFilter}
+              typeFilter={orderTypeFilter}
+              onTypeFilter={setOrderTypeFilter}
+              query={orderQuery}
+              onQuery={setOrderQuery}
+              onRefresh={() => setOrdersRefreshKey((key) => key + 1)}
+              onSelect={setSelectedOrder}
+            />
+          )}
         </div>
       </main>
 
@@ -482,6 +648,15 @@ export default function Admin() {
             setAddonCategory(addonInput.categoryId);
           }
         }}
+      />
+
+      <OrderDetailDialog
+        order={selectedOrder}
+        busy={orderActionBusy}
+        onClose={() => setSelectedOrder(null)}
+        onAdvance={advanceOrder}
+        onMarkPaid={markOrderPaid}
+        onCancel={cancelOrder}
       />
     </div>
   );
@@ -672,6 +847,250 @@ function ItemMenu({ onEdit, onDelete, contrast, noun = 'item' }: { onEdit: () =>
 
 function EmptyRestaurant({ onCreate }: { onCreate: () => void }) {
   return <div className="admin-panel admin-empty-pattern flex min-h-[480px] flex-col items-center justify-center rounded-2xl px-5 text-center"><div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#FFF1EB] text-[#FF4500]"><Store size={28} /></div><h2 className="text-xl font-bold">Create your first restaurant</h2><p className="mt-2 max-w-md text-sm leading-relaxed text-[#6B7280]">Add the essentials, then build categories and menu items in a workspace designed to keep everything connected.</p><Button className="admin-primary mt-5 gap-2" onClick={onCreate}><Plus size={16} /> Create restaurant</Button></div>;
+}
+
+function OrderStatusBadge({ status }: { status: OrderStatus }) {
+  return <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.08em] ${ORDER_STATUS_STYLES[status]}`}>{status}</span>;
+}
+
+function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
+  return <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.08em] ${PAYMENT_STATUS_STYLES[status]}`}>{status}</span>;
+}
+
+function OrdersSection({ orders, loading, loaded, isDemo, statusFilter, onStatusFilter, typeFilter, onTypeFilter, query, onQuery, onRefresh, onSelect }: {
+  orders: AdminOrder[];
+  loading: boolean;
+  loaded: boolean;
+  isDemo: boolean;
+  statusFilter: 'all' | OrderStatus;
+  onStatusFilter: (value: 'all' | OrderStatus) => void;
+  typeFilter: 'all' | OrderType;
+  onTypeFilter: (value: 'all' | OrderType) => void;
+  query: string;
+  onQuery: (value: string) => void;
+  onRefresh: () => void;
+  onSelect: (order: AdminOrder) => void;
+}) {
+  const activeCount = orders.filter((order) => order.orderStatus !== 'completed' && order.orderStatus !== 'cancelled').length;
+  const pendingCount = orders.filter((order) => order.orderStatus === 'pending').length;
+  const cancelledCount = orders.filter((order) => order.orderStatus === 'cancelled').length;
+  const revenue = orders.filter((order) => order.orderStatus !== 'cancelled').reduce((sum, order) => sum + order.total, 0);
+
+  return (
+    <>
+      <section className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+        <div>
+          <div className="mb-1.5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.14em] text-[#FF4500]"><ReceiptText size={13} /> Order management</div>
+          <h1 className="text-[28px] font-bold tracking-[-.035em] text-[#333333] sm:text-[32px]">Stay ahead of every order.</h1>
+          <p className="mt-1 max-w-2xl text-[13px] text-[#6B7280]">Track incoming orders, move them through preparation, and keep the kitchen flowing.</p>
+        </div>
+      </section>
+
+      <section className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <Stat icon={ReceiptText} label="Active orders" value={activeCount} note="Being prepared right now" />
+        <Stat icon={Clock3} label="Pending" value={pendingCount} note="Awaiting confirmation" attention={pendingCount > 0} />
+        <Stat icon={CreditCard} label="Revenue" value={formatCurrency(revenue)} note="Across listed orders" />
+        <Stat icon={XCircle} label="Cancelled" value={cancelledCount} note="Across listed orders" />
+      </section>
+
+      <section className="admin-panel overflow-hidden rounded-2xl">
+        <div className="flex flex-col gap-3 border-b border-[#E5E7EB] p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div>
+            <h2 className="text-[17px] font-bold tracking-[-.02em]">Order feed</h2>
+            <p className="mt-0.5 text-[11px] text-[#9CA3AF]">{orders.length} {orders.length === 1 ? 'order' : 'orders'} shown</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[180px] flex-1 sm:w-[220px] sm:flex-none">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" size={15} />
+              <Input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="Search customer or id" className="admin-input h-9 rounded-lg pl-9 text-xs" />
+            </div>
+            <Select value={statusFilter} onValueChange={(value) => onStatusFilter(value as 'all' | OrderStatus)}>
+              <SelectTrigger className="admin-input h-9 w-[136px] rounded-lg text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>{ORDER_STATUS_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={(value) => onTypeFilter(value as 'all' | OrderType)}>
+              <SelectTrigger className="admin-input h-9 w-[120px] rounded-lg text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>{ORDER_TYPE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+            </Select>
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onRefresh} disabled={loading || isDemo} aria-label="Refresh orders"><RefreshCw size={15} className={loading ? 'animate-spin' : ''} /></Button>
+          </div>
+        </div>
+
+        <div className="admin-empty-pattern min-h-[440px] p-4 sm:p-5">
+          {loading ? (
+            <div className="flex min-h-[390px] items-center justify-center"><Loader2 className="animate-spin text-[#FF4500]" size={28} /></div>
+          ) : orders.length ? (
+            <div className="space-y-3">
+              {orders.map((order) => <OrderRow key={order.id} order={order} onSelect={() => onSelect(order)} />)}
+            </div>
+          ) : (
+            <div className="flex min-h-[390px] flex-col items-center justify-center px-5 text-center">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#FED7C7] bg-white text-[#FF4500] shadow-sm"><ReceiptText size={23} /></div>
+              <h3 className="text-base font-bold">{isDemo || !loaded ? 'Orders need the API services' : 'No orders match these filters'}</h3>
+              <p className="mt-1 max-w-sm text-xs leading-relaxed text-[#6B7280]">{isDemo || !loaded ? 'Start the local API services to load live orders for this restaurant.' : 'Try a different status or clear the search to see more orders.'}</p>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-[#FAFAFA] px-5 py-3 text-[10px] text-[#6B7280]">
+          <span>Status updates apply to the customer order immediately.</span>
+          <span className="flex items-center gap-1.5"><Clock3 size={12} /> Last synced {isDemo ? 'in preview mode' : 'just now'}</span>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function OrderRow({ order, onSelect }: { order: AdminOrder; onSelect: () => void }) {
+  const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+  return (
+    <button onClick={onSelect} className="admin-order-row flex w-full flex-col gap-3 rounded-xl border border-[#E5E7EB] bg-white p-4 text-left sm:flex-row sm:items-center">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${order.orderType === 'delivery' ? 'bg-[#EFF6FF] text-[#1D4ED8]' : 'bg-[#FFF1EB] text-[#FF4500]'}`}>
+          {order.orderType === 'delivery' ? <Bike size={18} /> : <ShoppingBag size={18} />}
+        </div>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[13px] font-bold text-[#333333]">#{order.id.slice(0, 8)}</span>
+            <OrderStatusBadge status={order.orderStatus} />
+          </div>
+          <div className="mt-0.5 truncate text-[11px] text-[#6B7280]">{order.customerName} • {itemCount} {itemCount === 1 ? 'item' : 'items'} • {order.orderType}</div>
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-3 sm:justify-end">
+        <PaymentStatusBadge status={order.paymentStatus} />
+        <div className="text-left sm:text-right">
+          <div className="text-[13px] font-bold text-[#FF4500]">{formatCurrency(order.total)}</div>
+          <div className="mt-0.5 text-[10px] text-[#9CA3AF]">{formatOrderTime(order.dateCreated)}</div>
+        </div>
+        <ChevronRight size={16} className="shrink-0 text-[#9CA3AF]" />
+      </div>
+    </button>
+  );
+}
+
+function OrderDetailDialog({ order, busy, onClose, onAdvance, onMarkPaid, onCancel }: {
+  order: AdminOrder | null;
+  busy: boolean;
+  onClose: () => void;
+  onAdvance: (order: AdminOrder) => void;
+  onMarkPaid: (order: AdminOrder) => void;
+  onCancel: (order: AdminOrder) => void;
+}) {
+  const nextStatus = order ? ORDER_STATUS_FLOW[order.orderStatus] : null;
+  const canCancel = order ? order.orderStatus === 'pending' || order.orderStatus === 'confirmed' : false;
+  const canMarkPaid = order ? order.paymentMethod === 'cash' && order.paymentStatus !== 'paid' && order.paymentStatus !== 'refunded' && order.orderStatus !== 'cancelled' : false;
+
+  return (
+    <Dialog open={Boolean(order)} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[92vh] overflow-y-auto border-[#E5E7EB] p-0 sm:max-w-[640px]">
+        {order && (
+          <>
+            <DialogHeader className="border-b border-[#E5E7EB] px-6 py-5 text-left">
+              <div className="flex flex-wrap items-center justify-between gap-3 pr-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]"><ReceiptText size={18} /></div>
+                  <div>
+                    <DialogTitle className="text-xl tracking-[-.025em]">Order #{order.id.slice(0, 8)}</DialogTitle>
+                    <DialogDescription className="text-xs">{formatOrderTime(order.dateCreated)} • {order.orderType === 'delivery' ? 'Delivery' : 'Pickup'}</DialogDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <OrderStatusBadge status={order.orderStatus} />
+                  <PaymentStatusBadge status={order.paymentStatus} />
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-5 px-6 py-5">
+              <section>
+                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-[.13em] text-[#9CA3AF]">Customer</h3>
+                <div className="rounded-xl border border-[#E5E7EB] bg-white p-3.5 text-xs">
+                  <div className="text-[13px] font-bold text-[#333333]">{order.customerName}</div>
+                  <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[#6B7280]">
+                    <span className="flex items-center gap-1.5"><Mail size={12} /> {order.customerEmail}</span>
+                    <span className="flex items-center gap-1.5"><Phone size={12} /> {order.customerPhone}</span>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-[.13em] text-[#9CA3AF]">Items</h3>
+                <div className="divide-y divide-[#F3F4F6] rounded-xl border border-[#E5E7EB] bg-white">
+                  {order.items.map((item) => (
+                    <div key={item.id} className="flex items-start justify-between gap-3 p-3.5 text-xs">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-[#333333]">{item.quantity} × {item.menuItemName}</div>
+                        {item.specialInstructions && <div className="mt-1 text-[11px] italic text-[#9CA3AF]">&ldquo;{item.specialInstructions}&rdquo;</div>}
+                      </div>
+                      <div className="shrink-0 font-semibold text-[#333333]">{formatCurrency(item.menuItemPrice * item.quantity)}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {order.deliveryAddress && (
+                <section>
+                  <h3 className="mb-2 text-[10px] font-bold uppercase tracking-[.13em] text-[#9CA3AF]">Delivery address</h3>
+                  <div className="rounded-xl border border-[#E5E7EB] bg-white p-3.5 text-xs text-[#374151]">
+                    <div className="flex items-start gap-2">
+                      <MapPin size={13} className="mt-0.5 shrink-0 text-[#FF4500]" />
+                      <span>{order.deliveryAddress.street}, {order.deliveryAddress.city}, {order.deliveryAddress.state} {order.deliveryAddress.postalCode}</span>
+                    </div>
+                    {order.deliveryAddress.deliveryInstructions && <div className="mt-1.5 pl-5 text-[11px] text-[#6B7280]">Note: {order.deliveryAddress.deliveryInstructions}</div>}
+                  </div>
+                </section>
+              )}
+
+              {order.specialInstructions && (
+                <section>
+                  <h3 className="mb-2 text-[10px] font-bold uppercase tracking-[.13em] text-[#9CA3AF]">Order notes</h3>
+                  <div className="rounded-xl border border-[#FDE68A] bg-[#FFFBEB] p-3.5 text-xs text-[#92400E]">{order.specialInstructions}</div>
+                </section>
+              )}
+
+              <section className="rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] p-3.5 text-xs">
+                <div className="flex justify-between py-0.5 text-[#6B7280]"><span>Subtotal</span><span>{formatCurrency(order.subtotal)}</span></div>
+                <div className="flex justify-between py-0.5 text-[#6B7280]"><span>Delivery fee</span><span>{formatCurrency(order.deliveryFee)}</span></div>
+                <div className="flex justify-between py-0.5 text-[#6B7280]"><span>Tax</span><span>{formatCurrency(order.tax)}</span></div>
+                <div className="mt-1.5 flex justify-between border-t border-[#E5E7EB] pt-2 text-[13px] font-bold text-[#333333]"><span>Total</span><span>{formatCurrency(order.total)}</span></div>
+              </section>
+
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#6B7280]">
+                {order.paymentMethod === 'cash' ? <Banknote size={13} /> : <CreditCard size={13} />}
+                <span>{order.paymentMethod === 'cash' ? 'Cash on handover' : 'Card payment'}</span>
+                {order.stripePaymentIntentId && <span className="truncate text-[#9CA3AF]">• {order.stripePaymentIntentId}</span>}
+              </div>
+            </div>
+
+            {(canCancel || canMarkPaid || nextStatus) && (
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#E5E7EB] bg-[#FAFAFA] px-6 py-4">
+                <div>
+                  {canCancel && (
+                    <Button variant="outline" className="h-9 gap-2 border-[#FECACA] text-xs text-red-600 hover:bg-[#FEF2F2] hover:text-red-700" onClick={() => onCancel(order)} disabled={busy}>
+                      <XCircle size={14} /> Cancel order
+                    </Button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {canMarkPaid && (
+                    <Button variant="outline" className="h-9 gap-2 text-xs" onClick={() => onMarkPaid(order)} disabled={busy}>
+                      <Banknote size={14} /> Mark as paid
+                    </Button>
+                  )}
+                  {nextStatus && (
+                    <Button className="admin-primary h-9 gap-2 text-xs" onClick={() => onAdvance(order)} disabled={busy}>
+                      {busy && <Loader2 size={14} className="animate-spin" />}
+                      {NEXT_STATUS_LABELS[nextStatus]} <ArrowRight size={14} />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: EditorState; workspace: AdminWorkspace | null; isDemo: boolean; onClose: () => void; onSave: (kind: 'restaurant' | 'category' | 'item' | 'addon', input: RestaurantInput | CategoryInput | MenuItemInput | AddonInput, existingId?: string) => Promise<void> }) {
