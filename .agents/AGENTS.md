@@ -10,6 +10,7 @@ These rules apply to all agent interactions within this workspace.
 - **Testing**: Ensure existing tests pass and consider adding tests for new features.
 
 ## Git & Commits
+- **Branch Creation**: Always create and switch to a separate, appropriately named git branch (e.g., `feat/...`, `fix/...`) for any new task, feature, or bug fix before making code edits or commits. Never commit directly to `master`.
 - **Conventional Commits**: Use the Conventional Commits specification (e.g., `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`) for all commit messages.
 - **Atomic Commits**: Group edits logically. Do not mix refactoring, feature work, and configuration updates in a single commit.
 
