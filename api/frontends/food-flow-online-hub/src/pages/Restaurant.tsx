@@ -170,7 +170,7 @@ const Menu: React.FC = () => {
           <h2 className="text-3xl font-bold">Menu</h2>
         </div>
         
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-start">
           {/* Main menu content */}
           <div className="flex-1 pr-0 lg:pr-4">
             <MenuGrid items={menuItems} categories={categories} />
@@ -178,7 +178,7 @@ const Menu: React.FC = () => {
           
           {/* Persistent side cart for desktop */}
           {!isMobile && (
-            <div className="hidden lg:flex lg:flex-col w-[280px] xl:w-[320px] h-[calc(100vh-180px)] sticky top-24 bg-white shadow-md border border-gray-200 rounded-lg p-3 self-start">
+            <div className="hidden lg:flex lg:flex-col w-[280px] xl:w-[320px] h-[calc(100vh-180px)] sticky top-20 mt-2 bg-white shadow-md border border-gray-200 rounded-lg p-3 self-start">
               <CartComponent />
             </div>
           )}

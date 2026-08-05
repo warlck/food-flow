@@ -73,7 +73,7 @@ const MenuGrid: React.FC<MenuGridProps> = ({ items, categories, onCartUpdate }) 
   return (
     <SidebarProvider>
       <div className="flex min-h-screen">
-        <Sidebar variant="floating" collapsible="icon" className="sticky top-16 h-[calc(100vh-4rem)]">
+        <Sidebar variant="floating" collapsible="icon" className="sticky top-20 h-[calc(100vh-5rem)]">
           <CategorySidebar
             categories={categoriesWithAll}
             selectedCategory={selectedCategory}
@@ -81,7 +81,7 @@ const MenuGrid: React.FC<MenuGridProps> = ({ items, categories, onCartUpdate }) 
           />
         </Sidebar>
         <SidebarInset className="flex-1">
-          <div className="w-full px-0 sm:px-2 py-4">
+          <div className="w-full px-0 sm:px-2 pt-2 pb-4">
             <div className="mb-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
