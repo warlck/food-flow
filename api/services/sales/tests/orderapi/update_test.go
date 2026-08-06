@@ -13,6 +13,7 @@ import (
 func updateStatus200(sd apitest.SeedData) []apitest.Table {
 	orderStatus := "confirmed"
 	paymentStatus := "paid"
+	outForDelivery := "out_for_delivery"
 
 	table := []apitest.Table{
 		{
@@ -99,6 +100,73 @@ func updateStatus200(sd apitest.SeedData) []apitest.Table {
 				expResp.DateUpdated = gotResp.DateUpdated
 
 				return cmp.Diff(gotResp, expResp)
+			},
+		},
+		{
+			Name:       "update-order-status-out-for-delivery",
+			URL:        fmt.Sprintf("/v1/orders/%s/status", sd.Orders[0].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPatch,
+			StatusCode: http.StatusOK,
+			Input: &orderapp.UpdateOrderStatus{
+				OrderStatus: &outForDelivery,
+			},
+			GotResp: &orderapp.Order{},
+			ExpResp: &orderapp.Order{
+				ID:            sd.Orders[0].ID.String(),
+				RestaurantID:  sd.Orders[0].RestaurantID.String(),
+				CustomerName:  sd.Orders[0].CustomerName,
+				CustomerEmail: sd.Orders[0].CustomerEmail,
+				CustomerPhone: sd.Orders[0].CustomerPhone,
+				OrderType:     sd.Orders[0].OrderType,
+				OrderStatus:   "out_for_delivery",
+				PaymentStatus: sd.Orders[0].PaymentStatus,
+				PaymentMethod: sd.Orders[0].PaymentMethod,
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*orderapp.Order)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(*orderapp.Order)
+
+				// Copy dynamic fields from got to exp
+				expResp.Subtotal = gotResp.Subtotal
+				expResp.DeliveryFee = gotResp.DeliveryFee
+				expResp.Tax = gotResp.Tax
+				expResp.Total = gotResp.Total
+				expResp.Items = gotResp.Items
+				expResp.DeliveryAddress = gotResp.DeliveryAddress
+				expResp.SpecialInstructions = gotResp.SpecialInstructions
+				expResp.DateCreated = gotResp.DateCreated
+				expResp.DateUpdated = gotResp.DateUpdated
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+
+	return table
+}
+
+func updateStatus400(sd apitest.SeedData) []apitest.Table {
+	outForDelivery := "out_for_delivery"
+
+	table := []apitest.Table{
+		{
+			Name:       "out-for-delivery-on-pickup-order",
+			URL:        fmt.Sprintf("/v1/orders/%s/status", sd.Orders[1].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPatch,
+			StatusCode: http.StatusBadRequest,
+			Input: &orderapp.UpdateOrderStatus{
+				OrderStatus: &outForDelivery,
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.InvalidArgument, "out for delivery status requires a delivery order"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
 			},
 		},
 	}

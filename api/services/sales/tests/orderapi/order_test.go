@@ -28,6 +28,7 @@ func Test_Order(t *testing.T) {
 	test.Run(t, create401(sd), "create-401")
 
 	test.Run(t, updateStatus200(sd), "updatestatus-200")
+	test.Run(t, updateStatus400(sd), "updatestatus-400")
 	test.Run(t, updateStatus401(sd), "updatestatus-401")
 
 	test.Run(t, cancel200(sd), "cancel-200")

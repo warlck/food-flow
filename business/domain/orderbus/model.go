@@ -10,12 +10,13 @@ import (
 
 // Order statuses - lifecycle of an order
 const (
-	OrderStatusPending   = "pending"   // Order created, payment not confirmed
-	OrderStatusConfirmed = "confirmed" // Payment confirmed, awaiting preparation
-	OrderStatusPreparing = "preparing" // Restaurant is preparing the order
-	OrderStatusReady     = "ready"     // Order ready for pickup/delivery
-	OrderStatusCompleted = "completed" // Order delivered/picked up
-	OrderStatusCancelled = "cancelled" // Order cancelled
+	OrderStatusPending        = "pending"          // Order created, payment not confirmed
+	OrderStatusConfirmed      = "confirmed"        // Payment confirmed, awaiting preparation
+	OrderStatusPreparing      = "preparing"        // Restaurant is preparing the order
+	OrderStatusReady          = "ready"            // Order ready for pickup/delivery
+	OrderStatusOutForDelivery = "out_for_delivery" // Order is on its way to the customer (delivery orders only)
+	OrderStatusCompleted      = "completed"        // Order delivered/picked up
+	OrderStatusCancelled      = "cancelled"        // Order cancelled
 )
 
 // Payment statuses - payment lifecycle

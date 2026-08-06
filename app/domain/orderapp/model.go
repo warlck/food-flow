@@ -246,7 +246,7 @@ func ToAppDeliveryQuote(bus orderbus.DeliveryQuote) DeliveryQuote {
 
 // UpdateOrderStatus defines the data needed to update order status.
 type UpdateOrderStatus struct {
-	OrderStatus   *string `json:"orderStatus" validate:"omitempty,oneof=pending confirmed preparing ready completed cancelled"`
+	OrderStatus   *string `json:"orderStatus" validate:"omitempty,oneof=pending confirmed preparing ready out_for_delivery completed cancelled"`
 	PaymentStatus *string `json:"paymentStatus" validate:"omitempty,oneof=pending processing paid failed refunded"`
 }
 

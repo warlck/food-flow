@@ -224,6 +224,10 @@ func (b *Business) UpdateStatus(ctx context.Context, orderID uuid.UUID, uo Updat
 		return fmt.Errorf("query: %w", err)
 	}
 
+	if uo.OrderStatus == OrderStatusOutForDelivery && order.OrderType != OrderTypeDelivery {
+		return ErrOutForDeliveryRequiresDelivery
+	}
+
 	if uo.OrderStatus != "" {
 		order.OrderStatus = uo.OrderStatus
 	}

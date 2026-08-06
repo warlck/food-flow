@@ -513,6 +513,98 @@ func updateStatus(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.T
 				return cmp.Diff(gotResp, expResp, equateTime)
 			},
 		},
+		{
+			Name: "update-status-out-for-delivery",
+			ExpResp: orderbus.Order{
+				ID:                    sd.Orders[2].ID,
+				RestaurantID:          sd.Orders[2].RestaurantID,
+				CustomerName:          sd.Orders[2].CustomerName,
+				CustomerEmail:         sd.Orders[2].CustomerEmail,
+				CustomerPhone:         sd.Orders[2].CustomerPhone,
+				OrderType:             sd.Orders[2].OrderType,
+				OrderStatus:           orderbus.OrderStatusOutForDelivery,
+				PaymentStatus:         sd.Orders[2].PaymentStatus,
+				PaymentMethod:         sd.Orders[2].PaymentMethod,
+				Subtotal:              sd.Orders[2].Subtotal,
+				DeliveryFee:           sd.Orders[2].DeliveryFee,
+				Tax:                   sd.Orders[2].Tax,
+				Total:                 sd.Orders[2].Total,
+				SpecialInstructions:   sd.Orders[2].SpecialInstructions,
+				StripePaymentIntentID: sd.Orders[2].StripePaymentIntentID,
+				Items:                 sd.Orders[2].Items,
+				DeliveryAddress:       sd.Orders[2].DeliveryAddress,
+				DateCreated:           sd.Orders[2].DateCreated,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				us := orderbus.UpdateOrderStatus{
+					OrderStatus: orderbus.OrderStatusOutForDelivery,
+				}
+
+				if err := busDomain.Order.UpdateStatus(ctx, sd.Orders[2].ID, us); err != nil {
+					return err
+				}
+
+				resp, err := busDomain.Order.QueryByID(ctx, sd.Orders[2].ID)
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(orderbus.Order)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(orderbus.Order)
+
+				// Normalize DateUpdated since it changes
+				expResp.DateUpdated = gotResp.DateUpdated
+
+				// Normalize monetary values from database
+				expResp.Subtotal = gotResp.Subtotal
+				expResp.Tax = gotResp.Tax
+				expResp.Total = gotResp.Total
+
+				// Normalize item OrderIDs from database
+				for i := range gotResp.Items {
+					if i < len(expResp.Items) {
+						expResp.Items[i].OrderID = gotResp.Items[i].OrderID
+					}
+				}
+
+				// Normalize address OrderID if present
+				if gotResp.DeliveryAddress != nil && expResp.DeliveryAddress != nil {
+					expResp.DeliveryAddress.OrderID = gotResp.DeliveryAddress.OrderID
+				}
+
+				return cmp.Diff(gotResp, expResp, equateTime)
+			},
+		},
+		{
+			Name:    "update-status-out-for-delivery-pickup",
+			ExpResp: orderbus.ErrOutForDeliveryRequiresDelivery,
+			ExcFunc: func(ctx context.Context) any {
+				us := orderbus.UpdateOrderStatus{
+					OrderStatus: orderbus.OrderStatusOutForDelivery,
+				}
+
+				return busDomain.Order.UpdateStatus(ctx, sd.Orders[3].ID, us)
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "expected an error"
+				}
+
+				if !errors.Is(gotErr, exp.(error)) {
+					return "different error"
+				}
+
+				return ""
+			},
+		},
 	}
 
 	return table

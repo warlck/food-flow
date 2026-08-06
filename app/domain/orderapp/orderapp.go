@@ -2,6 +2,7 @@ package orderapp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -116,6 +117,9 @@ func (a *app) updateStatus(ctx context.Context, w http.ResponseWriter, r *http.R
 	ub := toBusUpdateOrderStatus(app)
 
 	if err := a.orderBus.UpdateStatus(ctx, orderID, ub); err != nil {
+		if errors.Is(err, orderbus.ErrOutForDeliveryRequiresDelivery) {
+			return errs.New(errs.InvalidArgument, err)
+		}
 		return errs.Newf(errs.Internal, "updateStatus: orderID[%s] ub[%+v]: %s", orderID, ub, err)
 	}
 

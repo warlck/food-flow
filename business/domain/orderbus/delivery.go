@@ -21,6 +21,10 @@ var (
 	// ErrDeliveryOutOfRange is returned when the delivery destination exceeds
 	// the restaurant's maximum delivery distance.
 	ErrDeliveryOutOfRange = errors.New("delivery destination outside delivery range")
+
+	// ErrOutForDeliveryRequiresDelivery is returned when attempting to mark a
+	// non-delivery order as out for delivery.
+	ErrOutForDeliveryRequiresDelivery = errors.New("out for delivery status requires a delivery order")
 )
 
 const (
