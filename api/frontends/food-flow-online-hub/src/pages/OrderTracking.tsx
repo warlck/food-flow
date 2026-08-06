@@ -435,10 +435,12 @@ const OrderTracking: React.FC = () => {
                         <span>${order.deliveryFee.toFixed(2)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-gray-600">
-                      <span>Tax</span>
-                      <span>${order.tax.toFixed(2)}</span>
-                    </div>
+                    {order.tax > 0 && (
+                      <div className="flex justify-between text-gray-600">
+                        <span>Tax</span>
+                        <span>${order.tax.toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between font-bold text-base border-t pt-3 text-gray-900">
                       <span>Total Paid</span>
                       <span className="text-food-primary">${order.total.toFixed(2)}</span>

@@ -43,6 +43,7 @@ export interface ApiRestaurantDetails {
   latitude?: number;
   longitude?: number;
   maxDeliveryDistanceKm?: number;
+  taxRate?: number;
   categories: ApiCategory[];
   dateCreated: string;
   dateUpdated: string;

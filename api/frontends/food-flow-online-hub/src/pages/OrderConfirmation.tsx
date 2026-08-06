@@ -187,10 +187,12 @@ const OrderConfirmation: React.FC = () => {
                     <span>${order.deliveryFee.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Tax:</span>
-                  <span>${order.tax.toFixed(2)}</span>
-                </div>
+                {order.tax > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Tax:</span>
+                    <span>${order.tax.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-bold text-lg border-t pt-2">
                   <span>Total:</span>
                   <span className="text-food-primary">${order.total.toFixed(2)}</span>

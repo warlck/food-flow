@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useCart } from '@/context/CartContext';
+import { useRestaurantDetails } from '@/hooks/useRestaurantDetails';
 import CartItemComponent from '@/components/CartItemComponent';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,8 +23,10 @@ const CartDesktop: React.FC = () => {
   const [isApplying, setIsApplying] = useState(false);
   const navigate = useNavigate();
 
+  const { data: restaurant } = useRestaurantDetails(restaurantId || "");
   const subtotal = getTotalPrice();
-  const tax = subtotal * 0.1; // 10% tax
+  const taxRate = restaurant?.taxRate ?? 0.10;
+  const tax = taxRate > 0 ? subtotal * taxRate : 0;
   const total = subtotal + tax;
 
   const handleApplyPromo = () => {
@@ -220,10 +223,12 @@ const CartDesktop: React.FC = () => {
                           <span className="font-semibold text-sm text-gray-500">Calculated at checkout</span>
                         </div>
                       )}
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Tax (10%)</span>
-                        <span className="font-semibold text-lg">${tax.toFixed(2)}</span>
-                      </div>
+                      {tax > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Tax ({(taxRate * 100).toFixed(0)}%)</span>
+                          <span className="font-semibold text-lg">${tax.toFixed(2)}</span>
+                        </div>
+                      )}
                       
                       <div className="border-t border-gray-200 pt-3 mt-4">
                         <div className="flex justify-between items-center">

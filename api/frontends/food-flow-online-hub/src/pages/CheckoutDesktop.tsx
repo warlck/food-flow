@@ -84,10 +84,11 @@ const CheckoutDesktop: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<GeocodingResult | null>(null);
   const [deliveryQuote, setDeliveryQuote] = useState<DeliveryQuote | null>(null);
 
-  // Calculate totals
+  const { data: restaurant } = useRestaurantDetails(restaurantId || "");
   const subtotal = getTotalPrice();
   const deliveryFee = orderType === "delivery" && deliveryQuote?.withinLimit ? deliveryQuote.deliveryFee : 0;
-  const tax = subtotal * 0.1; // 10% tax
+  const taxRate = restaurant?.taxRate ?? 0.10;
+  const tax = taxRate > 0 ? subtotal * taxRate : 0;
   const total = subtotal + deliveryFee + tax;
 
   // Setup forms based on order type
@@ -817,10 +818,12 @@ const CheckoutDesktop: React.FC = () => {
                             </span>
                           </div>
                         )}
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Tax (10%)</span>
-                          <span className="font-medium">${tax.toFixed(2)}</span>
-                        </div>
+                        {tax > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Tax ({(taxRate * 100).toFixed(0)}%)</span>
+                            <span className="font-medium">${tax.toFixed(2)}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="border-t pt-4">

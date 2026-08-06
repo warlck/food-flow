@@ -44,6 +44,7 @@ export interface Restaurant {
   latitude?: number;
   longitude?: number;
   maxDeliveryDistanceKm?: number;
+  taxRate?: number;
   deliveryFee: number;
   minimumOrder: number;
   estimatedDeliveryTime: {

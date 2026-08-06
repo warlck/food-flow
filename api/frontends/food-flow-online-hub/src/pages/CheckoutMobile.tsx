@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/context/CartContext";
+import { useRestaurantDetails } from "@/hooks/useRestaurantDetails";
 import { Label } from "@/components/ui/label";
 import {
   Form,
@@ -60,9 +61,10 @@ const CheckoutMobile: React.FC = () => {
   const [orderDetails, setOrderDetails] = useState<Record<string, unknown>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Calculate totals
+  const { data: restaurant } = useRestaurantDetails(restaurantId || "");
   const subtotal = getTotalPrice();
-  const tax = subtotal * 0.1; // 10% tax
+  const taxRate = restaurant?.taxRate ?? 0.10;
+  const tax = taxRate > 0 ? subtotal * taxRate : 0;
   const total = subtotal + tax;
 
   // Setup forms based on order type
@@ -617,10 +619,12 @@ const CheckoutMobile: React.FC = () => {
                   <span className="text-gray-500">Calculated at checkout</span>
                 </div>
               )}
-              <div className="flex justify-between text-sm">
-                <span>Tax</span>
-                <span>${tax.toFixed(2)}</span>
-              </div>
+              {tax > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span>Tax ({(taxRate * 100).toFixed(0)}%)</span>
+                  <span>${tax.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-lg pt-2 border-t">
                 <span>Total</span>
                 <span className="text-food-primary">${total.toFixed(2)}</span>
