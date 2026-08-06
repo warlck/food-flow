@@ -116,8 +116,8 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		deliveryFee = quote.DeliveryFee.Value()
 	}
 
-	// Calculate tax (example: 8%) and round to 2 decimal places
-	tax := roundToTwoDecimals(subtotal * 0.08)
+	// Calculate tax using restaurant's tax rate and round to 2 decimal places
+	tax := roundToTwoDecimals(subtotal * restaurant.TaxRate)
 
 	// Calculate total and round to 2 decimal places
 	total := roundToTwoDecimals(subtotal + deliveryFee + tax)

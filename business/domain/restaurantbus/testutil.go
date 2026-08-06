@@ -29,6 +29,7 @@ func TestNewRestaurants(n int) []NewRestaurant {
 			Latitude:              &lat,
 			Longitude:             &lng,
 			MaxDeliveryDistanceKm: 10,
+			TaxRate:               0.10,
 		}
 
 		newRests[i] = nr

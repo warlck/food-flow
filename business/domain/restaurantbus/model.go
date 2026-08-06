@@ -20,6 +20,7 @@ type Restaurant struct {
 	Latitude              *float64
 	Longitude             *float64
 	MaxDeliveryDistanceKm float64
+	TaxRate               float64
 	DateCreated           time.Time
 	DateUpdated           time.Time
 }
@@ -35,6 +36,7 @@ type NewRestaurant struct {
 	Latitude              *float64
 	Longitude             *float64
 	MaxDeliveryDistanceKm float64
+	TaxRate               float64
 }
 
 // UpdateRestaurant contains information needed to update a restaurant.
@@ -49,4 +51,5 @@ type UpdateRestaurant struct {
 	Latitude              *float64
 	Longitude             *float64
 	MaxDeliveryDistanceKm *float64
+	TaxRate               *float64
 }

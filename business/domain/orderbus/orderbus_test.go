@@ -17,6 +17,7 @@ import (
 	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/business/sdk/unittest"
 	"github.com/warlck/food-flow/business/types/money"
+	"github.com/warlck/food-flow/business/types/name"
 )
 
 var equateTime = cmp.Comparer(func(x, y time.Time) bool {
@@ -433,6 +434,68 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 					return "different error"
 				}
 
+				return ""
+			},
+		},
+		{
+			Name:    "zero-tax-order",
+			ExpResp: float64(0.0),
+			ExcFunc: func(ctx context.Context) any {
+				// Create a restaurant with TaxRate = 0.0
+				nr := restaurantbus.NewRestaurant{
+					Name:                  name.MustParse("Zero Tax Bistro"),
+					Description:           "Tax free dining",
+					Address:               "123 Free St",
+					Phone:                 "+1-555-0000",
+					Email:                 "zerotax@test.com",
+					TaxRate:               0.0,
+					MaxDeliveryDistanceKm: 10,
+				}
+				rest, err := busDomain.Restaurant.Create(ctx, nr)
+				if err != nil {
+					return err
+				}
+
+				cats, err := categorybus.TestSeedCategories(ctx, 1, rest.ID, busDomain.Category)
+				if err != nil {
+					return err
+				}
+
+				items, err := menuitembus.TestSeedMenuItems(ctx, 1, cats[0].ID, rest.ID, busDomain.MenuItem)
+				if err != nil {
+					return err
+				}
+
+				no := orderbus.NewOrder{
+					RestaurantID:  rest.ID.String(),
+					CustomerName:  "Zero Tax Customer",
+					CustomerEmail: "zerotaxcust@example.com",
+					CustomerPhone: "555-0000",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: items[0].ID.String(),
+							Quantity:   1,
+						},
+					},
+				}
+
+				order, err := busDomain.Order.Create(ctx, no)
+				if err != nil {
+					return err
+				}
+
+				return order.Tax.Value()
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotTax, ok := got.(float64)
+				if !ok {
+					return "expected float64 tax value"
+				}
+				if gotTax != 0.0 {
+					return fmt.Sprintf("expected tax 0.0, got %.2f", gotTax)
+				}
 				return ""
 			},
 		},

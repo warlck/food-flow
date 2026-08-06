@@ -21,6 +21,7 @@ type restaurant struct {
 	Latitude              *float64  `db:"latitude"`
 	Longitude             *float64  `db:"longitude"`
 	MaxDeliveryDistanceKm float64   `db:"max_delivery_distance_km"`
+	TaxRate               float64   `db:"tax_rate"`
 	DateCreated           time.Time `db:"date_created"`
 	DateUpdated           time.Time `db:"date_updated"`
 }
@@ -38,6 +39,7 @@ func toDBRestaurant(bus restaurantbus.Restaurant) restaurant {
 		Latitude:              bus.Latitude,
 		Longitude:             bus.Longitude,
 		MaxDeliveryDistanceKm: bus.MaxDeliveryDistanceKm,
+		TaxRate:               bus.TaxRate,
 		DateCreated:           bus.DateCreated.UTC(),
 		DateUpdated:           bus.DateUpdated.UTC(),
 	}
@@ -61,6 +63,7 @@ func toBusRestaurant(db restaurant) (restaurantbus.Restaurant, error) {
 		Latitude:              db.Latitude,
 		Longitude:             db.Longitude,
 		MaxDeliveryDistanceKm: db.MaxDeliveryDistanceKm,
+		TaxRate:               db.TaxRate,
 		DateCreated:           db.DateCreated.In(time.Local),
 		DateUpdated:           db.DateUpdated.In(time.Local),
 	}

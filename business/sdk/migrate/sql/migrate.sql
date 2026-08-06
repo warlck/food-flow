@@ -207,3 +207,9 @@ ALTER TABLE restaurants
 ALTER TABLE delivery_addresses
     ADD COLUMN latitude  DOUBLE PRECISION NULL,
     ADD COLUMN longitude DOUBLE PRECISION NULL;
+
+-- Version: 1.14
+-- Description: Add tax_rate column to restaurants
+ALTER TABLE restaurants
+    ADD COLUMN tax_rate DOUBLE PRECISION NOT NULL DEFAULT 0.10;
+
