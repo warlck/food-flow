@@ -107,7 +107,7 @@ const demoRestaurant: AdminRestaurant = {
   id: 'demo-restaurant', name: 'Juniper & Grain', description: 'Seasonal plates and thoughtful pantry staples.',
   address: '28 Greenwood Avenue, Singapore', phone: '+65 6123 7788', email: 'hello@junipergrain.co',
   imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80',
-  enabled: true, latitude: 1.3319, longitude: 103.8072, maxDeliveryDistanceKm: 8,
+  enabled: true, latitude: 1.3319, longitude: 103.8072, maxDeliveryDistanceKm: 8, taxRate: 0.10,
   dateCreated: '2026-07-21T08:00:00Z', dateUpdated: '2026-07-28T08:00:00Z',
 };
 
@@ -1229,6 +1229,8 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
         }
 
         const maxDeliveryDistanceKm = String(data.get('maxDeliveryDistanceKm') ?? '').trim();
+        const taxRatePct = String(data.get('taxRatePct') ?? '').trim();
+        const taxRateVal = taxRatePct === '' ? 0.10 : Number(taxRatePct) / 100;
         await onSave(kind, {
           name: String(data.get('name')),
           description: String(data.get('description')),
@@ -1239,6 +1241,7 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
           latitude: latitudeVal,
           longitude: longitudeVal,
           maxDeliveryDistanceKm: maxDeliveryDistanceKm === '' ? 0 : Number(maxDeliveryDistanceKm),
+          taxRate: taxRateVal,
         }, existing?.id);
       }
       if (kind === 'category' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), restaurantId: workspace.restaurant.id }, existing?.id);
@@ -1343,7 +1346,10 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
               <Field label="Cover image URL" htmlFor="imageUrl" hint="Optional"><Input id="imageUrl" name="imageUrl" type="url" defaultValue={(existing as AdminRestaurant | undefined)?.imageUrl ?? ''} placeholder="https://images.example.com/restaurant.jpg" className="admin-input" /></Field>
               <input type="hidden" name="latitude" value={lat ?? ''} />
               <input type="hidden" name="longitude" value={lon ?? ''} />
-              <Field label="Max delivery distance (km)" htmlFor="maxDeliveryDistanceKm" hint="0 for unlimited"><Input id="maxDeliveryDistanceKm" name="maxDeliveryDistanceKm" type="number" min="0" step="0.1" defaultValue={(existing as AdminRestaurant | undefined)?.maxDeliveryDistanceKm ?? 0} placeholder="0" className="admin-input" /></Field>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Max delivery distance (km)" htmlFor="maxDeliveryDistanceKm" hint="0 for unlimited"><Input id="maxDeliveryDistanceKm" name="maxDeliveryDistanceKm" type="number" min="0" step="0.1" defaultValue={(existing as AdminRestaurant | undefined)?.maxDeliveryDistanceKm ?? 0} placeholder="0" className="admin-input" /></Field>
+                <Field label="Tax rate (%)" htmlFor="taxRatePct" hint="e.g. 10 for 10%, 0 for none"><Input id="taxRatePct" name="taxRatePct" type="number" min="0" max="100" step="0.1" defaultValue={((existing as AdminRestaurant | undefined)?.taxRate ?? 0.10) * 100} placeholder="10" className="admin-input" /></Field>
+              </div>
             </>}
             {kind === 'item' && workspace && <>
               <div className="grid gap-4 sm:grid-cols-2"><Field label="Price" htmlFor="price" required><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">$</span><Input id="price" name="price" type="number" min="0.01" step="0.01" defaultValue={(existing as AdminMenuItem | undefined)?.price ?? ''} required placeholder="0.00" className="admin-input pl-7" /></div></Field><Field label="Category" htmlFor="categoryId" required><Select name="categoryId" defaultValue={(existing as AdminMenuItem | undefined)?.categoryId ?? workspace.categories[0]?.id}><SelectTrigger className="admin-input"><SelectValue placeholder="Choose category" /></SelectTrigger><SelectContent>{workspace.categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}</SelectContent></Select></Field></div>
