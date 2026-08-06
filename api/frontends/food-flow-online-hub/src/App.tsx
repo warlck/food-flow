@@ -14,6 +14,7 @@ import CartDesktop from "./pages/CartDesktop";
 import CheckoutMobile from "./pages/CheckoutMobile";
 import CheckoutDesktop from "./pages/CheckoutDesktop";
 import OrderConfirmation from "./pages/OrderConfirmation";
+import OrderTracking from "./pages/OrderTracking";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,10 @@ const App = () => (
             <Route path="/checkout" element={<CheckoutDesktop />} />
             <Route path="/mobile-checkout" element={<CheckoutMobile />} />
             <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+            <Route path="/track-order" element={<OrderTracking />} />
+            <Route path="/track-order/:orderId" element={<OrderTracking />} />
+            <Route path="/order-tracking" element={<OrderTracking />} />
+            <Route path="/order-tracking/:orderId" element={<OrderTracking />} />
             <Route path="/login" element={<Login />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

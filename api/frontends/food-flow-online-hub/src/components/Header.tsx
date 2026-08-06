@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
-import { ShoppingCart, Menu, X, Book, ChefHat } from 'lucide-react';
+import { ShoppingCart, Menu, X, Book, ChefHat, Package } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { getTotalItems, restaurantId } = useCart();
@@ -31,7 +31,10 @@ const Header: React.FC = () => {
               <span>Menu</span>
             </Link>
           )}
-
+          <Link to="/track-order" className="text-gray-700 hover:text-food-primary transition-colors flex items-center">
+            <Package className="mr-1" size={18} />
+            <span>Track Order</span>
+          </Link>
         </nav>
 
         {/* Cart Button */}
@@ -71,7 +74,14 @@ const Header: React.FC = () => {
                 <span>Menu</span>
               </Link>
             )}
-
+            <Link 
+              to="/track-order" 
+              className="text-gray-700 hover:text-food-primary transition-colors flex items-center p-2"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <Package className="mr-2" size={18} />
+              <span>Track Order</span>
+            </Link>
           </nav>
         </div>
       )}
