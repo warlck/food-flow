@@ -7,6 +7,26 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Clock, MapPin, Phone, Mail, Package, Loader2, ArrowLeft } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  pending: 'Pending',
+  confirmed: 'Confirmed',
+  preparing: 'Preparing',
+  ready: 'Ready',
+  out_for_delivery: 'Out for delivery',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+};
+
+const ORDER_STATUS_COLORS: Record<string, string> = {
+  pending: 'text-yellow-600',
+  confirmed: 'text-green-600',
+  preparing: 'text-orange-600',
+  ready: 'text-green-600',
+  out_for_delivery: 'text-indigo-600',
+  completed: 'text-green-600',
+  cancelled: 'text-red-600',
+};
+
 const OrderConfirmation: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const [searchParams] = useSearchParams();
@@ -119,12 +139,8 @@ const OrderConfirmation: React.FC = () => {
             <CardContent className="space-y-4">
               <div className="flex justify-between">
                 <span className="text-gray-600">Status:</span>
-                <span className={`font-semibold capitalize ${
-                  order.orderStatus === 'confirmed' ? 'text-green-600' :
-                  order.orderStatus === 'pending' ? 'text-yellow-600' :
-                  order.orderStatus === 'cancelled' ? 'text-red-600' : 'text-gray-900'
-                }`}>
-                  {order.orderStatus}
+                <span className={`font-semibold capitalize ${ORDER_STATUS_COLORS[order.orderStatus] ?? 'text-gray-900'}`}>
+                  {ORDER_STATUS_LABELS[order.orderStatus] ?? order.orderStatus}
                 </span>
               </div>
               <div className="flex justify-between">
