@@ -62,7 +62,7 @@ export interface AdminWorkspace {
   addons: AdminAddon[];
 }
 
-export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'out_for_delivery' | 'completed' | 'cancelled';
 export type PaymentStatus = 'pending' | 'processing' | 'paid' | 'failed' | 'refunded';
 export type OrderType = 'pickup' | 'delivery';
 

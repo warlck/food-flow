@@ -39,20 +39,33 @@ const navItems: { icon: typeof LayoutDashboard; label: string; section?: Section
   { icon: Settings, label: 'Settings' },
 ];
 
-const ORDER_STATUS_FLOW: Record<OrderStatus, OrderStatus | null> = {
-  pending: 'confirmed',
-  confirmed: 'preparing',
-  preparing: 'ready',
-  ready: 'completed',
-  completed: null,
-  cancelled: null,
-};
+function nextOrderStatus(order: Pick<AdminOrder, 'orderStatus' | 'orderType'>): OrderStatus | null {
+  switch (order.orderStatus) {
+    case 'pending': return 'confirmed';
+    case 'confirmed': return 'preparing';
+    case 'preparing': return 'ready';
+    case 'ready': return order.orderType === 'delivery' ? 'out_for_delivery' : 'completed';
+    case 'out_for_delivery': return 'completed';
+    default: return null;
+  }
+}
 
 const NEXT_STATUS_LABELS: Partial<Record<OrderStatus, string>> = {
   confirmed: 'Confirm order',
   preparing: 'Start preparing',
   ready: 'Mark ready',
+  out_for_delivery: 'Mark out for delivery',
   completed: 'Complete order',
+};
+
+const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  pending: 'Pending',
+  confirmed: 'Confirmed',
+  preparing: 'Preparing',
+  ready: 'Ready',
+  out_for_delivery: 'Out for delivery',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
 };
 
 const ORDER_STATUS_STYLES: Record<OrderStatus, string> = {
@@ -60,6 +73,7 @@ const ORDER_STATUS_STYLES: Record<OrderStatus, string> = {
   confirmed: 'bg-[#EFF6FF] text-[#1D4ED8]',
   preparing: 'bg-[#FFF1EB] text-[#FF4500]',
   ready: 'bg-[#F0FDF4] text-[#15803D]',
+  out_for_delivery: 'bg-[#EEF2FF] text-[#4F46E5]',
   completed: 'bg-[#E8F5E9] text-[#2E7D32]',
   cancelled: 'bg-[#FFEBEE] text-[#C62828]',
 };
@@ -78,6 +92,7 @@ const ORDER_STATUS_OPTIONS: { value: 'all' | OrderStatus; label: string }[] = [
   { value: 'confirmed', label: 'Confirmed' },
   { value: 'preparing', label: 'Preparing' },
   { value: 'ready', label: 'Ready' },
+  { value: 'out_for_delivery', label: 'Out for delivery' },
   { value: 'completed', label: 'Completed' },
   { value: 'cancelled', label: 'Cancelled' },
 ];
@@ -353,13 +368,13 @@ export default function Admin() {
   };
 
   const advanceOrder = async (order: AdminOrder) => {
-    const next = ORDER_STATUS_FLOW[order.orderStatus];
+    const next = nextOrderStatus(order);
     if (!next) return;
     setOrderActionBusy(true);
     try {
       const updated = await adminApi.updateOrderStatus(order.id, { orderStatus: next });
       applyOrderUpdate(updated);
-      toast.success(`Order #${order.id.slice(0, 8)} marked ${next}`);
+      toast.success(`Order #${order.id.slice(0, 8)} marked ${ORDER_STATUS_LABELS[next].toLowerCase()}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Order status could not be updated');
     } finally {
@@ -850,7 +865,7 @@ function EmptyRestaurant({ onCreate }: { onCreate: () => void }) {
 }
 
 function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  return <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.08em] ${ORDER_STATUS_STYLES[status]}`}>{status}</span>;
+  return <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.08em] ${ORDER_STATUS_STYLES[status]}`}>{ORDER_STATUS_LABELS[status]}</span>;
 }
 
 function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
@@ -976,7 +991,7 @@ function OrderDetailDialog({ order, busy, onClose, onAdvance, onMarkPaid, onCanc
   onMarkPaid: (order: AdminOrder) => void;
   onCancel: (order: AdminOrder) => void;
 }) {
-  const nextStatus = order ? ORDER_STATUS_FLOW[order.orderStatus] : null;
+  const nextStatus = order ? nextOrderStatus(order) : null;
   const canCancel = order ? order.orderStatus === 'pending' || order.orderStatus === 'confirmed' : false;
   const canMarkPaid = order ? order.paymentMethod === 'cash' && order.paymentStatus !== 'paid' && order.paymentStatus !== 'refunded' && order.orderStatus !== 'cancelled' : false;
 
