@@ -84,7 +84,6 @@ const CheckoutDesktop: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<GeocodingResult | null>(null);
   const [deliveryQuote, setDeliveryQuote] = useState<DeliveryQuote | null>(null);
 
-  const { data: restaurant } = useRestaurantDetails(restaurantId || "");
   const subtotal = getTotalPrice();
   const deliveryFee = orderType === "delivery" && deliveryQuote?.withinLimit ? deliveryQuote.deliveryFee : 0;
   const taxRate = restaurant?.taxRate ?? 0.10;
