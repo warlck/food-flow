@@ -27,12 +27,12 @@ const MobileMenu: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { getTotalItems, getTotalPrice, setRestaurantId } = useCart();
 
-  // Set restaurant ID in cart context when component mounts or restaurantId changes
+  // Set restaurant ID in cart context when API response is received from restaurant API
   useEffect(() => {
-    if (restaurantId) {
-      setRestaurantId(restaurantId);
+    if (apiData?.id) {
+      setRestaurantId(apiData.id);
     }
-  }, [restaurantId, setRestaurantId]);
+  }, [apiData?.id, setRestaurantId]);
 
   const { items: menuItems, categories } = useMemo(() => {
     if (!apiData) return { items: [], categories: [] };

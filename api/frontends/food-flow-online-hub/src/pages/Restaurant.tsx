@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import MenuGrid from '@/components/MenuGrid';
@@ -28,12 +28,12 @@ const Menu: React.FC = () => {
   const isMobile = useIsMobile();
   const menuSectionRef = useRef<HTMLElement>(null);
   
-  // Set restaurant ID in cart context when component mounts or restaurantId changes
+  // Set restaurant ID in cart context when API response is received from restaurant API
   useEffect(() => {
-    if (restaurantId) {
-      setRestaurantId(restaurantId);
+    if (apiData?.id) {
+      setRestaurantId(apiData.id);
     }
-  }, [restaurantId, setRestaurantId]);
+  }, [apiData?.id, setRestaurantId]);
   
   useEffect(() => {
     // Scroll to menu section after data is loaded and component is rendered
