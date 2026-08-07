@@ -25,3 +25,17 @@ These rules apply to all agent interactions within this workspace.
   * **Auth API**: `http://localhost:6000` (mapped to container port `6000`).
 - **Nginx Proxying**: The frontend Nginx container proxies all requests matching `/v1/` to the backend `sales-service:3000` in Kubernetes. Ensure frontend builds configure `VITE_API_URL` as empty (`""`) to utilize relative URLs and routing via this proxy.
 
+## Validation & Exhaustive Testing Guidelines
+- **End-to-End Field Mapping Checklist**: When adding or modifying any domain field or entity property, you MUST systematically trace and verify every layer in the data pipeline:
+  1. **Database Schema**: Migration SQL (`migrate.sql`) and Seed SQL (`seed.sql`).
+  2. **Database Store Layer**: Struct definitions (`*db/model.go`), SQL query strings (SELECT, INSERT, UPDATE in `*db.go`), and converters (`toDB*`, `toBus*`).
+  3. **Business Domain Models**: Entity, `New*`, and `Update*` structs in `*bus/model.go`.
+  4. **Business Domain Methods**: Explicitly audit both `Create()` and `Update()` functions in `*bus.go` to ensure new fields are assigned when constructing or updating entity structs.
+  5. **Application/API DTOs**: Request/response structs (`*app/model.go`), HTTP handlers, and DTO converters (`toBusUpdate*`, `ToApp*`).
+  6. **Frontend API & UI Components**: API Service interfaces, transformers, state management, forms, and render conditionals.
+- **Exhaustive Unit & Integration Testing**:
+  - Never declare a feature or field addition complete without adding unit and integration tests that specifically target and assert the newly added logic.
+  - Every field in an `Update` model MUST have an explicit unit test verifying that updating the field via the business layer correctly mutates and persists the value in the database.
+  - Include tests for edge cases (e.g. `0` / zero-values, `nil` optionals, boundary limits) as well as non-zero / active values.
+
+
