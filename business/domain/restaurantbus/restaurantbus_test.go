@@ -219,6 +219,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				Latitude:              sd.Restaurants[0].Latitude,
 				Longitude:             sd.Restaurants[0].Longitude,
 				MaxDeliveryDistanceKm: sd.Restaurants[0].MaxDeliveryDistanceKm,
+				TaxRate:               sd.Restaurants[0].TaxRate,
 				DateCreated:           sd.Restaurants[0].DateCreated,
 			},
 			ExcFunc: func(ctx context.Context) any {
