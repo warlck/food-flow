@@ -40,6 +40,13 @@ const ORDER_STATUS_LABELS: Record<string, string> = {
   cancelled: 'Cancelled',
 };
 
+const getOrderStatusLabel = (status: string, isDelivery: boolean): string => {
+  if (status === 'ready') {
+    return isDelivery ? 'Ready for Delivery' : 'Ready for Pickup';
+  }
+  return ORDER_STATUS_LABELS[status] || status;
+};
+
 const ORDER_STATUS_COLORS: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
   confirmed: 'bg-blue-100 text-blue-800 border-blue-300',
@@ -267,7 +274,7 @@ const OrderTracking: React.FC = () => {
                     Order #{order.id.slice(0, 8).toUpperCase()}
                   </h1>
                   <Badge className={`h-7 px-3 inline-flex items-center text-xs font-semibold rounded-full border ${ORDER_STATUS_COLORS[order.orderStatus] || 'bg-gray-100'}`}>
-                    {ORDER_STATUS_LABELS[order.orderStatus] || order.orderStatus}
+                    {getOrderStatusLabel(order.orderStatus, isDelivery)}
                   </Badge>
                   <Badge variant="outline" className="h-7 px-3 inline-flex items-center capitalize text-xs font-medium border-gray-300 rounded-full">
                     {order.orderType}
@@ -327,6 +334,29 @@ const OrderTracking: React.FC = () => {
               </div>
             )}
 
+            {/* Ready State Info Banner */}
+            {!isCancelled && order.orderStatus === 'ready' && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3 text-emerald-900">
+                {isDelivery ? (
+                  <>
+                    <Package className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+                    <div>
+                      <h3 className="font-semibold text-sm">Your order is ready!</h3>
+                      <p className="text-xs text-emerald-700">Food preparation is complete. Your order is waiting to be dispatched to a courier for delivery.</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Store className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+                    <div>
+                      <h3 className="font-semibold text-sm">Ready for Pickup!</h3>
+                      <p className="text-xs text-emerald-700">Your order is ready to be collected at the restaurant counter.</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Status Timeline Stepper */}
             {!isCancelled && (
               <Card className="border-gray-200 shadow-sm overflow-hidden">
@@ -366,6 +396,10 @@ const OrderTracking: React.FC = () => {
                       const isDone = idx <= currentStep;
                       const isCurrent = idx === currentStep && !isCompleted;
 
+                      const isReadyDeliveryStep = isDelivery && order.orderStatus === 'ready' && step.key === 'preparing';
+                      const stepLabel = isReadyDeliveryStep ? 'Food Ready' : step.label;
+                      const stepDesc = isReadyDeliveryStep ? 'Awaiting driver pickup' : step.description;
+
                       return (
                         <div key={step.key} className="relative z-10 flex flex-col items-center group">
                           <div
@@ -379,10 +413,10 @@ const OrderTracking: React.FC = () => {
                           </div>
                           <div className="mt-3 text-center">
                             <p className={`text-xs font-semibold ${isDone ? 'text-gray-900' : 'text-gray-400'}`}>
-                              {step.label}
+                              {stepLabel}
                             </p>
                             <p className="text-[10px] text-gray-500 max-w-[90px] hidden sm:block mt-0.5">
-                              {step.description}
+                              {stepDesc}
                             </p>
                           </div>
                         </div>
