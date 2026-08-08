@@ -67,6 +67,14 @@ export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'out
 export type PaymentStatus = 'pending' | 'processing' | 'paid' | 'failed' | 'refunded';
 export type OrderType = 'pickup' | 'delivery';
 
+export interface AdminOrderItemAddon {
+  id: string;
+  addonId: string;
+  addonName: string;
+  addonPrice: number;
+  quantity: number;
+}
+
 export interface AdminOrderItem {
   id: string;
   menuItemId: string;
@@ -74,6 +82,7 @@ export interface AdminOrderItem {
   menuItemPrice: number;
   quantity: number;
   specialInstructions?: string;
+  addons?: AdminOrderItemAddon[];
   dateCreated: string;
 }
 
