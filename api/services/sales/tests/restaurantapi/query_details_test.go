@@ -103,6 +103,7 @@ func queryByIDWithDetails200(sd apitest.SeedData) []apitest.Table {
 		Latitude:              sd.Restaurants[0].Latitude,
 		Longitude:             sd.Restaurants[0].Longitude,
 		MaxDeliveryDistanceKm: sd.Restaurants[0].MaxDeliveryDistanceKm,
+		TaxRate:               sd.Restaurants[0].TaxRate,
 		Categories:            expectedCategories,
 		DateCreated:           sd.Restaurants[0].DateCreated.Format("2006-01-02T15:04:05Z07:00"),
 		DateUpdated:           sd.Restaurants[0].DateUpdated.Format("2006-01-02T15:04:05Z07:00"),

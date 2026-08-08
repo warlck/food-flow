@@ -1,10 +1,11 @@
-import React, { useState } from "react";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { MapPin, Clock, CreditCard, ArrowLeft, CheckCircle, User, Phone, Mail, Home, MapPinCheck, ShoppingBag } from "lucide-react";
+import { MapPin, Clock, CreditCard, ArrowLeft, CheckCircle, User, Phone, Mail, Home, MapPinCheck, ShoppingBag, Loader2, Search } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,9 +22,16 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { orderService, Order, DeliveryQuote, CreateOrderRequest } from "@/services/orderService";
+import { searchAddress, GeocodingResult } from "@/lib/geocoding";
+import StripePaymentForm from "@/components/StripePaymentForm";
+
+// Initialize Stripe (may be null when key isn't configured)
+const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+  : Promise.resolve(null);
 
 // Default values for restaurant settings
-const DEFAULT_DELIVERY_FEE = 3.99;
 const DEFAULT_DELIVERY_TIME = { min: 30, max: 45 };
 const DEFAULT_PICKUP_TIME = { min: 15, max: 25 };
 const DEFAULT_RESTAURANT_ADDRESS = "123 Main Street, City, State 12345";
@@ -46,13 +54,6 @@ const pickupFormSchema = z.object({
   phone: z.string().min(10, { message: "Phone number must be at least 10 characters" }),
 });
 
-const paymentFormSchema = z.object({
-  paymentMethod: z.enum(["creditCard", "payAtLocation"]),
-  cardNumber: z.string().optional(),
-  cardExpiry: z.string().optional(),
-  cardCvc: z.string().optional(),
-});
-
 const CheckoutMobile: React.FC = () => {
   const navigate = useNavigate();
   const { items, getTotalPrice, clearCart, orderType, restaurantId } = useCart();
@@ -60,12 +61,24 @@ const CheckoutMobile: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<"creditCard" | "payAtLocation">("creditCard");
   const [orderDetails, setOrderDetails] = useState<Record<string, unknown>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
+  // Stripe-related state
+  const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+
+  // Delivery destination state
+  const [addressQuery, setAddressQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<GeocodingResult | null>(null);
+  const [deliveryQuote, setDeliveryQuote] = useState<DeliveryQuote | null>(null);
+
   const { data: restaurant } = useRestaurantDetails(restaurantId || "");
   const subtotal = getTotalPrice();
+  const deliveryFee = orderType === "delivery" && deliveryQuote?.withinLimit ? deliveryQuote.deliveryFee : 0;
   const taxRate = restaurant?.taxRate ?? 0.10;
   const tax = taxRate > 0 ? subtotal * taxRate : 0;
-  const total = subtotal + tax;
+  const total = subtotal + deliveryFee + tax;
 
   // Setup forms based on order type
   const deliveryForm = useForm<z.infer<typeof deliveryFormSchema>>({
@@ -91,41 +104,195 @@ const CheckoutMobile: React.FC = () => {
     },
   });
 
-  const paymentForm = useForm<z.infer<typeof paymentFormSchema>>({
-    resolver: zodResolver(paymentFormSchema),
-    defaultValues: {
-      paymentMethod: "creditCard",
-      cardNumber: "",
-      cardExpiry: "",
-      cardCvc: "",
-    },
-  });
+  // Address search handlers
+  const handleAddressSearch = async () => {
+    const query = addressQuery.trim();
+    if (!query) {
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchResults([]);
+
+    try {
+      const results = await searchAddress(query);
+      setSearchResults(results);
+      if (results.length === 0) {
+        toast.error("No addresses found in Singapore. Try a 6-digit postal code or street name.");
+      }
+    } catch (error) {
+      console.error("Address search failed:", error);
+      toast.error("Address search failed. Please try again.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSelectAddress = async (result: GeocodingResult) => {
+    setSelectedLocation(result);
+    setSearchResults([]);
+    setAddressQuery(result.displayName);
+
+    // Pre-fill address fields from the geocoded result; the customer can
+    // still adjust them manually.
+    if (result.address.street) deliveryForm.setValue("street", result.address.street);
+    deliveryForm.setValue("city", result.address.city || "Singapore");
+    deliveryForm.setValue("state", result.address.state || "SG");
+    if (result.address.postalCode) deliveryForm.setValue("postalCode", result.address.postalCode);
+
+    // Fetch the delivery fee quote for the selected destination
+    if (restaurantId && restaurant?.latitude !== undefined && restaurant?.longitude !== undefined) {
+      try {
+        const quote = await orderService.getDeliveryQuote(
+          restaurant.latitude,
+          restaurant.longitude,
+          result.latitude,
+          result.longitude,
+          restaurant.maxDeliveryDistanceKm
+        );
+        setDeliveryQuote(quote);
+        if (!quote.withinLimit) {
+          toast.error(`This address is ${quote.distanceKm.toFixed(1)} km away, outside the ${quote.maxDeliveryDistanceKm} km delivery area.`);
+        }
+      } catch (error) {
+        console.error("Failed to fetch delivery quote:", error);
+        setDeliveryQuote(null);
+        toast.error("Could not calculate the delivery fee for this address.");
+      }
+    } else if (restaurantId) {
+      toast.error("Restaurant location data is missing, cannot calculate delivery fee.");
+    }
+  };
 
   // Submit handlers
   const onSubmitCustomerInfo = (data: z.infer<typeof deliveryFormSchema> | z.infer<typeof pickupFormSchema>) => {
+    if (orderType === "delivery") {
+      if (!selectedLocation) {
+        toast.error("Please search and select your delivery address.");
+        return;
+      }
+      if (deliveryQuote && !deliveryQuote.withinLimit) {
+        toast.error("The selected address is outside the delivery area.");
+        return;
+      }
+    }
+
     setOrderDetails({ ...orderDetails, ...data });
     setStep(2);
   };
 
-  const onSubmitPayment = async (data: z.infer<typeof paymentFormSchema>) => {
+  const buildOrderRequest = (method: "creditCard" | "cash"): CreateOrderRequest => {
+    const orderData = orderDetails as z.infer<typeof deliveryFormSchema>;
+
+    return {
+      restaurantId: restaurantId || "",
+      customerName: orderData.name,
+      customerEmail: orderData.email,
+      customerPhone: orderData.phone,
+      orderType: orderType as "delivery" | "pickup",
+      paymentMethod: method,
+      items: items.map((item) => ({
+        menuItemId: item.menuItem.id,
+        quantity: item.quantity,
+        specialInstructions: item.specialInstructions,
+        addons: item.selectedAddons?.map(({ addon, quantity: addonQty }) => ({
+          addonId: addon.id,
+          quantity: addonQty,
+        })),
+      })),
+      deliveryAddress: orderType === "delivery" && selectedLocation ? {
+        street: orderData.street,
+        city: orderData.city,
+        state: orderData.state && orderData.state.trim() !== "" ? orderData.state.trim() : "SG",
+        postalCode: orderData.postalCode,
+        deliveryInstructions: orderData.deliveryInstructions,
+        latitude: selectedLocation.latitude,
+        longitude: selectedLocation.longitude,
+      } : undefined,
+    };
+  };
+
+  const onSubmitPayment = async () => {
     setIsSubmitting(true);
-    setOrderDetails({ ...orderDetails, ...data });
-    
-    // Simulate order submission
-    setTimeout(() => {
-      clearCart();
-      toast.success("Order placed successfully!");
-      if (restaurantId) {
-        navigate(`/mobile-restaurant/${restaurantId}`);
+
+    try {
+      if (paymentMethod === "creditCard") {
+        // Create the order, then initialize the Stripe PaymentIntent. The
+        // Stripe form appears once we have a client secret.
+        const order = await orderService.createOrder(buildOrderRequest("creditCard"));
+        setCurrentOrder(order);
+
+        try {
+          const paymentIntent = await orderService.createPaymentIntent(order.id);
+          setClientSecret(paymentIntent.clientSecret);
+        } catch (error) {
+          console.error("Failed to create payment intent:", error);
+          toast.error("Failed to initialize Stripe payment. You can retry below.");
+        }
       } else {
-        navigate("/");
+        // Pay at location: create the order and confirm it directly.
+        const order = await orderService.createOrder(buildOrderRequest("cash"));
+        await orderService.confirmPayment(order.id);
+
+        clearCart();
+        toast.success("Order placed successfully!");
+        navigate(`/order-confirmation/${order.id}`);
       }
+    } catch (error) {
+      console.error("Failed to place order:", error);
+      const message = error instanceof Error ? error.message : "Failed to place order. Please try again.";
+      toast.error(message);
+    } finally {
       setIsSubmitting(false);
-    }, 2000);
+    }
+  };
+
+  const retryCreatePaymentIntent = async () => {
+    if (!currentOrder) {
+      toast.error("No order found. Please go back and try again.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const paymentIntent = await orderService.createPaymentIntent(currentOrder.id);
+      setClientSecret(paymentIntent.clientSecret);
+    } catch (error) {
+      console.error("Failed to create payment intent:", error);
+      toast.error("Failed to initialize Stripe payment. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePaymentSuccess = async () => {
+    // Ensure backend order/payment status is updated (useful even without webhooks in dev).
+    if (currentOrder) {
+      try {
+        await orderService.confirmPayment(currentOrder.id);
+      } catch (err) {
+        // Payment may have succeeded on Stripe but backend confirmation failed.
+        console.error("Failed to confirm payment with backend:", err);
+      }
+    }
+
+    clearCart();
+    toast.success("Payment successful!");
+    navigate(`/order-confirmation/${currentOrder?.id}`);
+  };
+
+  const handlePaymentError = (error: Error) => {
+    console.error("Payment error:", error);
+    // Keep user on payment page to retry
   };
 
   const handleBackStep = () => {
     setStep(step - 1);
+    // Reset order and payment state if going back
+    if (step === 2) {
+      setCurrentOrder(null);
+      setClientSecret(null);
+    }
   };
 
   const getEstimatedTime = () => {
@@ -140,7 +307,7 @@ const CheckoutMobile: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       {/* Main Container - Centralized Design */}
       <div className="max-w-md mx-auto bg-white shadow-2xl min-h-screen">
-        
+
         {/* Header */}
         <div className="bg-gradient-to-r from-food-primary to-food-accent text-white sticky top-0 z-30">
           <div className="px-6 py-4">
@@ -220,7 +387,7 @@ const CheckoutMobile: React.FC = () => {
                       itemTotal += addon.price * addonQty * item.quantity;
                     });
                   }
-                  
+
                   return (
                     <div key={item.cartItemId} className="py-3">
                       <div className="flex justify-between items-start">
@@ -229,7 +396,7 @@ const CheckoutMobile: React.FC = () => {
                             <span className="font-medium text-sm">{item.quantity}x</span>
                             <span className="font-medium text-sm">{item.menuItem.name}</span>
                           </div>
-                          
+
                           {/* Addons */}
                           {item.selectedAddons && item.selectedAddons.length > 0 && (
                             <div className="ml-6 mt-1 space-y-0.5">
@@ -241,7 +408,7 @@ const CheckoutMobile: React.FC = () => {
                               ))}
                             </div>
                           )}
-                          
+
                           {/* Special Instructions */}
                           {item.specialInstructions && (
                             <div className="ml-6 mt-1 text-xs text-gray-500 italic">
@@ -325,6 +492,65 @@ const CheckoutMobile: React.FC = () => {
                         />
                       </div>
 
+                      {/* Address Search */}
+                      <div className="space-y-3">
+                        <Label className="flex items-center space-x-2">
+                          <Search className="w-4 h-4" />
+                          <span>Find Your Address</span>
+                        </Label>
+                        <div className="flex space-x-2">
+                          <Input
+                            placeholder="Search for your delivery address..."
+                            value={addressQuery}
+                            onChange={(e) => setAddressQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleAddressSearch();
+                              }
+                            }}
+                            className="border-2 focus:border-food-primary"
+                          />
+                          <Button
+                            type="button"
+                            onClick={handleAddressSearch}
+                            disabled={isSearching}
+                            variant="outline"
+                            className="px-4 text-food-primary border-food-primary hover:bg-food-primary/10"
+                          >
+                            {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                          </Button>
+                        </div>
+
+                        {searchResults.length > 0 && (
+                          <div className="border-2 rounded-xl divide-y max-h-48 overflow-y-auto">
+                            {searchResults.map((result, index) => (
+                              <button
+                                key={index}
+                                type="button"
+                                onClick={() => handleSelectAddress(result)}
+                                className="w-full text-left px-4 py-3 hover:bg-food-primary/5 text-sm text-gray-700 transition-colors"
+                              >
+                                {result.displayName}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {selectedLocation && (
+                          <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-800 flex items-start space-x-2">
+                            <MapPinCheck className="w-4 h-4 mt-0.5 shrink-0" />
+                            <span>{selectedLocation.displayName}</span>
+                          </div>
+                        )}
+
+                        {deliveryQuote && deliveryQuote.withinLimit && (
+                          <p className="text-sm text-gray-600">
+                            Delivery fee: <span className="font-semibold text-food-primary">${deliveryQuote.deliveryFee.toFixed(2)}</span>
+                          </p>
+                        )}
+                      </div>
+
                       <FormField
                         control={deliveryForm.control}
                         name="street"
@@ -393,11 +619,11 @@ const CheckoutMobile: React.FC = () => {
                           <FormItem>
                             <FormLabel>Delivery Instructions (Optional)</FormLabel>
                             <FormControl>
-                              <Textarea 
+                              <Textarea
                                 placeholder="Leave at door, ring bell, etc..."
                                 className="border-2 focus:border-food-primary resize-none"
                                 rows={3}
-                                {...field} 
+                                {...field}
                               />
                             </FormControl>
                             <FormMessage />
@@ -495,14 +721,62 @@ const CheckoutMobile: React.FC = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <Form {...paymentForm}>
-                  <form onSubmit={paymentForm.handleSubmit(onSubmitPayment)} className="space-y-6">
-                    
+                {paymentMethod === "creditCard" && currentOrder ? (
+                  clientSecret ? (
+                    <Elements
+                      stripe={stripePromise}
+                      options={{
+                        clientSecret,
+                        appearance: {
+                          theme: 'stripe',
+                          variables: {
+                            colorPrimary: '#f97316',
+                          },
+                        },
+                      }}
+                    >
+                      <StripePaymentForm
+                        orderId={currentOrder.id}
+                        total={currentOrder.total}
+                        onSuccess={handlePaymentSuccess}
+                        onError={handlePaymentError}
+                      />
+                    </Elements>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200">
+                        <h3 className="text-base font-semibold mb-2 text-yellow-900">Stripe payment isn't ready</h3>
+                        <p className="text-yellow-800 text-sm">
+                          We couldn't initialize a Stripe PaymentIntent for this order.
+                        </p>
+                        <p className="text-yellow-800 mt-2 text-sm">
+                          In dev, this usually means Stripe keys are not configured for the backend and/or frontend.
+                        </p>
+                      </div>
+
+                      <Button
+                        onClick={retryCreatePaymentIntent}
+                        disabled={isSubmitting}
+                        className="w-full bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white py-3 rounded-xl font-semibold text-lg disabled:opacity-50"
+                      >
+                        {isSubmitting ? (
+                          <span className="flex items-center justify-center">
+                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                            Initializing Stripe...
+                          </span>
+                        ) : (
+                          "Retry Stripe Payment"
+                        )}
+                      </Button>
+                    </div>
+                  )
+                ) : (
+                  <div className="space-y-6">
                     {/* Payment Method Selection */}
                     <div className="space-y-3">
                       <Label className="text-base font-semibold">Choose Payment Method</Label>
                       <div className="space-y-3">
-                        <div 
+                        <div
                           className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
                             paymentMethod === "creditCard" ? 'border-food-primary bg-food-primary/5' : 'border-gray-200 hover:border-gray-300'
                           }`}
@@ -521,7 +795,7 @@ const CheckoutMobile: React.FC = () => {
                           </div>
                         </div>
 
-                        <div 
+                        <div
                           className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
                             paymentMethod === "payAtLocation" ? 'border-food-primary bg-food-primary/5' : 'border-gray-200 hover:border-gray-300'
                           }`}
@@ -542,64 +816,32 @@ const CheckoutMobile: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Credit Card Fields */}
-                    {paymentMethod === "creditCard" && (
-                      <div className="space-y-4">
-                        <FormField
-                          control={paymentForm.control}
-                          name="cardNumber"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Card Number</FormLabel>
-                              <FormControl>
-                                <Input placeholder="1234 5678 9012 3456" className="border-2 focus:border-food-primary" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={paymentForm.control}
-                            name="cardExpiry"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Expiry Date</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="MM/YY" className="border-2 focus:border-food-primary" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={paymentForm.control}
-                            name="cardCvc"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>CVC</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="123" className="border-2 focus:border-food-primary" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
+                    {paymentMethod === "payAtLocation" && (
+                      <div className="bg-gray-50 p-4 rounded-xl text-center">
+                        <MapPin className="w-10 h-10 text-food-primary mx-auto mb-3" />
+                        <h3 className="text-base font-semibold mb-1">Pay at {orderType === "delivery" ? "Delivery" : "Pickup"}</h3>
+                        <p className="text-gray-600 text-sm">
+                          You'll pay ${total.toFixed(2)} when you receive your order.
+                        </p>
                       </div>
                     )}
 
-                    <Button 
-                      type="submit" 
+                    <Button
+                      onClick={onSubmitPayment}
                       disabled={isSubmitting}
                       className="w-full bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white py-3 rounded-xl font-semibold text-lg disabled:opacity-50"
                     >
-                      {isSubmitting ? "Processing..." : `Place Order • $${total.toFixed(2)}`}
+                      {isSubmitting ? (
+                        <span className="flex items-center justify-center">
+                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                          Processing...
+                        </span>
+                      ) : (
+                        `Place Order • $${total.toFixed(2)}`
+                      )}
                     </Button>
-                  </form>
-                </Form>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -616,7 +858,11 @@ const CheckoutMobile: React.FC = () => {
               {orderType === "delivery" && (
                 <div className="flex justify-between text-sm">
                   <span>Delivery Fee</span>
-                  <span className="text-gray-500">Calculated at checkout</span>
+                  {deliveryFee > 0 ? (
+                    <span>${deliveryFee.toFixed(2)}</span>
+                  ) : (
+                    <span className="text-gray-500">Select your address</span>
+                  )}
                 </div>
               )}
               {tax > 0 && (

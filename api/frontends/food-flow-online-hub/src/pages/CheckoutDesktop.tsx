@@ -214,6 +214,10 @@ const CheckoutDesktop: React.FC = () => {
           menuItemId: item.menuItem.id,
           quantity: item.quantity,
           specialInstructions: item.specialInstructions,
+          addons: item.selectedAddons?.map(({ addon, quantity: addonQty }) => ({
+            addonId: addon.id,
+            quantity: addonQty,
+          })),
         })),
         deliveryAddress: orderType === "delivery" && selectedLocation ? {
           street: orderData.street,

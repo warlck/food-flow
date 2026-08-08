@@ -71,6 +71,22 @@ func (s *Store) Create(ctx context.Context, order orderbus.Order) error {
 		if err := sqldb.NamedExecContext(ctx, s.log, tx, itemSQL, toDBOrderItem(item, order.ID)); err != nil {
 			return fmt.Errorf("namedexeccontext: %w", err)
 		}
+
+		// Insert order item addons
+		for _, addon := range item.Addons {
+			const addonSQL = `
+			INSERT INTO order_item_addons (
+				order_item_addon_id, order_item_id, addon_id, addon_name,
+				addon_price, quantity, date_created
+			) VALUES (
+				:order_item_addon_id, :order_item_id, :addon_id, :addon_name,
+				:addon_price, :quantity, :date_created
+			)`
+
+			if err := sqldb.NamedExecContext(ctx, s.log, tx, addonSQL, toDBOrderItemAddon(addon, item.ID)); err != nil {
+				return fmt.Errorf("namedexeccontext: %w", err)
+			}
+		}
 	}
 
 	// Insert delivery address if present
@@ -181,6 +197,12 @@ func (s *Store) Query(ctx context.Context, filter orderbus.QueryFilter, orderBy 
 			return nil, err
 		}
 
+		// Load item addons
+		addons, err := s.queryOrderItemAddons(ctx, dbo.ID)
+		if err != nil {
+			return nil, err
+		}
+
 		// Load delivery address if delivery order
 		var addr *dbDeliveryAddress
 		if dbo.OrderType == orderbus.OrderTypeDelivery {
@@ -193,7 +215,7 @@ func (s *Store) Query(ctx context.Context, filter orderbus.QueryFilter, orderBy 
 			}
 		}
 
-		order, err := toBusOrder(dbo, items, addr)
+		order, err := toBusOrder(dbo, items, addons, addr)
 		if err != nil {
 			return nil, fmt.Errorf("tobusorder: %w", err)
 		}
@@ -256,6 +278,12 @@ func (s *Store) QueryByID(ctx context.Context, orderID uuid.UUID) (orderbus.Orde
 		return orderbus.Order{}, err
 	}
 
+	// Load item addons
+	addons, err := s.queryOrderItemAddons(ctx, orderID)
+	if err != nil {
+		return orderbus.Order{}, err
+	}
+
 	// Load delivery address if delivery order
 	var addr *dbDeliveryAddress
 	if dbo.OrderType == orderbus.OrderTypeDelivery {
@@ -268,7 +296,7 @@ func (s *Store) QueryByID(ctx context.Context, orderID uuid.UUID) (orderbus.Orde
 		}
 	}
 
-	order, err := toBusOrder(dbo, items, addr)
+	order, err := toBusOrder(dbo, items, addons, addr)
 	if err != nil {
 		return orderbus.Order{}, fmt.Errorf("tobusorder: %w", err)
 	}
@@ -301,6 +329,35 @@ func (s *Store) queryOrderItems(ctx context.Context, orderID uuid.UUID) ([]dbOrd
 	}
 
 	return items, nil
+}
+
+// queryOrderItemAddons retrieves all addons for all items of an order.
+func (s *Store) queryOrderItemAddons(ctx context.Context, orderID uuid.UUID) ([]dbOrderItemAddon, error) {
+	data := struct {
+		OrderID uuid.UUID `db:"order_id"`
+	}{
+		OrderID: orderID,
+	}
+
+	const q = `
+	SELECT
+		oia.order_item_addon_id, oia.order_item_id, oia.addon_id,
+		oia.addon_name, oia.addon_price, oia.quantity, oia.date_created
+	FROM
+		order_item_addons AS oia
+	INNER JOIN
+		order_items AS oi ON oia.order_item_id = oi.order_item_id
+	WHERE
+		oi.order_id = :order_id
+	ORDER BY
+		oia.date_created`
+
+	var addons []dbOrderItemAddon
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &addons); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return addons, nil
 }
 
 // queryDeliveryAddress retrieves the delivery address for an order.

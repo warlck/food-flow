@@ -66,14 +66,26 @@ type Order struct {
 
 // OrderItem represents a menu item within an order
 type OrderItem struct {
-	ID                  uuid.UUID   // Unique order item identifier
-	OrderID             uuid.UUID   // Parent order ID
-	MenuItemID          uuid.UUID   // Reference to menu item
-	MenuItemName        string      // Snapshot of item name
-	MenuItemPrice       money.Money // Snapshot of item price
-	Quantity            int         // Quantity ordered
-	SpecialInstructions string      // Item-specific instructions
-	DateCreated         time.Time   // When item was added
+	ID                  uuid.UUID        // Unique order item identifier
+	OrderID             uuid.UUID        // Parent order ID
+	MenuItemID          uuid.UUID        // Reference to menu item
+	MenuItemName        string           // Snapshot of item name
+	MenuItemPrice       money.Money      // Snapshot of item price
+	Quantity            int              // Quantity ordered
+	SpecialInstructions string           // Item-specific instructions
+	Addons              []OrderItemAddon // Addons applied to this item
+	DateCreated         time.Time        // When item was added
+}
+
+// OrderItemAddon represents an addon applied to an order item
+type OrderItemAddon struct {
+	ID          uuid.UUID   // Unique order item addon identifier
+	OrderItemID uuid.UUID   // Parent order item ID
+	AddonID     uuid.UUID   // Reference to addon
+	AddonName   string      // Snapshot of addon name
+	AddonPrice  money.Money // Snapshot of addon price
+	Quantity    int         // Quantity of this addon per menu item
+	DateCreated time.Time   // When addon was added
 }
 
 // DeliveryAddress represents a delivery address for an order
@@ -110,6 +122,13 @@ type NewOrderItem struct {
 	MenuItemID          string
 	Quantity            int
 	SpecialInstructions string
+	Addons              []NewOrderItemAddon
+}
+
+// NewOrderItemAddon contains data for adding an addon to an order item
+type NewOrderItemAddon struct {
+	AddonID  string
+	Quantity int
 }
 
 // NewDeliveryAddress contains delivery address data

@@ -35,13 +35,23 @@ type Order struct {
 
 // OrderItem represents an item in an order.
 type OrderItem struct {
-	ID                  string  `json:"id"`
-	MenuItemID          string  `json:"menuItemId"`
-	MenuItemName        string  `json:"menuItemName"`
-	MenuItemPrice       float64 `json:"menuItemPrice"`
-	Quantity            int     `json:"quantity"`
-	SpecialInstructions string  `json:"specialInstructions,omitempty"`
-	DateCreated         string  `json:"dateCreated"`
+	ID                  string           `json:"id"`
+	MenuItemID          string           `json:"menuItemId"`
+	MenuItemName        string           `json:"menuItemName"`
+	MenuItemPrice       float64          `json:"menuItemPrice"`
+	Quantity            int              `json:"quantity"`
+	SpecialInstructions string           `json:"specialInstructions,omitempty"`
+	Addons              []OrderItemAddon `json:"addons,omitempty"`
+	DateCreated         string           `json:"dateCreated"`
+}
+
+// OrderItemAddon represents an addon applied to an order item.
+type OrderItemAddon struct {
+	ID         string  `json:"id"`
+	AddonID    string  `json:"addonId"`
+	AddonName  string  `json:"addonName"`
+	AddonPrice float64 `json:"addonPrice"`
+	Quantity   int     `json:"quantity"`
 }
 
 // DeliveryAddress represents a delivery address for an order.
@@ -67,6 +77,17 @@ func (app Order) Encode() ([]byte, string, error) {
 func ToAppOrder(bus orderbus.Order) Order {
 	items := make([]OrderItem, len(bus.Items))
 	for i, item := range bus.Items {
+		var addons []OrderItemAddon
+		for _, addon := range item.Addons {
+			addons = append(addons, OrderItemAddon{
+				ID:         addon.ID.String(),
+				AddonID:    addon.AddonID.String(),
+				AddonName:  addon.AddonName,
+				AddonPrice: addon.AddonPrice.Value(),
+				Quantity:   addon.Quantity,
+			})
+		}
+
 		items[i] = OrderItem{
 			ID:                  item.ID.String(),
 			MenuItemID:          item.MenuItemID.String(),
@@ -74,6 +95,7 @@ func ToAppOrder(bus orderbus.Order) Order {
 			MenuItemPrice:       item.MenuItemPrice.Value(),
 			Quantity:            item.Quantity,
 			SpecialInstructions: item.SpecialInstructions,
+			Addons:              addons,
 			DateCreated:         item.DateCreated.Format(time.RFC3339),
 		}
 	}
@@ -143,9 +165,16 @@ type NewOrder struct {
 
 // NewOrderItem defines the data needed to add an item to an order.
 type NewOrderItem struct {
-	MenuItemID          string `json:"menuItemId" validate:"required"`
-	Quantity            int    `json:"quantity" validate:"required,min=1"`
-	SpecialInstructions string `json:"specialInstructions"`
+	MenuItemID          string              `json:"menuItemId" validate:"required"`
+	Quantity            int                 `json:"quantity" validate:"required,min=1"`
+	SpecialInstructions string              `json:"specialInstructions"`
+	Addons              []NewOrderItemAddon `json:"addons" validate:"omitempty,dive"`
+}
+
+// NewOrderItemAddon defines the data needed to add an addon to an order item.
+type NewOrderItemAddon struct {
+	AddonID  string `json:"addonId" validate:"required"`
+	Quantity int    `json:"quantity" validate:"required,min=1"`
 }
 
 // NewDeliveryAddress defines the data needed to add a delivery address.
@@ -181,10 +210,19 @@ func toBusNewOrder(app NewOrder) (orderbus.NewOrder, error) {
 
 	items := make([]orderbus.NewOrderItem, len(app.Items))
 	for i, item := range app.Items {
+		addons := make([]orderbus.NewOrderItemAddon, len(item.Addons))
+		for j, addon := range item.Addons {
+			addons[j] = orderbus.NewOrderItemAddon{
+				AddonID:  addon.AddonID,
+				Quantity: addon.Quantity,
+			}
+		}
+
 		items[i] = orderbus.NewOrderItem{
 			MenuItemID:          item.MenuItemID,
 			Quantity:            item.Quantity,
 			SpecialInstructions: item.SpecialInstructions,
+			Addons:              addons,
 		}
 	}
 
