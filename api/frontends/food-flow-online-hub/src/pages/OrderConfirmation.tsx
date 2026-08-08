@@ -167,11 +167,25 @@ const OrderConfirmation: React.FC = () => {
               <div className="border-t pt-4 mt-4">
                 <h3 className="font-semibold mb-3">Items:</h3>
                 {order.items.map((item) => (
-                  <div key={item.id} className="flex justify-between py-2 border-b border-gray-100 last:border-0">
-                    <span className="text-gray-700">
-                      {item.quantity}x {item.menuItemName}
-                    </span>
-                    <span className="font-medium">${(item.menuItemPrice * item.quantity).toFixed(2)}</span>
+                  <div key={item.id} className="py-2 border-b border-gray-100 last:border-0">
+                    <div className="flex justify-between">
+                      <span className="text-gray-700">
+                        {item.quantity}x {item.menuItemName}
+                      </span>
+                      <span className="font-medium">${(item.menuItemPrice * item.quantity).toFixed(2)}</span>
+                    </div>
+                    {item.addons && item.addons.length > 0 && (
+                      <div className="ml-6 mt-1 space-y-0.5">
+                        {item.addons.map((addon) => (
+                          <div key={addon.id} className="flex justify-between text-xs text-gray-600">
+                            <span>+ {addon.addonName} x{addon.quantity}</span>
+                            <span className="text-food-primary">
+                              +${(addon.addonPrice * addon.quantity * item.quantity).toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

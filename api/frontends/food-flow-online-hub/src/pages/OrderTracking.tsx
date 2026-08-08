@@ -445,6 +445,18 @@ const OrderTracking: React.FC = () => {
                           <p className="font-medium text-gray-900 text-sm">
                             {item.quantity}x {item.menuItemName}
                           </p>
+                          {item.addons && item.addons.length > 0 && (
+                            <div className="ml-6 mt-1 space-y-0.5">
+                              {item.addons.map((addon) => (
+                                <div key={addon.id} className="flex justify-between text-xs text-gray-600">
+                                  <span>+ {addon.addonName} x{addon.quantity}</span>
+                                  <span className="text-food-primary">
+                                    +${(addon.addonPrice * addon.quantity * item.quantity).toFixed(2)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                           {item.specialInstructions && (
                             <p className="text-xs text-gray-500 italic mt-0.5">
                               Note: {item.specialInstructions}
