@@ -123,10 +123,10 @@ const OrderTracking: React.FC = () => {
       const data = await orderService.getOrder(id);
       setOrder(data);
       setLastRefreshedAt(new Date());
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching order:', err);
       if (!isBackground) {
-        setError(err.message || 'Could not find order. Please verify your Order ID.');
+        setError(err instanceof Error ? err.message : 'Could not find order. Please verify your Order ID.');
         setOrder(null);
       }
     } finally {
