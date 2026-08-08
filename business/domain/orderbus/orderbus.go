@@ -2,11 +2,13 @@ package orderbus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/order"
@@ -15,21 +17,37 @@ import (
 	"github.com/warlck/food-flow/foundation/logger"
 )
 
+// Set of error variables for addon validation during order creation.
+var (
+	// ErrAddonUnavailable is returned when an addon is not currently available.
+	ErrAddonUnavailable = errors.New("addon is not available")
+
+	// ErrAddonQuantityOutOfRange is returned when an addon quantity is below 1
+	// or exceeds the addon's maximum quantity.
+	ErrAddonQuantityOutOfRange = errors.New("addon quantity out of allowed range")
+
+	// ErrAddonCategoryMismatch is returned when an addon does not belong to
+	// the same category as the menu item it is applied to.
+	ErrAddonCategoryMismatch = errors.New("addon does not belong to the menu item's category")
+)
+
 // Business manages the set of APIs for order access.
 type Business struct {
 	log           *logger.Logger
 	storer        Storer
 	menuItemBus   *menuitembus.Business
 	restaurantBus *restaurantbus.Business
+	addonBus      *addonbus.Business
 }
 
 // NewBusiness constructs a orderbus business API for use.
-func NewBusiness(log *logger.Logger, storer Storer, menuItemBus *menuitembus.Business, restaurantBus *restaurantbus.Business) *Business {
+func NewBusiness(log *logger.Logger, storer Storer, menuItemBus *menuitembus.Business, restaurantBus *restaurantbus.Business, addonBus *addonbus.Business) *Business {
 	return &Business{
 		log:           log,
 		storer:        storer,
 		menuItemBus:   menuItemBus,
 		restaurantBus: restaurantBus,
+		addonBus:      addonBus,
 	}
 }
 
@@ -77,13 +95,60 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 			return Order{}, fmt.Errorf("menu item %s does not belong to restaurant %s", newItem.MenuItemID, no.RestaurantID)
 		}
 
+		itemID := uuid.New()
+
+		// Process addons for this item, snapshotting name and price.
+		var itemAddons []OrderItemAddon
+		for _, newAddon := range newItem.Addons {
+			addonID, err := uuid.Parse(newAddon.AddonID)
+			if err != nil {
+				return Order{}, fmt.Errorf("invalid addon ID: %w", err)
+			}
+
+			addon, err := b.addonBus.QueryByID(ctx, addonID)
+			if err != nil {
+				return Order{}, fmt.Errorf("addon %s: %w", newAddon.AddonID, err)
+			}
+
+			// Validate addon belongs to the restaurant
+			if addon.RestaurantID.String() != no.RestaurantID {
+				return Order{}, fmt.Errorf("addon %s does not belong to restaurant %s", newAddon.AddonID, no.RestaurantID)
+			}
+
+			// Validate addon belongs to the menu item's category
+			if addon.CategoryID != menuItem.CategoryID {
+				return Order{}, fmt.Errorf("%w: addon %s cannot be applied to menu item %s", ErrAddonCategoryMismatch, newAddon.AddonID, newItem.MenuItemID)
+			}
+
+			if !addon.Available {
+				return Order{}, fmt.Errorf("%w: %s", ErrAddonUnavailable, addon.Name.String())
+			}
+
+			if newAddon.Quantity < 1 || newAddon.Quantity > addon.MaxQuantity {
+				return Order{}, fmt.Errorf("%w: quantity %d for addon %s (max %d)", ErrAddonQuantityOutOfRange, newAddon.Quantity, newAddon.AddonID, addon.MaxQuantity)
+			}
+
+			itemAddons = append(itemAddons, OrderItemAddon{
+				ID:          uuid.New(),
+				OrderItemID: itemID,
+				AddonID:     addonID,
+				AddonName:   addon.Name.String(),
+				AddonPrice:  addon.Price,
+				Quantity:    newAddon.Quantity,
+				DateCreated: now,
+			})
+
+			subtotal += addon.Price.Value() * float64(newAddon.Quantity) * float64(newItem.Quantity)
+		}
+
 		items[i] = OrderItem{
-			ID:                  uuid.New(),
+			ID:                  itemID,
 			MenuItemID:          menuItemID,
 			MenuItemName:        menuItem.Name.String(),
 			MenuItemPrice:       menuItem.Price,
 			Quantity:            newItem.Quantity,
 			SpecialInstructions: newItem.SpecialInstructions,
+			Addons:              itemAddons,
 			DateCreated:         now,
 		}
 

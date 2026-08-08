@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/uuid"
+	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
@@ -78,6 +81,22 @@ func insertSeedData(busDomain dbtest.BusDomain) (unittest.SeedData, error) {
 		return unittest.SeedData{}, fmt.Errorf("seeding menu items : %w", err)
 	}
 
+	// Seed addons
+	addons1, err := addonbus.TestSeedAddons(ctx, 2, cats1[0].ID, rests[0].ID, busDomain.Addon)
+	if err != nil {
+		return unittest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
+	}
+
+	addons1OtherCat, err := addonbus.TestSeedAddons(ctx, 1, cats1[1].ID, rests[0].ID, busDomain.Addon)
+	if err != nil {
+		return unittest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
+	}
+
+	addons2, err := addonbus.TestSeedAddons(ctx, 1, cats2[0].ID, rests[1].ID, busDomain.Addon)
+	if err != nil {
+		return unittest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
+	}
+
 	// Seed orders
 	orders1, err := orderbus.TestSeedOrders(ctx, 2, rests[0].ID, []menuitembus.MenuItem{items1[0], items1[1]}, busDomain.Order)
 	if err != nil {
@@ -115,6 +134,12 @@ func insertSeedData(busDomain dbtest.BusDomain) (unittest.SeedData, error) {
 			{Order: orders1[1]},
 			{Order: orders2[0]},
 			{Order: orders2[1]},
+		},
+		Addons: []unittest.Addon{
+			{Addon: addons1[0]},
+			{Addon: addons1[1]},
+			{Addon: addons1OtherCat[0]},
+			{Addon: addons2[0]},
 		},
 	}
 
@@ -217,6 +242,17 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 }
 
 func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
+
+	// Expected totals for the "order-with-addons" case: menu item 0 (qty 2)
+	// with addon 0 (qty 1) and addon 1 (qty 2), plus menu item 1 (qty 1)
+	// without addons. Addon cost is addon price * addon qty * item qty.
+	expAddonSubtotal := sd.MenuItems[0].Price.Value()*2 +
+		sd.Addons[0].Price.Value()*1*2 +
+		sd.Addons[1].Price.Value()*2*2 +
+		sd.MenuItems[1].Price.Value()*1
+	expAddonSubtotal = math.Round(expAddonSubtotal*100) / 100
+	expAddonTax := math.Round(expAddonSubtotal*sd.Restaurants[0].TaxRate*100) / 100
+	expAddonTotal := math.Round((expAddonSubtotal+expAddonTax)*100) / 100
 
 	table := []unittest.Table{
 		{
@@ -496,6 +532,361 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				if gotTax != 0.0 {
 					return fmt.Sprintf("expected tax 0.0, got %.2f", gotTax)
 				}
+				return ""
+			},
+		},
+		{
+			Name:    "order-with-addons",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Addon Customer",
+					CustomerEmail: "addon@example.com",
+					CustomerPhone: "555-4321",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   2,
+							Addons: []orderbus.NewOrderItemAddon{
+								{AddonID: sd.Addons[0].ID.String(), Quantity: 1},
+								{AddonID: sd.Addons[1].ID.String(), Quantity: 2},
+							},
+						},
+						{
+							MenuItemID: sd.MenuItems[1].ID.String(),
+							Quantity:   1,
+						},
+					},
+				}
+
+				order, err := busDomain.Order.Create(ctx, no)
+				if err != nil {
+					return err
+				}
+
+				// Query the order back to verify addons were persisted.
+				resp, err := busDomain.Order.QueryByID(ctx, order.ID)
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, ok := got.(orderbus.Order)
+				if !ok {
+					return "error occurred"
+				}
+
+				if gotResp.Subtotal.Value() != expAddonSubtotal {
+					return fmt.Sprintf("subtotal: got %.2f, want %.2f", gotResp.Subtotal.Value(), expAddonSubtotal)
+				}
+
+				if gotResp.Tax.Value() != expAddonTax {
+					return fmt.Sprintf("tax: got %.2f, want %.2f", gotResp.Tax.Value(), expAddonTax)
+				}
+
+				if gotResp.Total.Value() != expAddonTotal {
+					return fmt.Sprintf("total: got %.2f, want %.2f", gotResp.Total.Value(), expAddonTotal)
+				}
+
+				// Find the item with addons by menu item ID since item
+				// order is not guaranteed (items share a timestamp).
+				var addonItem *orderbus.OrderItem
+				for i := range gotResp.Items {
+					if gotResp.Items[i].MenuItemID == sd.MenuItems[0].ID {
+						addonItem = &gotResp.Items[i]
+					}
+				}
+
+				if addonItem == nil {
+					return "order item with addons not found"
+				}
+
+				if len(addonItem.Addons) != 2 {
+					return fmt.Sprintf("expected 2 addons, got %d", len(addonItem.Addons))
+				}
+
+				expAddons := map[uuid.UUID]struct {
+					name     string
+					price    float64
+					quantity int
+				}{
+					sd.Addons[0].ID: {sd.Addons[0].Name.String(), sd.Addons[0].Price.Value(), 1},
+					sd.Addons[1].ID: {sd.Addons[1].Name.String(), sd.Addons[1].Price.Value(), 2},
+				}
+
+				for _, a := range addonItem.Addons {
+					expA, ok := expAddons[a.AddonID]
+					if !ok {
+						return fmt.Sprintf("unexpected addon %s", a.AddonID)
+					}
+
+					if a.AddonName != expA.name {
+						return fmt.Sprintf("addon name: got %q, want %q", a.AddonName, expA.name)
+					}
+
+					if a.AddonPrice.Value() != expA.price {
+						return fmt.Sprintf("addon price: got %.2f, want %.2f", a.AddonPrice.Value(), expA.price)
+					}
+
+					if a.Quantity != expA.quantity {
+						return fmt.Sprintf("addon quantity: got %d, want %d", a.Quantity, expA.quantity)
+					}
+
+					if a.OrderItemID != addonItem.ID {
+						return "addon not linked to its order item"
+					}
+				}
+
+				return ""
+			},
+		},
+		{
+			Name:    "addon-not-found",
+			ExpResp: addonbus.ErrNotFound,
+			ExcFunc: func(ctx context.Context) any {
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Ghost Addon",
+					CustomerEmail: "ghost@example.com",
+					CustomerPhone: "555-1111",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   1,
+							Addons: []orderbus.NewOrderItemAddon{
+								{AddonID: uuid.New().String(), Quantity: 1},
+							},
+						},
+					},
+				}
+
+				_, err := busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "expected an error"
+				}
+
+				if !errors.Is(gotErr, exp.(error)) {
+					return "different error"
+				}
+
+				return ""
+			},
+		},
+		{
+			Name:    "addon-quantity-zero",
+			ExpResp: orderbus.ErrAddonQuantityOutOfRange,
+			ExcFunc: func(ctx context.Context) any {
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Zero Qty",
+					CustomerEmail: "zeroqty@example.com",
+					CustomerPhone: "555-2222",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   1,
+							Addons: []orderbus.NewOrderItemAddon{
+								{AddonID: sd.Addons[0].ID.String(), Quantity: 0},
+							},
+						},
+					},
+				}
+
+				_, err := busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "expected an error"
+				}
+
+				if !errors.Is(gotErr, exp.(error)) {
+					return "different error"
+				}
+
+				return ""
+			},
+		},
+		{
+			Name:    "addon-quantity-exceeds-max",
+			ExpResp: orderbus.ErrAddonQuantityOutOfRange,
+			ExcFunc: func(ctx context.Context) any {
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Max Qty",
+					CustomerEmail: "maxqty@example.com",
+					CustomerPhone: "555-3333",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   1,
+							Addons: []orderbus.NewOrderItemAddon{
+								{AddonID: sd.Addons[0].ID.String(), Quantity: sd.Addons[0].MaxQuantity + 1},
+							},
+						},
+					},
+				}
+
+				_, err := busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "expected an error"
+				}
+
+				if !errors.Is(gotErr, exp.(error)) {
+					return "different error"
+				}
+
+				return ""
+			},
+		},
+		{
+			Name:    "addon-unavailable",
+			ExpResp: orderbus.ErrAddonUnavailable,
+			ExcFunc: func(ctx context.Context) any {
+				addon, err := busDomain.Addon.Create(ctx, addonbus.NewAddon{
+					CategoryID:   sd.Categories[0].ID,
+					RestaurantID: sd.Restaurants[0].ID,
+					Name:         name.MustParse("Unavailable Addon"),
+					Description:  "temporarily unavailable",
+					Price:        money.MustParse(1.50),
+					MaxQuantity:  2,
+				})
+				if err != nil {
+					return err
+				}
+
+				available := false
+				if _, err := busDomain.Addon.Update(ctx, addon, addonbus.UpdateAddon{Available: &available}); err != nil {
+					return err
+				}
+
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Unavailable Addon Customer",
+					CustomerEmail: "unavailable@example.com",
+					CustomerPhone: "555-4444",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   1,
+							Addons: []orderbus.NewOrderItemAddon{
+								{AddonID: addon.ID.String(), Quantity: 1},
+							},
+						},
+					},
+				}
+
+				_, err = busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "expected an error"
+				}
+
+				if !errors.Is(gotErr, exp.(error)) {
+					return "different error"
+				}
+
+				return ""
+			},
+		},
+		{
+			Name:    "addon-wrong-category",
+			ExpResp: orderbus.ErrAddonCategoryMismatch,
+			ExcFunc: func(ctx context.Context) any {
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Wrong Category",
+					CustomerEmail: "wrongcat@example.com",
+					CustomerPhone: "555-5555",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   1,
+							Addons: []orderbus.NewOrderItemAddon{
+								{AddonID: sd.Addons[2].ID.String(), Quantity: 1},
+							},
+						},
+					},
+				}
+
+				_, err := busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "expected an error"
+				}
+
+				if !errors.Is(gotErr, exp.(error)) {
+					return "different error"
+				}
+
+				return ""
+			},
+		},
+		{
+			Name:    "addon-wrong-restaurant",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Wrong Restaurant",
+					CustomerEmail: "wrongrest@example.com",
+					CustomerPhone: "555-6666",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   1,
+							Addons: []orderbus.NewOrderItemAddon{
+								{AddonID: sd.Addons[3].ID.String(), Quantity: 1},
+							},
+						},
+					},
+				}
+
+				_, err := busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "expected an error"
+				}
+
+				if gotErr == nil {
+					return "expected an error"
+				}
+
 				return ""
 			},
 		},

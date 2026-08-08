@@ -42,6 +42,17 @@ type dbOrderItem struct {
 	DateCreated         time.Time `db:"date_created"`
 }
 
+// dbOrderItemAddon represents the database row for an order item addon.
+type dbOrderItemAddon struct {
+	ID          uuid.UUID `db:"order_item_addon_id"`
+	OrderItemID uuid.UUID `db:"order_item_id"`
+	AddonID     uuid.UUID `db:"addon_id"`
+	AddonName   string    `db:"addon_name"`
+	AddonPrice  float64   `db:"addon_price"`
+	Quantity    int       `db:"quantity"`
+	DateCreated time.Time `db:"date_created"`
+}
+
 // dbDeliveryAddress represents the database row for a delivery address.
 type dbDeliveryAddress struct {
 	ID                   uuid.UUID `db:"address_id"`
@@ -80,7 +91,7 @@ func toDBOrder(bus orderbus.Order) dbOrder {
 	}
 }
 
-func toBusOrder(dbo dbOrder, items []dbOrderItem, addr *dbDeliveryAddress) (orderbus.Order, error) {
+func toBusOrder(dbo dbOrder, items []dbOrderItem, addons []dbOrderItemAddon, addr *dbDeliveryAddress) (orderbus.Order, error) {
 	subtotal, err := money.Parse(dbo.Subtotal)
 	if err != nil {
 		return orderbus.Order{}, fmt.Errorf("parse subtotal: %w", err)
@@ -122,8 +133,15 @@ func toBusOrder(dbo dbOrder, items []dbOrderItem, addr *dbDeliveryAddress) (orde
 		Items:                 make([]orderbus.OrderItem, len(items)),
 	}
 
+	addonsByItem := make(map[uuid.UUID][]orderbus.OrderItemAddon)
+	for _, addon := range addons {
+		addonsByItem[addon.OrderItemID] = append(addonsByItem[addon.OrderItemID], toBusOrderItemAddon(addon))
+	}
+
 	for i, item := range items {
-		order.Items[i] = toBusOrderItem(item)
+		busItem := toBusOrderItem(item)
+		busItem.Addons = addonsByItem[item.ID]
+		order.Items[i] = busItem
 	}
 
 	if addr != nil {
@@ -164,6 +182,37 @@ func toBusOrderItem(dbo dbOrderItem) orderbus.OrderItem {
 		Quantity:            dbo.Quantity,
 		SpecialInstructions: dbo.SpecialInstructions,
 		DateCreated:         dbo.DateCreated.In(time.Local),
+	}
+}
+
+func toDBOrderItemAddon(bus orderbus.OrderItemAddon, orderItemID uuid.UUID) dbOrderItemAddon {
+	return dbOrderItemAddon{
+		ID:          bus.ID,
+		OrderItemID: orderItemID,
+		AddonID:     bus.AddonID,
+		AddonName:   bus.AddonName,
+		AddonPrice:  bus.AddonPrice.Value(),
+		Quantity:    bus.Quantity,
+		DateCreated: bus.DateCreated.UTC(),
+	}
+}
+
+func toBusOrderItemAddon(dbo dbOrderItemAddon) orderbus.OrderItemAddon {
+	price, err := money.Parse(dbo.AddonPrice)
+	if err != nil {
+		// This should never happen with valid database data
+		// but we need to handle it gracefully
+		price = money.Money{}
+	}
+
+	return orderbus.OrderItemAddon{
+		ID:          dbo.ID,
+		OrderItemID: dbo.OrderItemID,
+		AddonID:     dbo.AddonID,
+		AddonName:   dbo.AddonName,
+		AddonPrice:  price,
+		Quantity:    dbo.Quantity,
+		DateCreated: dbo.DateCreated.In(time.Local),
 	}
 }
 

@@ -195,7 +195,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 	addonBus := addonbus.NewBusiness(log, addonstore)
 
 	orderstore := orderdb.NewStore(log, db)
-	orderBus := orderbus.NewBusiness(log, orderstore, menuitemBus, restaurantBus)
+	orderBus := orderbus.NewBusiness(log, orderstore, menuitemBus, restaurantBus, addonBus)
 
 	// -------------------------------------------------------------------------
 	// Initialize authentication support
