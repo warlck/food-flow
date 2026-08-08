@@ -6,6 +6,7 @@ import (
 
 	"github.com/warlck/food-flow/app/sdk/apitest"
 	"github.com/warlck/food-flow/app/sdk/auth"
+	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
@@ -91,6 +92,22 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}
 
 	// -------------------------------------------------------------------------
+	// Create addons
+
+	addons, err := addonbus.TestSeedAddons(ctx, 2, categories[0].ID, restaurants[0].ID, busDomain.Addon)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding addons: %w", err)
+	}
+
+	ta1 := apitest.Addon{
+		Addon: addons[0],
+	}
+
+	ta2 := apitest.Addon{
+		Addon: addons[1],
+	}
+
+	// -------------------------------------------------------------------------
 	// Create orders
 
 	orders, err := orderbus.TestSeedOrders(ctx, 2, restaurants[0].ID, menuItems, busDomain.Order)
@@ -114,6 +131,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Restaurants: []apitest.Restaurant{tr1},
 		Categories:  []apitest.Category{tc1},
 		MenuItems:   []apitest.MenuItem{tmi1, tmi2},
+		Addons:      []apitest.Addon{ta1, ta2},
 		Orders:      []apitest.Order{to1, to2},
 	}
 
