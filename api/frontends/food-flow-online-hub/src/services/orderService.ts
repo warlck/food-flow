@@ -31,6 +31,12 @@ export interface OrderItemRequest {
   menuItemId: string;
   quantity: number;
   specialInstructions?: string;
+  addons?: OrderItemAddonRequest[];
+}
+
+export interface OrderItemAddonRequest {
+  addonId: string;
+  quantity: number;
 }
 
 export interface DeliveryAddressRequest {
@@ -72,6 +78,15 @@ export interface OrderItem {
   menuItemPrice: number;
   quantity: number;
   specialInstructions?: string;
+  addons?: OrderItemAddon[];
+}
+
+export interface OrderItemAddon {
+  id: string;
+  addonId: string;
+  addonName: string;
+  addonPrice: number;
+  quantity: number;
 }
 
 export interface DeliveryAddress {
