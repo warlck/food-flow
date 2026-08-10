@@ -531,10 +531,16 @@ const CheckoutMobile: React.FC = () => {
                             type="button"
                             onClick={handleAddressSearch}
                             disabled={isSearching}
-                            variant="outline"
-                            className="px-4 text-food-primary border-food-primary hover:bg-food-primary/10"
+                            className="px-5 bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white font-medium shadow-md transition-all flex items-center space-x-1.5 shrink-0"
                           >
-                            {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                            {isSearching ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Search className="w-4 h-4" />
+                                <span className="text-sm">Search</span>
+                              </>
+                            )}
                           </Button>
                         </div>
 

@@ -477,10 +477,16 @@ const CheckoutDesktop: React.FC = () => {
                                 type="button"
                                 onClick={handleAddressSearch}
                                 disabled={isSearching}
-                                variant="outline"
-                                className="h-12 px-6 text-food-primary border-food-primary hover:bg-food-primary/10"
+                                className="h-12 px-6 bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white font-medium shadow-md transition-all flex items-center space-x-2 shrink-0"
                               >
-                                {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                                {isSearching ? (
+                                  <Loader2 className="w-5 h-5 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Search className="w-5 h-5" />
+                                    <span>Search</span>
+                                  </>
+                                )}
                               </Button>
                             </div>
 
