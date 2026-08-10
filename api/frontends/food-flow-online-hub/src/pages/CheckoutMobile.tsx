@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -161,6 +162,21 @@ const CheckoutMobile: React.FC = () => {
       }
     } else if (restaurantId) {
       toast.error("Restaurant location data is missing, cannot calculate delivery fee.");
+    }
+  };
+
+  const handleClearAddress = () => {
+    setSelectedLocation(null);
+    setDeliveryQuote(null);
+    setAddressQuery("");
+    setSearchResults([]);
+    deliveryForm.setValue("street", "");
+    deliveryForm.setValue("postalCode", "");
+  };
+
+  const onInvalidCustomerInfo = () => {
+    if (orderType === "delivery" && !selectedLocation) {
+      toast.error("Please search and select your delivery address.");
     }
   };
 
@@ -438,7 +454,7 @@ const CheckoutMobile: React.FC = () => {
               <CardContent>
                 {orderType === "delivery" ? (
                   <Form {...deliveryForm}>
-                    <form onSubmit={deliveryForm.handleSubmit(onSubmitCustomerInfo)} className="space-y-4">
+                    <form onSubmit={deliveryForm.handleSubmit(onSubmitCustomerInfo, onInvalidCustomerInfo)} className="space-y-4">
                       <FormField
                         control={deliveryForm.control}
                         name="name"
@@ -538,98 +554,124 @@ const CheckoutMobile: React.FC = () => {
                         )}
 
                         {selectedLocation && (
-                          <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-800 flex items-start space-x-2">
-                            <MapPinCheck className="w-4 h-4 mt-0.5 shrink-0" />
-                            <span>{selectedLocation.displayName}</span>
+                          <div className={`rounded-xl border p-3 text-sm flex items-start justify-between ${
+                            deliveryQuote && !deliveryQuote.withinLimit
+                              ? "border-red-200 bg-red-50 text-red-800"
+                              : "border-green-200 bg-green-50 text-green-800"
+                          }`}>
+                            <div className="flex items-start space-x-2">
+                              <MapPinCheck className="w-4 h-4 mt-0.5 shrink-0" />
+                              <div>
+                                <div className="font-medium">Delivery destination</div>
+                                <div>{selectedLocation.displayName}</div>
+                                {deliveryQuote && (
+                                  <div className="mt-1 text-xs">
+                                    {deliveryQuote.distanceKm.toFixed(1)} km away
+                                    {deliveryQuote.withinLimit
+                                      ? deliveryQuote.deliveryFee > 0
+                                        ? ` • $${deliveryQuote.deliveryFee.toFixed(2)} fee`
+                                        : " • Free delivery"
+                                      : ` • Outside ${deliveryQuote.maxDeliveryDistanceKm} km area`}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleClearAddress}
+                              className="text-xs shrink-0 ml-2 h-8 px-2"
+                            >
+                              Change
+                            </Button>
                           </div>
                         )}
-
-                        {deliveryQuote && deliveryQuote.withinLimit && (
-                          <p className="text-sm text-gray-600">
-                            Delivery fee: <span className="font-semibold text-food-primary">${deliveryQuote.deliveryFee.toFixed(2)}</span>
-                          </p>
-                        )}
                       </div>
 
-                      <FormField
-                        control={deliveryForm.control}
-                        name="street"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="flex items-center space-x-2">
-                              <Home className="w-4 h-4" />
-                              <span>Street Address</span>
-                            </FormLabel>
-                            <FormControl>
-                              <Input placeholder="123 Main Street" className="border-2 focus:border-food-primary" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      {selectedLocation && (
+                        <>
+                          <FormField
+                            control={deliveryForm.control}
+                            name="street"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="flex items-center space-x-2">
+                                  <Home className="w-4 h-4" />
+                                  <span>Street Address</span>
+                                </FormLabel>
+                                <FormControl>
+                                  <Input placeholder="123 Main Street" className="border-2 focus:border-food-primary" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
 
-                      <div className="grid grid-cols-3 gap-3">
-                        <FormField
-                          control={deliveryForm.control}
-                          name="city"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>City</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Singapore" className="border-2 focus:border-food-primary" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                          <div className="grid grid-cols-3 gap-3">
+                            <FormField
+                              control={deliveryForm.control}
+                              name="city"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>City</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Singapore" className="border-2 focus:border-food-primary" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
-                        <FormField
-                          control={deliveryForm.control}
-                          name="state"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>State</FormLabel>
-                              <FormControl>
-                                <Input placeholder="SG" className="border-2 focus:border-food-primary" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                            <FormField
+                              control={deliveryForm.control}
+                              name="state"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>State</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="SG" className="border-2 focus:border-food-primary" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
-                        <FormField
-                          control={deliveryForm.control}
-                          name="postalCode"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Postal Code</FormLabel>
-                              <FormControl>
-                                <Input placeholder="048582" className="border-2 focus:border-food-primary" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                            <FormField
+                              control={deliveryForm.control}
+                              name="postalCode"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Postal Code</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="048582" className="border-2 focus:border-food-primary" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
 
-                      <FormField
-                        control={deliveryForm.control}
-                        name="deliveryInstructions"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Delivery Instructions (Optional)</FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder="Leave at door, ring bell, etc..."
-                                className="border-2 focus:border-food-primary resize-none"
-                                rows={3}
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                          <FormField
+                            control={deliveryForm.control}
+                            name="deliveryInstructions"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Delivery Instructions (Optional)</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    placeholder="Leave at door, ring bell, etc..."
+                                    className="border-2 focus:border-food-primary resize-none"
+                                    rows={3}
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </>
+                      )}
 
                       <Button type="submit" className="w-full bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white py-3 rounded-xl font-semibold text-lg">
                         Continue to Payment
