@@ -491,17 +491,31 @@ const CheckoutDesktop: React.FC = () => {
                             </div>
 
                             {searchResults.length > 0 && (
-                              <div className="border-2 rounded-xl divide-y max-h-48 overflow-y-auto">
-                                {searchResults.map((result, index) => (
-                                  <button
-                                    key={index}
-                                    type="button"
-                                    onClick={() => handleSelectAddress(result)}
-                                    className="w-full text-left px-4 py-3 hover:bg-food-primary/5 text-sm text-gray-700 transition-colors"
-                                  >
-                                    {result.displayName}
-                                  </button>
-                                ))}
+                              <div className="space-y-2 mt-3">
+                                <div className="flex items-center space-x-1.5 text-xs font-semibold text-food-primary uppercase tracking-wider">
+                                  <MapPin className="w-3.5 h-3.5 animate-bounce" />
+                                  <span>Select your address from the search results below:</span>
+                                </div>
+                                <div className="border-2 border-food-primary/30 shadow-lg rounded-xl divide-y divide-gray-100 max-h-60 overflow-y-auto bg-white">
+                                  {searchResults.map((result, index) => (
+                                    <button
+                                      key={index}
+                                      type="button"
+                                      onClick={() => handleSelectAddress(result)}
+                                      className="w-full text-left px-4 py-3.5 hover:bg-food-primary/10 text-sm transition-all group flex items-center justify-between space-x-3 cursor-pointer"
+                                    >
+                                      <div className="flex items-start space-x-3 min-w-0">
+                                        <MapPin className="w-4 h-4 text-food-primary mt-0.5 shrink-0 group-hover:scale-110 transition-transform" />
+                                        <span className="text-gray-800 font-medium group-hover:text-food-primary transition-colors leading-snug">
+                                          {result.displayName}
+                                        </span>
+                                      </div>
+                                      <span className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-food-primary/10 text-food-primary group-hover:bg-food-primary group-hover:text-white transition-colors shadow-sm">
+                                        Select
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
                             )}
 
