@@ -21,12 +21,14 @@ type Order struct {
 	OrderStatus           string           `json:"orderStatus"`
 	PaymentStatus         string           `json:"paymentStatus"`
 	PaymentMethod         string           `json:"paymentMethod"`
+	PromoCode             string           `json:"promoCode,omitempty"`
 	Subtotal              float64          `json:"subtotal"`
+	Discount              float64          `json:"discount"`
 	DeliveryFee           float64          `json:"deliveryFee"`
 	Tax                   float64          `json:"tax"`
 	Total                 float64          `json:"total"`
 	SpecialInstructions   string           `json:"specialInstructions,omitempty"`
-	StripePaymentIntentID string           `json:"stripePaymentIntentId,omitempty"`
+	StripePaymentIntentID string           `json:"stripePaymentIntentID,omitempty"`
 	Items                 []OrderItem      `json:"items"`
 	DeliveryAddress       *DeliveryAddress `json:"deliveryAddress,omitempty"`
 	DateCreated           string           `json:"dateCreated"`
@@ -125,7 +127,9 @@ func ToAppOrder(bus orderbus.Order) Order {
 		OrderStatus:           bus.OrderStatus,
 		PaymentStatus:         bus.PaymentStatus,
 		PaymentMethod:         bus.PaymentMethod,
+		PromoCode:             bus.PromoCode,
 		Subtotal:              bus.Subtotal.Value(),
+		Discount:              bus.Discount.Value(),
 		DeliveryFee:           bus.DeliveryFee.Value(),
 		Tax:                   bus.Tax.Value(),
 		Total:                 bus.Total.Value(),
@@ -158,6 +162,7 @@ type NewOrder struct {
 	CustomerPhone       string              `json:"customerPhone" validate:"required"`
 	OrderType           string              `json:"orderType" validate:"required,oneof=pickup delivery"`
 	PaymentMethod       string              `json:"paymentMethod" validate:"required,oneof=creditCard cash"`
+	PromoCode           string              `json:"promoCode"`
 	SpecialInstructions string              `json:"specialInstructions"`
 	Items               []NewOrderItem      `json:"items" validate:"required,min=1,dive"`
 	DeliveryAddress     *NewDeliveryAddress `json:"deliveryAddress"`
@@ -246,6 +251,7 @@ func toBusNewOrder(app NewOrder) (orderbus.NewOrder, error) {
 		CustomerPhone:       app.CustomerPhone,
 		OrderType:           app.OrderType,
 		PaymentMethod:       app.PaymentMethod,
+		PromoCode:           app.PromoCode,
 		SpecialInstructions: app.SpecialInstructions,
 		Items:               items,
 		DeliveryAddress:     deliveryAddr,
