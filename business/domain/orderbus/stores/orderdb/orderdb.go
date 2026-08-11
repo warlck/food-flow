@@ -43,13 +43,13 @@ func (s *Store) Create(ctx context.Context, order orderbus.Order) error {
 	const orderSQL = `
 	INSERT INTO orders (
 		order_id, restaurant_id, customer_name, customer_email, customer_phone,
-		order_type, order_status, payment_status, payment_method,
-		subtotal, delivery_fee, tax, total, special_instructions,
+		order_type, order_status, payment_status, payment_method, promo_code,
+		subtotal, discount, delivery_fee, tax, total, special_instructions,
 		stripe_payment_intent_id, date_created, date_updated
 	) VALUES (
 		:order_id, :restaurant_id, :customer_name, :customer_email, :customer_phone,
-		:order_type, :order_status, :payment_status, :payment_method,
-		:subtotal, :delivery_fee, :tax, :total, :special_instructions,
+		:order_type, :order_status, :payment_status, :payment_method, :promo_code,
+		:subtotal, :discount, :delivery_fee, :tax, :total, :special_instructions,
 		:stripe_payment_intent_id, :date_created, :date_updated
 	)`
 
@@ -166,8 +166,8 @@ func (s *Store) Query(ctx context.Context, filter orderbus.QueryFilter, orderBy 
 	const q = `
 	SELECT
 		o.order_id, o.restaurant_id, o.customer_name, o.customer_email, o.customer_phone,
-		o.order_type, o.order_status, o.payment_status, o.payment_method,
-		o.subtotal, o.delivery_fee, o.tax, o.total, o.special_instructions,
+		o.order_type, o.order_status, o.payment_status, o.payment_method, o.promo_code,
+		o.subtotal, o.discount, o.delivery_fee, o.tax, o.total, o.special_instructions,
 		o.stripe_payment_intent_id, o.date_created, o.date_updated
 	FROM
 		orders AS o`
@@ -259,8 +259,8 @@ func (s *Store) QueryByID(ctx context.Context, orderID uuid.UUID) (orderbus.Orde
 	const q = `
 	SELECT
 		o.order_id, o.restaurant_id, o.customer_name, o.customer_email, o.customer_phone,
-		o.order_type, o.order_status, o.payment_status, o.payment_method,
-		o.subtotal, o.delivery_fee, o.tax, o.total, o.special_instructions,
+		o.order_type, o.order_status, o.payment_status, o.payment_method, o.promo_code,
+		o.subtotal, o.discount, o.delivery_fee, o.tax, o.total, o.special_instructions,
 		o.stripe_payment_intent_id, o.date_created, o.date_updated
 	FROM
 		orders AS o

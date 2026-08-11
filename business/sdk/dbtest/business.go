@@ -51,7 +51,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	promoBus := promobus.NewBusiness(log, promoStorage)
 
 	orderStorage := orderdb.NewStore(log, db)
-	orderBus := orderbus.NewBusiness(log, orderStorage, menuItemBus, restaurantBus, addonBus)
+	orderBus := orderbus.NewBusiness(log, orderStorage, menuItemBus, restaurantBus, addonBus, promoBus)
 
 	return BusDomain{
 		User:       userBus,

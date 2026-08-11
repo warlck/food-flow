@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
+	"github.com/warlck/food-flow/business/domain/promobus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/order"
 	"github.com/warlck/food-flow/business/sdk/page"
@@ -38,16 +40,18 @@ type Business struct {
 	menuItemBus   *menuitembus.Business
 	restaurantBus *restaurantbus.Business
 	addonBus      *addonbus.Business
+	promoBus      *promobus.Business
 }
 
 // NewBusiness constructs a orderbus business API for use.
-func NewBusiness(log *logger.Logger, storer Storer, menuItemBus *menuitembus.Business, restaurantBus *restaurantbus.Business, addonBus *addonbus.Business) *Business {
+func NewBusiness(log *logger.Logger, storer Storer, menuItemBus *menuitembus.Business, restaurantBus *restaurantbus.Business, addonBus *addonbus.Business, promoBus *promobus.Business) *Business {
 	return &Business{
 		log:           log,
 		storer:        storer,
 		menuItemBus:   menuItemBus,
 		restaurantBus: restaurantBus,
 		addonBus:      addonBus,
+		promoBus:      promoBus,
 	}
 }
 
@@ -158,6 +162,29 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 	// Round subtotal to 2 decimal places to avoid precision errors
 	subtotal = roundToTwoDecimals(subtotal)
 
+	// Validate promo code if provided
+	var discountVal float64
+	var promoCodeClean string
+	var promoID *uuid.UUID
+
+	if strings.TrimSpace(no.PromoCode) != "" && b.promoBus != nil {
+		valRes, err := b.promoBus.ValidatePromoCode(ctx, no.PromoCode, &restaurantID, subtotal)
+		if err != nil {
+			return Order{}, fmt.Errorf("promo validation: %w", err)
+		}
+		if !valRes.Valid {
+			return Order{}, fmt.Errorf("invalid promo code: %s", valRes.Reason)
+		}
+		discountVal = valRes.DiscountAmount
+		promoCodeClean = valRes.Code
+		if valRes.Promotion != nil {
+			promoID = &valRes.Promotion.ID
+		}
+	}
+
+	// Calculate taxable subtotal (subtotal - discount)
+	taxableSubtotal := math.Max(0, subtotal-discountVal)
+
 	// Calculate delivery fee based on the distance to the destination.
 	var deliveryFee float64
 	if no.OrderType == OrderTypeDelivery {
@@ -181,13 +208,17 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		deliveryFee = quote.DeliveryFee.Value()
 	}
 
-	// Calculate tax using restaurant's tax rate and round to 2 decimal places
-	tax := roundToTwoDecimals(subtotal * restaurant.TaxRate)
+	// Calculate tax using restaurant's tax rate on taxable subtotal and round to 2 decimal places
+	tax := roundToTwoDecimals(taxableSubtotal * restaurant.TaxRate)
 
 	// Calculate total and round to 2 decimal places
-	total := roundToTwoDecimals(subtotal + deliveryFee + tax)
+	total := roundToTwoDecimals(taxableSubtotal + deliveryFee + tax)
 
 	subtotalFee, err := money.Parse(subtotal)
+	if err != nil {
+		return Order{}, err
+	}
+	discountFee, err := money.Parse(discountVal)
 	if err != nil {
 		return Order{}, err
 	}
@@ -231,7 +262,9 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		OrderStatus:         OrderStatusPending,
 		PaymentStatus:       PaymentStatusPending,
 		PaymentMethod:       no.PaymentMethod,
+		PromoCode:           promoCodeClean,
 		Subtotal:            subtotalFee,
+		Discount:            discountFee,
 		DeliveryFee:         deliveryFeeM,
 		Tax:                 taxFee,
 		Total:               totalFee,
@@ -245,6 +278,11 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 	// Store the order
 	if err := b.storer.Create(ctx, order); err != nil {
 		return Order{}, fmt.Errorf("create: %w", err)
+	}
+
+	// Increment promo code usage count if applicable
+	if promoID != nil && b.promoBus != nil {
+		_ = b.promoBus.IncrementUsage(ctx, *promoID)
 	}
 
 	return order, nil

@@ -9,6 +9,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
+	"github.com/warlck/food-flow/business/domain/promobus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/foundation/logger"
@@ -22,6 +23,7 @@ type BusConfig struct {
 	MenuItemBus         *menuitembus.Business
 	OrderBus            *orderbus.Business
 	AddonBus            *addonbus.Business
+	PromoBus            *promobus.Business
 	StripeSecretKey     string
 	StripeWebhookSecret string
 }

@@ -25,6 +25,8 @@ import (
 	"github.com/warlck/food-flow/business/domain/menuitembus/stores/menuitemdb"
 	"github.com/warlck/food-flow/business/domain/orderbus"
 	"github.com/warlck/food-flow/business/domain/orderbus/stores/orderdb"
+	"github.com/warlck/food-flow/business/domain/promobus"
+	"github.com/warlck/food-flow/business/domain/promobus/stores/promodb"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus/stores/restaurantdb"
 	"github.com/warlck/food-flow/business/domain/userbus"
@@ -194,8 +196,11 @@ func run(ctx context.Context, log *logger.Logger) error {
 	addonstore := addondb.NewStore(log, db)
 	addonBus := addonbus.NewBusiness(log, addonstore)
 
+	promostore := promodb.NewStore(log, db)
+	promoBus := promobus.NewBusiness(log, promostore)
+
 	orderstore := orderdb.NewStore(log, db)
-	orderBus := orderbus.NewBusiness(log, orderstore, menuitemBus, restaurantBus, addonBus)
+	orderBus := orderbus.NewBusiness(log, orderstore, menuitemBus, restaurantBus, addonBus, promoBus)
 
 	// -------------------------------------------------------------------------
 	// Initialize authentication support
@@ -237,6 +242,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 				MenuItemBus:         menuitemBus,
 				OrderBus:            orderBus,
 				AddonBus:            addonBus,
+				PromoBus:            promoBus,
 				StripeSecretKey:     cfg.Stripe.SecretKey,
 				StripeWebhookSecret: cfg.Stripe.WebhookSecret,
 			},

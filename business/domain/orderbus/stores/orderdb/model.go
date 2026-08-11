@@ -20,7 +20,9 @@ type dbOrder struct {
 	OrderStatus           string    `db:"order_status"`
 	PaymentStatus         string    `db:"payment_status"`
 	PaymentMethod         string    `db:"payment_method"`
+	PromoCode             *string   `db:"promo_code"`
 	Subtotal              float64   `db:"subtotal"`
+	Discount              float64   `db:"discount"`
 	DeliveryFee           float64   `db:"delivery_fee"`
 	Tax                   float64   `db:"tax"`
 	Total                 float64   `db:"total"`
@@ -70,6 +72,11 @@ type dbDeliveryAddress struct {
 // =============================================================================
 
 func toDBOrder(bus orderbus.Order) dbOrder {
+	var promoCode *string
+	if bus.PromoCode != "" {
+		promoCode = &bus.PromoCode
+	}
+
 	return dbOrder{
 		ID:                    bus.ID,
 		RestaurantID:          bus.RestaurantID,
@@ -80,7 +87,9 @@ func toDBOrder(bus orderbus.Order) dbOrder {
 		OrderStatus:           bus.OrderStatus,
 		PaymentStatus:         bus.PaymentStatus,
 		PaymentMethod:         bus.PaymentMethod,
+		PromoCode:             promoCode,
 		Subtotal:              bus.Subtotal.Value(),
+		Discount:              bus.Discount.Value(),
 		DeliveryFee:           bus.DeliveryFee.Value(),
 		Tax:                   bus.Tax.Value(),
 		Total:                 bus.Total.Value(),
@@ -95,6 +104,11 @@ func toBusOrder(dbo dbOrder, items []dbOrderItem, addons []dbOrderItemAddon, add
 	subtotal, err := money.Parse(dbo.Subtotal)
 	if err != nil {
 		return orderbus.Order{}, fmt.Errorf("parse subtotal: %w", err)
+	}
+
+	discount, err := money.Parse(dbo.Discount)
+	if err != nil {
+		return orderbus.Order{}, fmt.Errorf("parse discount: %w", err)
 	}
 
 	deliveryFee, err := money.Parse(dbo.DeliveryFee)
@@ -112,6 +126,11 @@ func toBusOrder(dbo dbOrder, items []dbOrderItem, addons []dbOrderItemAddon, add
 		return orderbus.Order{}, fmt.Errorf("parse total: %w", err)
 	}
 
+	var promoCodeStr string
+	if dbo.PromoCode != nil {
+		promoCodeStr = *dbo.PromoCode
+	}
+
 	order := orderbus.Order{
 		ID:                    dbo.ID,
 		RestaurantID:          dbo.RestaurantID,
@@ -122,7 +141,9 @@ func toBusOrder(dbo dbOrder, items []dbOrderItem, addons []dbOrderItemAddon, add
 		OrderStatus:           dbo.OrderStatus,
 		PaymentStatus:         dbo.PaymentStatus,
 		PaymentMethod:         dbo.PaymentMethod,
+		PromoCode:             promoCodeStr,
 		Subtotal:              subtotal,
+		Discount:              discount,
 		DeliveryFee:           deliveryFee,
 		Tax:                   tax,
 		Total:                 total,

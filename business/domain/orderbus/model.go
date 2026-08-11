@@ -52,7 +52,9 @@ type Order struct {
 	OrderStatus           string           // Current order status
 	PaymentStatus         string           // Current payment status
 	PaymentMethod         string           // How customer will pay
+	PromoCode             string           // Promo code applied (if any)
 	Subtotal              money.Money      // Sum of all items before fees/tax
+	Discount              money.Money      // Discount amount applied
 	DeliveryFee           money.Money      // Delivery fee (0 for pickup)
 	Tax                   money.Money      // Tax amount
 	Total                 money.Money      // Final total amount
@@ -112,6 +114,7 @@ type NewOrder struct {
 	CustomerPhone       string
 	OrderType           string // "delivery" or "pickup"
 	PaymentMethod       string // "creditCard"
+	PromoCode           string // Promo code applied
 	Items               []NewOrderItem
 	DeliveryAddress     *NewDeliveryAddress
 	SpecialInstructions string
