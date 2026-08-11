@@ -10,6 +10,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
+	"github.com/warlck/food-flow/business/domain/promobus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
@@ -121,6 +122,12 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	to2 := apitest.Order{
 		Order: orders[1],
+	}
+
+	// Create promotions
+	_, err = promobus.TestSeedPromotions(ctx, 1, busDomain.Promo)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding promotions: %w", err)
 	}
 
 	// -------------------------------------------------------------------------

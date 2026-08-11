@@ -282,7 +282,11 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 
 	// Increment promo code usage count if applicable
 	if promoID != nil && b.promoBus != nil {
-		_ = b.promoBus.IncrementUsage(ctx, *promoID)
+		if err := b.promoBus.IncrementUsage(ctx, *promoID); err != nil {
+			if b.log != nil {
+				b.log.Error(ctx, "failed to increment promo code usage", "promoID", *promoID, "err", err)
+			}
+		}
 	}
 
 	return order, nil

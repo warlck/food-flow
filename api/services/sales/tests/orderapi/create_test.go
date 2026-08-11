@@ -240,6 +240,67 @@ func create201(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(gotResp, expResp)
 			},
 		},
+		{
+			Name:       "pickup-order-with-promo",
+			URL:        "/v1/orders",
+			Token:      sd.Users[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusCreated,
+			Input: &orderapp.NewOrder{
+				RestaurantID:  sd.Restaurants[0].ID.String(),
+				CustomerName:  "Promo Customer",
+				CustomerEmail: "promocust@example.com",
+				CustomerPhone: "555-7777",
+				OrderType:     "pickup",
+				PaymentMethod: "creditCard",
+				PromoCode:     "TESTPROMO1",
+				Items: []orderapp.NewOrderItem{
+					{
+						MenuItemID: sd.MenuItems[0].ID.String(),
+						Quantity:   2,
+					},
+				},
+			},
+			GotResp: &orderapp.Order{},
+			ExpResp: &orderapp.Order{
+				RestaurantID:  sd.Restaurants[0].ID.String(),
+				CustomerName:  "Promo Customer",
+				CustomerEmail: "promocust@example.com",
+				CustomerPhone: "555-7777",
+				OrderType:     "pickup",
+				OrderStatus:   "pending",
+				PaymentStatus: "pending",
+				PaymentMethod: "creditCard",
+				PromoCode:     "TESTPROMO1",
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*orderapp.Order)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(*orderapp.Order)
+
+				if gotResp.PromoCode != "TESTPROMO1" {
+					return fmt.Sprintf("expected PromoCode TESTPROMO1, got %s", gotResp.PromoCode)
+				}
+				if gotResp.Discount <= 0 {
+					return fmt.Sprintf("expected positive Discount, got %.2f", gotResp.Discount)
+				}
+
+				expResp.ID = gotResp.ID
+				expResp.Subtotal = gotResp.Subtotal
+				expResp.Discount = gotResp.Discount
+				expResp.DeliveryFee = gotResp.DeliveryFee
+				expResp.Tax = gotResp.Tax
+				expResp.Total = gotResp.Total
+				expResp.Items = gotResp.Items
+				expResp.DateCreated = gotResp.DateCreated
+				expResp.DateUpdated = gotResp.DateUpdated
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
 	}
 
 	return table

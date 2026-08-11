@@ -15,6 +15,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
+	"github.com/warlck/food-flow/business/domain/promobus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
 	"github.com/warlck/food-flow/business/sdk/page"
@@ -313,6 +314,135 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				expResp.DateUpdated = gotResp.DateUpdated
 
 				return cmp.Diff(gotResp, expResp)
+			},
+		},
+		{
+			Name: "pickup-order-with-promo",
+			ExpResp: orderbus.Order{
+				RestaurantID:  sd.Restaurants[0].ID,
+				CustomerName:  "Promo User",
+				CustomerEmail: "promo@example.com",
+				CustomerPhone: "555-9999",
+				OrderType:     orderbus.OrderTypePickup,
+				OrderStatus:   orderbus.OrderStatusPending,
+				PaymentStatus: orderbus.PaymentStatusPending,
+				PaymentMethod: orderbus.PaymentMethodCreditCard,
+				PromoCode:     "SAVE10PERCENT",
+				DeliveryFee:   money.MustParse(0),
+			},
+			ExcFunc: func(ctx context.Context) any {
+				// Seed a promo code first
+				_, err := busDomain.Promo.Create(ctx, promobus.NewPromotion{
+					Code:          "SAVE10PERCENT",
+					Name:          name.MustParse("Save 10 Percent"),
+					DiscountType:  "percentage",
+					DiscountValue: 10,
+					Enabled:       true,
+				})
+				if err != nil {
+					return err
+				}
+
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Promo User",
+					CustomerEmail: "promo@example.com",
+					CustomerPhone: "555-9999",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					PromoCode:     "SAVE10PERCENT",
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   2,
+						},
+					},
+				}
+
+				resp, err := busDomain.Order.Create(ctx, no)
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(orderbus.Order)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(orderbus.Order)
+
+				if gotResp.PromoCode != "SAVE10PERCENT" {
+					return fmt.Sprintf("expected PromoCode SAVE10PERCENT, got %s", gotResp.PromoCode)
+				}
+				if gotResp.Discount.Value() <= 0 {
+					return fmt.Sprintf("expected positive Discount, got %.2f", gotResp.Discount.Value())
+				}
+
+				expSubtotal := sd.MenuItems[0].Price.Value() * 2
+				expDiscount := math.Round(expSubtotal*0.10*100) / 100
+				expTaxable := expSubtotal - expDiscount
+				expTax := math.Round(expTaxable*sd.Restaurants[0].TaxRate*100) / 100
+				expTotal := expTaxable + expTax
+
+				if math.Abs(gotResp.Discount.Value()-expDiscount) > 0.01 {
+					return fmt.Sprintf("discount mismatch: got %.2f, want %.2f", gotResp.Discount.Value(), expDiscount)
+				}
+				if math.Abs(gotResp.Tax.Value()-expTax) > 0.01 {
+					return fmt.Sprintf("tax mismatch: got %.2f, want %.2f", gotResp.Tax.Value(), expTax)
+				}
+				if math.Abs(gotResp.Total.Value()-expTotal) > 0.01 {
+					return fmt.Sprintf("total mismatch: got %.2f, want %.2f", gotResp.Total.Value(), expTotal)
+				}
+
+				expResp.ID = gotResp.ID
+				expResp.Subtotal = gotResp.Subtotal
+				expResp.Discount = gotResp.Discount
+				expResp.Tax = gotResp.Tax
+				expResp.Total = gotResp.Total
+				expResp.Items = gotResp.Items
+				expResp.DateCreated = gotResp.DateCreated
+				expResp.DateUpdated = gotResp.DateUpdated
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+		{
+			Name:    "pickup-order-invalid-promo",
+			ExpResp: errors.New("invalid promo code: Invalid promo code"),
+			ExcFunc: func(ctx context.Context) any {
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Bad Promo",
+					CustomerEmail: "badpromo@example.com",
+					CustomerPhone: "555-0000",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					PromoCode:     "NOTREAL99",
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   1,
+						},
+					},
+				}
+
+				_, err := busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "error expected"
+				}
+
+				expErr := exp.(error)
+				if gotErr.Error() != expErr.Error() {
+					return fmt.Sprintf("got error %q, want %q", gotErr.Error(), expErr.Error())
+				}
+				return ""
 			},
 		},
 		{

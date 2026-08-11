@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/business/sdk/order"
 	"github.com/warlck/food-flow/business/sdk/page"
+	"github.com/warlck/food-flow/business/types/name"
 	"github.com/warlck/food-flow/foundation/logger"
 )
 
@@ -268,4 +269,29 @@ func (b *Business) CalculateDiscount(promo Promotion, subtotal float64) float64 
 
 func roundToTwoDecimals(val float64) float64 {
 	return math.Round(val*100) / 100
+}
+
+// TestSeedPromotions is a helper for seeding promotions in unit/integration tests.
+func TestSeedPromotions(ctx context.Context, n int, bus *Business) ([]Promotion, error) {
+	promos := make([]Promotion, n)
+	for i := 0; i < n; i++ {
+		np := NewPromotion{
+			Code:           fmt.Sprintf("TESTPROMO%d", i+1),
+			Name:           name.MustParse(fmt.Sprintf("Test Promo %d", i+1)),
+			Description:    fmt.Sprintf("Description for test promo %d", i+1),
+			DiscountType:   DiscountTypePercentage,
+			DiscountValue:  10 + float64(i*5),
+			MinOrderAmount: 15.0,
+			Enabled:        true,
+		}
+
+		promo, err := bus.Create(ctx, np)
+		if err != nil {
+			return nil, fmt.Errorf("seeding promo %d: %w", i, err)
+		}
+
+		promos[i] = promo
+	}
+
+	return promos, nil
 }

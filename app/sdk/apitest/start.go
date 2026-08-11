@@ -36,6 +36,7 @@ func New(t *testing.T, testName string) *Test {
 			MenuItemBus:   db.BusDomain.MenuItem,
 			OrderBus:      db.BusDomain.Order,
 			AddonBus:      db.BusDomain.Addon,
+			PromoBus:      db.BusDomain.Promo,
 		},
 		Auth: auth,
 	}, authbuild.Routes()))
@@ -54,6 +55,7 @@ func New(t *testing.T, testName string) *Test {
 			MenuItemBus:   db.BusDomain.MenuItem,
 			OrderBus:      db.BusDomain.Order,
 			AddonBus:      db.BusDomain.Addon,
+			PromoBus:      db.BusDomain.Promo,
 		},
 		AuthClient: authClient,
 	}, salesbuild.Routes())
