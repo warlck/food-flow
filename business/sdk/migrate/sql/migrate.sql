@@ -213,3 +213,37 @@ ALTER TABLE delivery_addresses
 ALTER TABLE restaurants
     ADD COLUMN tax_rate DOUBLE PRECISION NOT NULL DEFAULT 0.10;
 
+-- Version: 1.15
+-- Description: Create table promotions for promotion campaigns
+CREATE TABLE promotions (
+    promotion_id        UUID           NOT NULL,
+    restaurant_id       UUID           NULL,
+    code                TEXT           NOT NULL UNIQUE,
+    name                TEXT           NOT NULL,
+    description         TEXT           NULL,
+    discount_type       TEXT           NOT NULL,
+    discount_value      NUMERIC(10, 2) NOT NULL,
+    min_order_amount    NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+    max_discount_amount NUMERIC(10, 2) NULL,
+    usage_limit         INT            NULL,
+    usage_count         INT            NOT NULL DEFAULT 0,
+    start_date          TIMESTAMP      NULL,
+    end_date            TIMESTAMP      NULL,
+    enabled             BOOLEAN        NOT NULL DEFAULT true,
+    date_created        TIMESTAMP      NOT NULL,
+    date_updated        TIMESTAMP      NOT NULL,
+
+    PRIMARY KEY (promotion_id),
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants(restaurant_id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_promotions_code ON promotions(code);
+CREATE INDEX idx_promotions_restaurant_id ON promotions(restaurant_id);
+
+-- Version: 1.16
+-- Description: Add promo_code and discount columns to orders table
+ALTER TABLE orders
+    ADD COLUMN promo_code TEXT           NULL,
+    ADD COLUMN discount   NUMERIC(10, 2) NOT NULL DEFAULT 0.00;
+
+

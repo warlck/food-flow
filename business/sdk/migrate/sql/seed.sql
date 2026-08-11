@@ -193,3 +193,13 @@ INSERT INTO addons (addon_id, category_id, restaurant_id, name, description, pri
 	('a2000000-0003-0000-0000-000000000005', 'c2000000-0000-0000-0000-000000000003', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Nacho Cheese Sauce', 'Melted nacho cheese dip', 1.00, true, 3, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
 	('a2000000-0003-0000-0000-000000000006', 'c2000000-0000-0000-0000-000000000003', 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'Hummus Spread', 'Side of creamy hummus dip', 1.50, true, 2, '2025-10-27 00:00:00', '2025-10-27 00:00:00')
 ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- Promotions
+-- ============================================================================
+INSERT INTO promotions (promotion_id, restaurant_id, code, name, description, discount_type, discount_value, min_order_amount, max_discount_amount, usage_limit, usage_count, start_date, end_date, enabled, date_created, date_updated) VALUES
+	('p1000000-0000-0000-0000-000000000001', NULL, 'WELCOME10', 'Welcome 10% Off', '10% discount on orders over $15', 'percentage', 10.00, 15.00, 10.00, 1000, 0, NULL, NULL, true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('p1000000-0000-0000-0000-000000000002', NULL, 'SAVE5', 'Save $5 Special', '$5 off orders over $20', 'fixed_amount', 5.00, 20.00, NULL, 500, 0, NULL, NULL, true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('p1000000-0000-0000-0000-000000000003', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'DONERGY20', 'Donergy 20% Off', '20% off for Donergy restaurant orders', 'percentage', 20.00, 20.00, 15.00, 200, 0, NULL, NULL, true, '2025-10-27 00:00:00', '2025-10-27 00:00:00')
+ON CONFLICT DO NOTHING;
+
