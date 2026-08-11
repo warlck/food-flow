@@ -13,13 +13,20 @@ const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ restaurant }) => {
   const formattedToday = today as keyof typeof restaurant.openingHours;
   const isOpen = restaurant.openingHours[formattedToday] !== undefined;
 
-  // Generate Google Maps URL for directions
+  // Generate Google Maps URL for directions using restaurant name and address
   const getGoogleMapsUrl = (): string | null => {
-    if (restaurant.latitude != null && restaurant.longitude != null) {
-      return `https://www.google.com/maps/dir/?api=1&destination=${restaurant.latitude},${restaurant.longitude}`;
+    const hasName = restaurant.name && restaurant.name.trim().length > 0;
+    const hasAddress = restaurant.address && restaurant.address.trim().length > 0;
+
+    if (hasName && hasAddress) {
+      const destinationQuery = `${restaurant.name}, ${restaurant.address}`;
+      return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destinationQuery)}`;
     }
-    if (restaurant.address && restaurant.address.trim().length > 0) {
+    if (hasAddress) {
       return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(restaurant.address)}`;
+    }
+    if (hasName) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(restaurant.name)}`;
     }
     return null;
   };
