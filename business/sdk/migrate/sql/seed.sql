@@ -198,8 +198,8 @@ ON CONFLICT DO NOTHING;
 -- Promotions
 -- ============================================================================
 INSERT INTO promotions (promotion_id, restaurant_id, code, name, description, discount_type, discount_value, min_order_amount, max_discount_amount, usage_limit, usage_count, start_date, end_date, enabled, date_created, date_updated) VALUES
-	('p1000000-0000-0000-0000-000000000001', NULL, 'WELCOME10', 'Welcome 10% Off', '10% discount on orders over $15', 'percentage', 10.00, 15.00, 10.00, 1000, 0, NULL, NULL, true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
-	('p1000000-0000-0000-0000-000000000002', NULL, 'SAVE5', 'Save $5 Special', '$5 off orders over $20', 'fixed_amount', 5.00, 20.00, NULL, 500, 0, NULL, NULL, true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
-	('p1000000-0000-0000-0000-000000000003', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'DONERGY20', 'Donergy 20% Off', '20% off for Donergy restaurant orders', 'percentage', 20.00, 20.00, 15.00, 200, 0, NULL, NULL, true, '2025-10-27 00:00:00', '2025-10-27 00:00:00')
+	('f1000000-0000-0000-0000-000000000001', NULL, 'WELCOME10', 'Welcome 10 Percent Off', '10% discount on orders over $15', 'percentage', 10.00, 15.00, 10.00, 1000, 0, NULL, NULL, true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('f1000000-0000-0000-0000-000000000002', NULL, 'SAVE5', 'Save 5 Dollars Special', '$5 off orders over $20', 'fixed_amount', 5.00, 20.00, NULL, 500, 0, NULL, NULL, true, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('f1000000-0000-0000-0000-000000000003', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'DONERGY20', 'Donergy 20 Percent Off', '20% off for Donergy restaurant orders', 'percentage', 20.00, 20.00, 15.00, 200, 0, NULL, NULL, true, '2025-10-27 00:00:00', '2025-10-27 00:00:00')
 ON CONFLICT DO NOTHING;
 
