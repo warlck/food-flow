@@ -13,6 +13,7 @@ These rules apply to all agent interactions within this workspace.
 - **Branch Creation**: Always create and switch to a separate, appropriately named git branch (e.g., `feat/...`, `fix/...`) for any new task, feature, or bug fix before making code edits or commits. Never commit directly to `master`, and NEVER merge branches into `master` (merging to `master` must only be done by the user).
 - **Conventional Commits**: Use the Conventional Commits specification (e.g., `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`) for all commit messages.
 - **Atomic Commits**: Group edits logically. Do not mix refactoring, feature work, and configuration updates in a single commit.
+- **Self-Contained & Compilable Commits**: Every individual commit MUST be self-contained, fully compilable, and pass all relevant automated tests in isolation. Never leave test helpers, struct definitions, or dependent logic missing from the commit that introduces code requiring them.
 
 ## Database & Seeding Guidelines
 - **Strict Name Validation**: The business layer strictly validates names for categories, menu items, and addons (e.g., using `^[\p{L}\p{N}' -]{3,100}$`). Do NOT use special characters like double quotes (`"`), parentheses (`()`), or ampersands (`&`) in `name` fields. Place weights, sizing, and details into the `description` fields instead.
