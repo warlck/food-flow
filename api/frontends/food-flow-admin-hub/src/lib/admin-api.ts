@@ -322,6 +322,60 @@ class AdminApi {
   cancelOrder(id: string) {
     return this.request<void>(`/v1/orders/${id}/cancel`, { method: 'POST' });
   }
+
+  listPromotions(restaurantId?: string) {
+    const params = new URLSearchParams({
+      page: '1',
+      rows: '100',
+      orderBy: 'code,ASC',
+    });
+    if (restaurantId) params.set('restaurant_id', restaurantId);
+    return this.request<ApiPage<AdminPromotion>>(`/v1/promotions?${params}`);
+  }
+
+  createPromotion(input: PromotionInput) {
+    return this.request<AdminPromotion>('/v1/promotions', { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  updatePromotion(id: string, input: Partial<PromotionInput>) {
+    return this.request<AdminPromotion>(`/v1/promotions/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  deletePromotion(id: string) {
+    return this.request<void>(`/v1/promotions/${id}`, { method: 'DELETE' });
+  }
 }
+
+export interface AdminPromotion {
+  id: string;
+  restaurantId?: string | null;
+  code: string;
+  name: string;
+  description?: string;
+  discountType: 'percentage' | 'fixed_amount';
+  discountValue: number;
+  minOrderAmount: number;
+  maxDiscountAmount?: number | null;
+  usageLimit?: number | null;
+  usageCount: number;
+  startDate?: string | null;
+  endDate?: string | null;
+  enabled: boolean;
+  dateCreated: string;
+  dateUpdated: string;
+}
+
+export type PromotionInput = {
+  restaurantId?: string | null;
+  code: string;
+  name: string;
+  description?: string;
+  discountType: 'percentage' | 'fixed_amount';
+  discountValue: number;
+  minOrderAmount: number;
+  maxDiscountAmount?: number | null;
+  usageLimit?: number | null;
+  enabled: boolean;
+};
 
 export const adminApi = new AdminApi();

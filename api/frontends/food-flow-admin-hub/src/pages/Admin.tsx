@@ -3,7 +3,7 @@ import {
   ArrowRight, Banknote, BarChart3, Bell, Bike, BookOpen, Boxes, Building2, Check, ChevronDown, ChevronRight,
   ChefHat, CircleAlert, Clock3, CreditCard, Grid2X2, HelpCircle, ImageOff, LayoutDashboard, List,
   Loader2, Mail, MapPin, Menu, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, ReceiptText,
-  Puzzle, RefreshCw, Search, Settings, ShoppingBag, Sparkles, Store, Trash2, UtensilsCrossed, XCircle,
+  Puzzle, RefreshCw, Search, Settings, ShoppingBag, Sparkles, Store, Tag, Trash2, UtensilsCrossed, XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -15,8 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  AddonInput, AdminAddon, AdminCategory, AdminMenuItem, AdminOrder, AdminRestaurant, AdminWorkspace,
-  CategoryInput, MenuItemInput, OrderStatus, OrderType, PaymentStatus, RestaurantInput, adminApi,
+  AddonInput, AdminAddon, AdminCategory, AdminMenuItem, AdminOrder, AdminPromotion, AdminRestaurant, AdminWorkspace,
+  CategoryInput, MenuItemInput, OrderStatus, OrderType, PaymentStatus, PromotionInput, RestaurantInput, adminApi,
 } from '@/lib/admin-api';
 import './Admin.css';
 
@@ -25,16 +25,18 @@ type EditorState =
   | { kind: 'category'; value?: AdminCategory }
   | { kind: 'item'; value?: AdminMenuItem }
   | { kind: 'addon'; value?: AdminAddon; categoryId?: string }
+  | { kind: 'promotion'; value?: AdminPromotion }
   | null;
 
 const NAME_PATTERN = /^[\p{L}\p{N}' -]{3,100}$/u;
 
-type Section = 'menu' | 'orders';
+type Section = 'menu' | 'orders' | 'promotions';
 
 const navItems: { icon: typeof LayoutDashboard; label: string; section?: Section; soon?: boolean }[] = [
   { icon: LayoutDashboard, label: 'Overview' },
   { icon: BookOpen, label: 'Menu & inventory', section: 'menu' },
   { icon: ReceiptText, label: 'Orders', section: 'orders' },
+  { icon: Tag, label: 'Promotions', section: 'promotions' },
   { icon: BarChart3, label: 'Sales & insights', soon: true },
   { icon: Settings, label: 'Settings' },
 ];
@@ -187,6 +189,49 @@ export default function Admin() {
   const [orderQuery, setOrderQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [orderActionBusy, setOrderActionBusy] = useState(false);
+
+  const [promotions, setPromotions] = useState<AdminPromotion[]>([]);
+  const [promotionsLoading, setPromotionsLoading] = useState(false);
+  const [promotionsQuery, setPromotionsQuery] = useState('');
+
+  const loadPromotions = useCallback(async (quiet = false) => {
+    if (!quiet) setPromotionsLoading(true);
+    try {
+      const page = await adminApi.listPromotions(selectedId || undefined);
+      setPromotions(page.items);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not load promotions');
+    } finally {
+      setPromotionsLoading(false);
+    }
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (section === 'promotions') {
+      loadPromotions();
+    }
+  }, [section, selectedId, loadPromotions]);
+
+  const togglePromotionEnabled = async (promo: AdminPromotion, enabled: boolean) => {
+    try {
+      await adminApi.updatePromotion(promo.id, { enabled });
+      setPromotions((current) => current.map((p) => (p.id === promo.id ? { ...p, enabled } : p)));
+      toast.success(enabled ? 'Promotion campaign enabled' : 'Promotion campaign disabled');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not update promotion');
+    }
+  };
+
+  const deletePromotion = async (promo: AdminPromotion) => {
+    if (!window.confirm(`Delete promo code ${promo.code}? This cannot be undone.`)) return;
+    try {
+      await adminApi.deletePromotion(promo.id);
+      setPromotions((current) => current.filter((p) => p.id !== promo.id));
+      toast.success('Promotion campaign deleted');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not delete promotion');
+    }
+  };
 
   const loadWorkspace = useCallback(async (restaurantId: string, quiet = false) => {
     if (!restaurantId) return;
@@ -590,6 +635,18 @@ export default function Admin() {
             </>
           )}
             </>
+          ) : section === 'promotions' ? (
+            <PromotionsSection
+              promotions={promotions}
+              loading={promotionsLoading}
+              query={promotionsQuery}
+              onQueryChange={setPromotionsQuery}
+              onCreate={() => setEditor({ kind: 'promotion' })}
+              onEdit={(promo) => setEditor({ kind: 'promotion', value: promo })}
+              onToggleEnabled={togglePromotionEnabled}
+              onDelete={deletePromotion}
+              onRefresh={() => loadPromotions()}
+            />
           ) : (
             <OrdersSection
               orders={visibleOrders}
@@ -615,6 +672,19 @@ export default function Admin() {
         isDemo={isDemo}
         onClose={() => setEditor(null)}
         onSave={async (kind, input, existingId) => {
+          if (kind === 'promotion') {
+            const promoInput = input as PromotionInput;
+            if (existingId) {
+              await adminApi.updatePromotion(existingId, promoInput);
+              toast.success('Promotion campaign updated');
+            } else {
+              await adminApi.createPromotion(promoInput);
+              toast.success('Promotion campaign created');
+            }
+            setEditor(null);
+            await loadPromotions();
+            return;
+          }
           if (kind === 'restaurant') {
             const restaurantInput = input as RestaurantInput;
             validateName(restaurantInput.name);
@@ -1118,7 +1188,7 @@ function OrderDetailDialog({ order, busy, onClose, onAdvance, onMarkPaid, onCanc
   );
 }
 
-function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: EditorState; workspace: AdminWorkspace | null; isDemo: boolean; onClose: () => void; onSave: (kind: 'restaurant' | 'category' | 'item' | 'addon', input: RestaurantInput | CategoryInput | MenuItemInput | AddonInput, existingId?: string) => Promise<void> }) {
+function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: EditorState; workspace: AdminWorkspace | null; isDemo: boolean; onClose: () => void; onSave: (kind: 'restaurant' | 'category' | 'item' | 'addon' | 'promotion', input: RestaurantInput | CategoryInput | MenuItemInput | AddonInput | PromotionInput, existingId?: string) => Promise<void> }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const kind = editor?.kind;
@@ -1257,21 +1327,40 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
       if (kind === 'category' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), restaurantId: workspace.restaurant.id }, existing?.id);
       if (kind === 'item' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), price: Number(data.get('price')), categoryId: String(data.get('categoryId')), restaurantId: workspace.restaurant.id, imageUrl: String(data.get('imageUrl')) }, existing?.id);
       if (kind === 'addon' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), price: Number(data.get('price')), maxQuantity: Number(data.get('maxQuantity')), categoryId: String(data.get('categoryId')), restaurantId: workspace.restaurant.id }, existing?.id);
+      if (kind === 'promotion') {
+        const code = String(data.get('code')).trim();
+        const discountVal = Number(data.get('discountValue'));
+        const minOrder = Number(data.get('minOrderAmount') ?? 0);
+        const maxDiscount = data.get('maxDiscountAmount') ? Number(data.get('maxDiscountAmount')) : null;
+        const usageLim = data.get('usageLimit') ? Number(data.get('usageLimit')) : null;
+
+        await onSave(kind, {
+          code,
+          name: String(data.get('name')),
+          description: String(data.get('description')),
+          discountType: String(data.get('discountType')) as 'percentage' | 'fixed_amount',
+          discountValue: discountVal,
+          minOrderAmount: minOrder,
+          maxDiscountAmount: maxDiscount,
+          usageLimit: usageLim,
+          enabled: (existing as AdminPromotion | undefined)?.enabled ?? true,
+        }, existing?.id);
+      }
     } catch (submitError) { setError(submitError instanceof Error ? submitError.message : 'Could not save changes'); }
     finally { setSaving(false); }
   };
 
-  const titles = { restaurant: existing ? 'Edit restaurant' : 'Create a restaurant', category: existing ? 'Edit category' : 'Create a category', item: existing ? 'Edit menu item' : 'Create a menu item', addon: existing ? 'Edit add-on' : 'Create an add-on' };
-  const descriptions = { restaurant: 'The profile guests see across your storefront.', category: 'Group related items so your menu is easy to browse.', item: 'Add the details your team and guests need.', addon: 'Offer an optional extra across every item in a category.' };
+  const titles = { restaurant: existing ? 'Edit restaurant' : 'Create a restaurant', category: existing ? 'Edit category' : 'Create a category', item: existing ? 'Edit menu item' : 'Create a menu item', addon: existing ? 'Edit add-on' : 'Create an add-on', promotion: existing ? 'Edit promotion' : 'Create promotion' };
+  const descriptions = { restaurant: 'The profile guests see across your storefront.', category: 'Group related items so your menu is easy to browse.', item: 'Add the details your team and guests need.', addon: 'Offer an optional extra across every item in a category.', promotion: 'Set up discount codes and redemption rules.' };
 
   return (
     <Dialog open={Boolean(editor)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[92vh] overflow-y-auto border-[#E5E7EB] p-0 sm:max-w-[560px]">
         {kind && <form onSubmit={submit}>
-          <DialogHeader className="border-b border-[#E5E7EB] px-6 py-5 text-left"><div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]">{kind === 'restaurant' ? <Building2 size={18} /> : kind === 'category' ? <Boxes size={18} /> : kind === 'addon' ? <Puzzle size={18} /> : <UtensilsCrossed size={18} />}</div><DialogTitle className="text-xl tracking-[-.025em]">{titles[kind]}</DialogTitle><DialogDescription className="text-xs">{descriptions[kind]}</DialogDescription></DialogHeader>
+          <DialogHeader className="border-b border-[#E5E7EB] px-6 py-5 text-left"><div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]">{kind === 'restaurant' ? <Building2 size={18} /> : kind === 'category' ? <Boxes size={18} /> : kind === 'addon' ? <Puzzle size={18} /> : kind === 'promotion' ? <Tag size={18} /> : <UtensilsCrossed size={18} />}</div><DialogTitle className="text-xl tracking-[-.025em]">{titles[kind]}</DialogTitle><DialogDescription className="text-xs">{descriptions[kind]}</DialogDescription></DialogHeader>
           <div className="space-y-4 px-6 py-5">
-            <Field label={kind === 'restaurant' ? 'Restaurant name' : kind === 'category' ? 'Category name' : kind === 'addon' ? 'Add-on name' : 'Item name'} htmlFor="name" required hint="3–100 characters"><Input id="name" name="name" defaultValue={existing?.name ?? ''} required minLength={3} maxLength={100} placeholder={kind === 'restaurant' ? 'e.g. Juniper Kitchen' : kind === 'category' ? 'e.g. Seasonal plates' : kind === 'addon' ? 'e.g. Extra avocado' : 'e.g. Garden harvest bowl'} className="admin-input" /></Field>
-            <Field label="Description" htmlFor="description" hint="Recommended"><Textarea id="description" name="description" defaultValue={existing?.description ?? ''} rows={3} placeholder="Add a concise, useful description" className="admin-input resize-none" /></Field>
+            {kind !== 'promotion' && <Field label={kind === 'restaurant' ? 'Restaurant name' : kind === 'category' ? 'Category name' : kind === 'addon' ? 'Add-on name' : 'Item name'} htmlFor="name" required hint="3–100 characters"><Input id="name" name="name" defaultValue={existing?.name ?? ''} required minLength={3} maxLength={100} placeholder={kind === 'restaurant' ? 'e.g. Juniper Kitchen' : kind === 'category' ? 'e.g. Seasonal plates' : kind === 'addon' ? 'e.g. Extra avocado' : 'e.g. Garden harvest bowl'} className="admin-input" /></Field>}
+            {kind !== 'promotion' && <Field label="Description" htmlFor="description" hint="Recommended"><Textarea id="description" name="description" defaultValue={existing?.description ?? ''} rows={3} placeholder="Add a concise, useful description" className="admin-input resize-none" /></Field>}
             {kind === 'restaurant' && <>
               <Field label="Address" htmlFor="address" required hint="Enter street or 6-digit postal code">
                 <div className="flex gap-2">
@@ -1379,6 +1468,111 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
                 <Field label="Maximum quantity" htmlFor="maxQuantity" required hint="Per order item"><Input id="maxQuantity" name="maxQuantity" type="number" min="1" max="20" step="1" defaultValue={(existing as AdminAddon | undefined)?.maxQuantity ?? 1} required className="admin-input" /></Field>
               </div>
             </>}
+            {kind === 'promotion' && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Promo Code" htmlFor="code" required hint="e.g. WELCOME10">
+                    <Input
+                      id="code"
+                      name="code"
+                      defaultValue={(existing as AdminPromotion | undefined)?.code ?? ''}
+                      required
+                      placeholder="e.g. SAVE20"
+                      className="admin-input uppercase"
+                    />
+                  </Field>
+                  <Field label="Campaign Name" htmlFor="name" required hint="3–100 characters">
+                    <Input
+                      id="name"
+                      name="name"
+                      defaultValue={existing?.name ?? ''}
+                      required
+                      minLength={3}
+                      maxLength={100}
+                      placeholder="e.g. Save 20% on First Order"
+                      className="admin-input"
+                    />
+                  </Field>
+                </div>
+                <Field label="Description" htmlFor="description" hint="Optional">
+                  <Textarea
+                    id="description"
+                    name="description"
+                    defaultValue={existing?.description ?? ''}
+                    rows={2}
+                    placeholder="Short description for campaign details"
+                    className="admin-input resize-none"
+                  />
+                </Field>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Discount Type" htmlFor="discountType" required>
+                    <Select
+                      name="discountType"
+                      defaultValue={(existing as AdminPromotion | undefined)?.discountType ?? 'percentage'}
+                    >
+                      <SelectTrigger className="admin-input">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">Percentage (%)</SelectItem>
+                        <SelectItem value="fixed_amount">Fixed Amount ($)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="Discount Value" htmlFor="discountValue" required hint="Percentage or $ amount">
+                    <Input
+                      id="discountValue"
+                      name="discountValue"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      defaultValue={(existing as AdminPromotion | undefined)?.discountValue ?? ''}
+                      required
+                      placeholder="e.g. 15 or 5.00"
+                      className="admin-input"
+                    />
+                  </Field>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <Field label="Min Order ($)" htmlFor="minOrderAmount" hint="0 for none">
+                    <Input
+                      id="minOrderAmount"
+                      name="minOrderAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      defaultValue={(existing as AdminPromotion | undefined)?.minOrderAmount ?? 0}
+                      placeholder="0.00"
+                      className="admin-input"
+                    />
+                  </Field>
+                  <Field label="Max Discount ($)" htmlFor="maxDiscountAmount" hint="Cap for % off">
+                    <Input
+                      id="maxDiscountAmount"
+                      name="maxDiscountAmount"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      defaultValue={(existing as AdminPromotion | undefined)?.maxDiscountAmount ?? ''}
+                      placeholder="Optional cap"
+                      className="admin-input"
+                    />
+                  </Field>
+                  <Field label="Usage Limit" htmlFor="usageLimit" hint="Max redemptions">
+                    <Input
+                      id="usageLimit"
+                      name="usageLimit"
+                      type="number"
+                      min="1"
+                      step="1"
+                      defaultValue={(existing as AdminPromotion | undefined)?.usageLimit ?? ''}
+                      placeholder="Unlimited"
+                      className="admin-input"
+                    />
+                  </Field>
+                </div>
+              </>
+            )}
             {isDemo && <div className="rounded-lg bg-[#FFF8E7] px-3 py-2.5 text-[11px] leading-relaxed text-[#6B4E16]">Preview mode changes stay in this browser session. Connect the API to save them permanently.</div>}
             {error && <div className="rounded-lg bg-red-50 px-3 py-2.5 text-xs text-red-700">{error}</div>}
           </div>
@@ -1386,5 +1580,162 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
         </form>}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PromotionsSection({
+  promotions,
+  loading,
+  query,
+  onQueryChange,
+  onCreate,
+  onEdit,
+  onToggleEnabled,
+  onDelete,
+  onRefresh,
+}: {
+  promotions: AdminPromotion[];
+  loading: boolean;
+  query: string;
+  onQueryChange: (query: string) => void;
+  onCreate: () => void;
+  onEdit: (promo: AdminPromotion) => void;
+  onToggleEnabled: (promo: AdminPromotion, enabled: boolean) => void;
+  onDelete: (promo: AdminPromotion) => void;
+  onRefresh: () => void;
+}) {
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return promotions;
+    return promotions.filter(
+      (p) => p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q) || (p.description && p.description.toLowerCase().includes(q))
+    );
+  }, [promotions, query]);
+
+  return (
+    <div className="space-y-6">
+      <section className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+        <div>
+          <div className="mb-1.5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.14em] text-[#FF4500]">
+            <Tag size={13} /> Promotion Campaigns
+          </div>
+          <h1 className="text-[28px] font-bold tracking-[-.035em] text-[#333333] sm:text-[32px]">Drive orders with discounts.</h1>
+          <p className="mt-1 max-w-2xl text-[13px] text-[#6B7280]">
+            Create promo codes, set minimum order rules, and track campaign redemptions.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" className="h-9 gap-2 rounded-lg border-[#E5E7EB] bg-white text-xs" onClick={onRefresh}>
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+          </Button>
+          <Button className="admin-primary h-9 gap-2 rounded-lg text-xs" onClick={onCreate}>
+            <Plus size={15} /> Create promo code
+          </Button>
+        </div>
+      </section>
+
+      <section className="admin-panel overflow-hidden rounded-2xl">
+        <div className="flex items-center justify-between border-b border-[#E5E7EB] p-4 sm:px-5">
+          <div className="relative min-w-[200px] flex-1 sm:w-[280px] sm:flex-none">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" size={15} />
+            <Input
+              value={query}
+              onChange={(e) => onQueryChange(e.target.value)}
+              placeholder="Search by code or name"
+              className="admin-input h-9 rounded-lg pl-9 text-xs"
+            />
+          </div>
+          <div className="text-xs text-[#6B7280]">
+            {filtered.length} {filtered.length === 1 ? 'campaign' : 'campaigns'}
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex min-h-[300px] items-center justify-center">
+            <Loader2 className="animate-spin text-[#FF4500]" size={28} />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex min-h-[300px] flex-col items-center justify-center p-8 text-center">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFF1EB] text-[#FF4500]">
+              <Tag size={20} />
+            </div>
+            <h3 className="text-base font-bold text-[#111827]">No promo campaigns found</h3>
+            <p className="mt-1 text-xs text-[#6B7280]">Create your first promotion code to offer customer discounts.</p>
+            <Button className="admin-primary mt-4 h-9 gap-2 text-xs" onClick={onCreate}>
+              <Plus size={15} /> Create promo code
+            </Button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-[#374151]">
+              <thead className="bg-[#FAFAFA] text-[11px] uppercase tracking-wider text-[#6B7280] border-b border-[#E5E7EB]">
+                <tr>
+                  <th className="px-5 py-3.5 font-semibold">Code & Name</th>
+                  <th className="px-5 py-3.5 font-semibold">Discount</th>
+                  <th className="px-5 py-3.5 font-semibold">Min Order</th>
+                  <th className="px-5 py-3.5 font-semibold">Usage</th>
+                  <th className="px-5 py-3.5 font-semibold">Status</th>
+                  <th className="px-5 py-3.5 font-semibold text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E5E7EB] bg-white">
+                {filtered.map((promo) => (
+                  <tr key={promo.id} className="hover:bg-[#F9FAFB] transition-colors">
+                    <td className="px-5 py-4">
+                      <div className="font-bold text-sm text-[#111827] flex items-center gap-2">
+                        <span className="font-mono bg-[#FFF1EB] text-[#FF4500] px-2 py-0.5 rounded border border-[#FFD8C8]">
+                          {promo.code}
+                        </span>
+                        <span>{promo.name}</span>
+                      </div>
+                      {promo.description && (
+                        <div className="text-[11px] text-[#6B7280] mt-1">{promo.description}</div>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 font-semibold text-[#111827]">
+                      {promo.discountType === 'percentage'
+                        ? `${promo.discountValue}% off${promo.maxDiscountAmount ? ` (cap $${promo.maxDiscountAmount.toFixed(2)})` : ''}`
+                        : `$${promo.discountValue.toFixed(2)} off`}
+                    </td>
+                    <td className="px-5 py-4 text-[#6B7280]">
+                      {promo.minOrderAmount > 0 ? `$${promo.minOrderAmount.toFixed(2)}` : 'None'}
+                    </td>
+                    <td className="px-5 py-4 text-[#6B7280]">
+                      <div className="font-medium text-[#111827]">{promo.usageCount} used</div>
+                      {promo.usageLimit ? (
+                        <div className="text-[10px]">Limit: {promo.usageLimit}</div>
+                      ) : (
+                        <div className="text-[10px] text-[#9CA3AF]">Unlimited</div>
+                      )}
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={promo.enabled}
+                          onCheckedChange={(val) => onToggleEnabled(promo, val)}
+                        />
+                        <span className={`text-[11px] font-semibold ${promo.enabled ? 'text-green-700' : 'text-gray-500'}`}>
+                          {promo.enabled ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-[#6B7280] hover:text-[#FF4500]" onClick={() => onEdit(promo)}>
+                          <Pencil size={14} />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-[#6B7280] hover:text-red-600" onClick={() => onDelete(promo)}>
+                          <Trash2 size={14} />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
