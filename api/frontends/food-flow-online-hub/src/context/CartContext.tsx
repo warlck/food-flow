@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, MenuItem, OrderType, SelectedAddon } from '@/types';
 import { toast } from '@/components/ui/use-toast';
+import { ValidatePromoResponse, orderService } from '@/services/orderService';
 
 // Generate a unique ID for cart items
 const generateCartItemId = () => `cart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -9,6 +10,7 @@ interface CartContextType {
   items: CartItem[];
   orderType: OrderType;
   restaurantId: string | null;
+  appliedPromo: ValidatePromoResponse | null;
   addToCart: (item: MenuItem, quantity?: number, selectedAddons?: SelectedAddon[], specialInstructions?: string) => void;
   updateQuantity: (cartItemId: string, quantity: number) => void;
   removeFromCart: (cartItemId: string) => void;
@@ -19,6 +21,8 @@ interface CartContextType {
   updateSpecialInstructions: (cartItemId: string, instructions: string) => void;
   setOrderType: (type: OrderType) => void;
   setRestaurantId: (id: string) => void;
+  applyPromoCode: (code: string) => Promise<{ success: boolean; message: string }>;
+  removePromoCode: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -27,6 +31,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [items, setItems] = useState<CartItem[]>([]);
   const [orderType, setOrderType] = useState<OrderType>('delivery');
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<ValidatePromoResponse | null>(null);
 
   // Load cart from localStorage on initial render
   useEffect(() => {
@@ -157,6 +162,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearCart = () => {
     setItems([]);
+    setAppliedPromo(null);
     toast({
       description: "Cart cleared",
       variant: "default",
@@ -196,12 +202,51 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
+  const applyPromoCode = async (code: string): Promise<{ success: boolean; message: string }> => {
+    if (!code.trim()) {
+      return { success: false, message: 'Please enter a promo code' };
+    }
+    try {
+      const subtotal = getTotalPrice();
+      const res = await orderService.validatePromoCode({
+        promoCode: code,
+        restaurantId: restaurantId || undefined,
+        subtotal,
+      });
+
+      if (res.valid) {
+        setAppliedPromo(res);
+        toast({
+          description: `Promo code ${res.code} applied! Saved $${res.discountAmount.toFixed(2)}`,
+          variant: "default",
+        });
+        return { success: true, message: `Saved $${res.discountAmount.toFixed(2)}` };
+      } else {
+        setAppliedPromo(null);
+        return { success: false, message: res.reason || 'Invalid promo code' };
+      }
+    } catch (err: unknown) {
+      setAppliedPromo(null);
+      const message = err instanceof Error ? err.message : 'Failed to validate promo code';
+      return { success: false, message };
+    }
+  };
+
+  const removePromoCode = () => {
+    setAppliedPromo(null);
+    toast({
+      description: 'Promo code removed',
+      variant: 'default',
+    });
+  };
+
   return (
     <CartContext.Provider
       value={{
         items,
         orderType,
         restaurantId,
+        appliedPromo,
         addToCart,
         updateQuantity,
         removeFromCart,
@@ -211,7 +256,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         hasItems,
         updateSpecialInstructions,
         setOrderType,
-        setRestaurantId
+        setRestaurantId,
+        applyPromoCode,
+        removePromoCode,
       }}
     >
       {children}

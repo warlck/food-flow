@@ -65,7 +65,7 @@ const DEFAULT_RESTAURANT_ADDRESS = "123 Main Street, City, State 12345";
 
 const CheckoutDesktop: React.FC = () => {
   const navigate = useNavigate();
-  const { items, getTotalPrice, clearCart, orderType, restaurantId } = useCart();
+  const { items, getTotalPrice, clearCart, orderType, restaurantId, appliedPromo } = useCart();
   const { data: restaurant } = useRestaurantDetails(restaurantId || "");
   const [step, setStep] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<"creditCard" | "payAtLocation">("creditCard");
@@ -85,10 +85,12 @@ const CheckoutDesktop: React.FC = () => {
   const [deliveryQuote, setDeliveryQuote] = useState<DeliveryQuote | null>(null);
 
   const subtotal = getTotalPrice();
+  const discount = appliedPromo ? appliedPromo.discountAmount : 0;
+  const taxableSubtotal = Math.max(0, subtotal - discount);
   const deliveryFee = orderType === "delivery" && deliveryQuote?.withinLimit ? deliveryQuote.deliveryFee : 0;
   const taxRate = restaurant?.taxRate ?? 0.10;
-  const tax = taxRate > 0 ? subtotal * taxRate : 0;
-  const total = subtotal + deliveryFee + tax;
+  const tax = taxRate > 0 ? taxableSubtotal * taxRate : 0;
+  const total = taxableSubtotal + deliveryFee + tax;
 
   // Setup forms based on order type
   const deliveryForm = useForm<z.infer<typeof deliveryFormSchema>>({
@@ -225,6 +227,7 @@ const CheckoutDesktop: React.FC = () => {
         customerPhone: orderData.phone,
         orderType: orderType as "delivery" | "pickup",
         paymentMethod: paymentMethod === "creditCard" ? "creditCard" : "cash",
+        promoCode: appliedPromo?.code,
         items: items.map((item) => ({
           menuItemId: item.menuItem.id,
           quantity: item.quantity,
@@ -859,6 +862,12 @@ const CheckoutDesktop: React.FC = () => {
                           <span className="text-gray-600">Subtotal</span>
                           <span className="font-medium">${subtotal.toFixed(2)}</span>
                         </div>
+                        {discount > 0 && (
+                          <div className="flex justify-between text-green-600 font-medium">
+                            <span>Discount ({appliedPromo?.code})</span>
+                            <span>-${discount.toFixed(2)}</span>
+                          </div>
+                        )}
                         {orderType === "delivery" && (
                           <div className="flex justify-between">
                             <span className="text-gray-600">Delivery Fee</span>

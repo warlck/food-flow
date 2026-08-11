@@ -22,6 +22,7 @@ export interface CreateOrderRequest {
   customerPhone: string;
   orderType: 'delivery' | 'pickup';
   paymentMethod: 'creditCard' | 'cash';
+  promoCode?: string;
   specialInstructions?: string;
   items: OrderItemRequest[];
   deliveryAddress?: DeliveryAddressRequest;
@@ -59,7 +60,9 @@ export interface Order {
   orderStatus: string;
   paymentStatus: string;
   paymentMethod: string;
+  promoCode?: string;
   subtotal: number;
+  discount?: number;
   deliveryFee: number;
   tax: number;
   total: number;
@@ -112,6 +115,22 @@ export interface PaymentIntentResponse {
   orderId: string;
   amount: number;
   currency: string;
+}
+
+export interface ValidatePromoRequest {
+  promoCode: string;
+  restaurantId?: string;
+  subtotal?: number;
+}
+
+export interface ValidatePromoResponse {
+  valid: boolean;
+  reason?: string;
+  code?: string;
+  discountType?: string;
+  discountValue?: number;
+  discountAmount: number;
+  finalSubtotal: number;
 }
 
 // =============================================================================
@@ -218,6 +237,24 @@ export const orderService = {
         .json()
         .catch(() => ({ message: 'Failed to confirm payment' }));
       throw new Error(error.message || error.error || 'Failed to confirm payment');
+    }
+
+    return response.json();
+  },
+
+  // Validate a promo code
+  validatePromoCode: async (request: ValidatePromoRequest): Promise<ValidatePromoResponse> => {
+    const response = await fetch(`${API_BASE_URL}/v1/promotions/validate`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ message: 'Failed to validate promo code' }));
+      throw new Error(error.message || error.error || 'Failed to validate promo code');
     }
 
     return response.json();

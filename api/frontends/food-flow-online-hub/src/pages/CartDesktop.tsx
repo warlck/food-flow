@@ -18,35 +18,30 @@ const DEFAULT_DELIVERY_TIME = { min: 30, max: 45 };
 const DEFAULT_PICKUP_TIME = { min: 15, max: 25 };
 
 const CartDesktop: React.FC = () => {
-  const { items, getTotalPrice, hasItems, clearCart, orderType, setOrderType, restaurantId } = useCart();
-  const [promoCode, setPromoCode] = useState('');
+  const { items, getTotalPrice, hasItems, clearCart, orderType, setOrderType, restaurantId, appliedPromo, applyPromoCode, removePromoCode } = useCart();
+  const [promoInput, setPromoInput] = useState('');
+  const [promoError, setPromoError] = useState('');
   const [isApplying, setIsApplying] = useState(false);
   const navigate = useNavigate();
 
   const { data: restaurant } = useRestaurantDetails(restaurantId || "");
   const subtotal = getTotalPrice();
+  const discount = appliedPromo ? appliedPromo.discountAmount : 0;
+  const taxableSubtotal = Math.max(0, subtotal - discount);
   const taxRate = restaurant?.taxRate ?? 0.10;
-  const tax = taxRate > 0 ? subtotal * taxRate : 0;
-  const total = subtotal + tax;
+  const tax = taxRate > 0 ? taxableSubtotal * taxRate : 0;
+  const total = taxableSubtotal + tax;
 
-  const handleApplyPromo = () => {
+  const handleApplyPromo = async () => {
     setIsApplying(true);
-    setTimeout(() => {
-      setIsApplying(false);
-      if (promoCode.toLowerCase() === 'discount20') {
-        toast({
-          title: "Promo code applied!",
-          description: "You received 20% discount on your order.",
-          variant: "default",
-        });
-      } else {
-        toast({
-          title: "Invalid promo code",
-          description: "Please try a different code.",
-          variant: "destructive",
-        });
-      }
-    }, 1000);
+    setPromoError('');
+    const res = await applyPromoCode(promoInput);
+    setIsApplying(false);
+    if (!res.success) {
+      setPromoError(res.message);
+    } else {
+      setPromoInput('');
+    }
   };
 
   const handleCheckout = () => {
@@ -174,9 +169,16 @@ const CartDesktop: React.FC = () => {
                   </RadioGroup>
                 </CardContent>
               </Card>
+
+              {/* Items List */}
+              <div className="space-y-4">
+                {items.map((item) => (
+                  <CartItemComponent key={item.cartItemId} item={item} />
+                ))}
+              </div>
             </div>
 
-            {/* Right Column: Order Summary */}
+            {/* Sidebar Summary (Right 1 col) */}
             <div className="col-span-1">
               <div className="sticky top-24 space-y-6">
                 
@@ -187,22 +189,37 @@ const CartDesktop: React.FC = () => {
                       <Tag className="w-5 h-5 mr-2 text-food-primary" />
                       <h3 className="font-semibold text-gray-900">Promo Code</h3>
                     </div>
-                    <div className="space-y-3">
-                      <Input
-                        placeholder="Enter promo code"
-                        value={promoCode}
-                        onChange={(e) => setPromoCode(e.target.value)}
-                        className="border-gray-300 focus:border-food-primary"
-                      />
-                      <Button 
-                        variant="outline"
-                        onClick={handleApplyPromo}
-                        disabled={!promoCode || isApplying}
-                        className="w-full border-food-primary text-food-primary hover:bg-food-primary hover:text-white"
-                      >
-                        {isApplying ? 'Applying...' : 'Apply Code'}
-                      </Button>
-                    </div>
+                    {appliedPromo ? (
+                      <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div>
+                          <p className="font-semibold text-green-800 text-sm">Code: {appliedPromo.code}</p>
+                          <p className="text-green-700 text-xs">Saved ${appliedPromo.discountAmount.toFixed(2)}</p>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={removePromoCode} className="text-red-600 hover:text-red-800 text-xs">
+                          Remove
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <Input
+                          placeholder="Enter promo code"
+                          value={promoInput}
+                          onChange={(e) => setPromoInput(e.target.value)}
+                          className="border-gray-300 focus:border-food-primary"
+                        />
+                        {promoError && (
+                          <p className="text-red-500 text-xs">{promoError}</p>
+                        )}
+                        <Button 
+                          variant="outline"
+                          onClick={handleApplyPromo}
+                          disabled={!promoInput.trim() || isApplying}
+                          className="w-full border-food-primary text-food-primary hover:bg-food-primary hover:text-white"
+                        >
+                          {isApplying ? 'Applying...' : 'Apply Code'}
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -217,6 +234,12 @@ const CartDesktop: React.FC = () => {
                         <span className="text-gray-600">Subtotal</span>
                         <span className="font-semibold text-lg">${subtotal.toFixed(2)}</span>
                       </div>
+                      {discount > 0 && (
+                        <div className="flex justify-between items-center text-green-600 font-medium">
+                          <span>Discount ({appliedPromo?.code})</span>
+                          <span>-${discount.toFixed(2)}</span>
+                        </div>
+                      )}
                       {orderType === 'delivery' && (
                         <div className="flex justify-between items-center">
                           <span className="text-gray-600">Delivery Fee</span>
