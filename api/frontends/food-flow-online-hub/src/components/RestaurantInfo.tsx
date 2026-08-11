@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Restaurant } from '@/types';
-import { Clock, MapPin, Phone, Mail, Star } from 'lucide-react';
+import { Clock, MapPin, Phone, Mail, Star, ExternalLink } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface RestaurantInfoProps {
@@ -12,6 +12,19 @@ const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ restaurant }) => {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
   const formattedToday = today as keyof typeof restaurant.openingHours;
   const isOpen = restaurant.openingHours[formattedToday] !== undefined;
+
+  // Generate Google Maps URL for directions
+  const getGoogleMapsUrl = (): string | null => {
+    if (restaurant.latitude != null && restaurant.longitude != null) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${restaurant.latitude},${restaurant.longitude}`;
+    }
+    if (restaurant.address && restaurant.address.trim().length > 0) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(restaurant.address)}`;
+    }
+    return null;
+  };
+
+  const googleMapsUrl = getGoogleMapsUrl();
 
   return (
     <div className="w-full">
@@ -77,8 +90,24 @@ const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ restaurant }) => {
                 <MapPin className="h-5 w-5 text-food-primary mr-2 flex-shrink-0" />
                 <div>
                   <h3 className="font-semibold">Location</h3>
-                  <p className="text-sm text-gray-600">{restaurant.address}</p>
-                  <button className="text-food-primary text-sm mt-2">Get directions</button>
+                  <p className="text-sm text-gray-600">
+                    {restaurant.address || "Address unavailable"}
+                  </p>
+                  {googleMapsUrl ? (
+                    <a
+                      href={googleMapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-food-primary text-sm font-medium mt-2 hover:underline focus:outline-none focus:ring-2 focus:ring-food-primary rounded"
+                    >
+                      Get directions
+                      <ExternalLink className="h-3.5 w-3.5 ml-1" />
+                    </a>
+                  ) : (
+                    <span className="text-gray-400 text-sm mt-2 inline-block">
+                      Directions unavailable
+                    </span>
+                  )}
                 </div>
               </div>
             </CardContent>
