@@ -470,14 +470,13 @@ export default function Admin() {
         </div>
 
         <div className="admin-sidebar-copy mx-1 mb-6 rounded-xl border border-white/10 bg-white/[.055] p-2.5">
-          <button className="flex w-full items-center gap-2.5 text-left" onClick={() => setEditor({ kind: 'restaurant', value: workspace?.restaurant })}>
+          <div className="flex w-full items-center gap-2.5 text-left">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#FFF1EB] text-xs font-bold text-[#FF4500]">{workspace ? initials(workspace.restaurant.name) : 'FF'}</div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-[12px] font-semibold text-white">{workspace?.restaurant.name ?? 'Choose restaurant'}</div>
               <div className="mt-0.5 flex items-center gap-1 text-[10px] text-[#D1D5DB]"><span className="h-1.5 w-1.5 rounded-full bg-[#FFB72B]" /> {workspace?.restaurant.enabled ? 'Open for business' : 'Paused'}</div>
             </div>
-            <ChevronDown size={15} className="text-[#9CA3AF]" />
-          </button>
+          </div>
         </div>
 
         <nav className="space-y-1">
@@ -518,6 +517,17 @@ export default function Admin() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="h-9 gap-1.5 rounded-xl border-[#E5E7EB] bg-white px-3.5 text-xs font-semibold text-[#374151] shadow-sm hover:border-[#FF8C42] hover:bg-[#FFF7F3] hover:text-[#FF4500] transition-colors"
+              onClick={() => workspace && setEditor({ kind: 'restaurant', value: workspace.restaurant })}
+              disabled={!workspace}
+              title="Edit restaurant profile and settings"
+            >
+              <Pencil size={14} className="text-[#FF4500]" />
+              <span className="hidden sm:inline">Edit Restaurant</span>
+              <span className="sm:hidden">Edit</span>
+            </Button>
             <button className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#4B5563]"><Bell size={17} /><span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#FF4500]" /></button>
           </div>
         </header>
