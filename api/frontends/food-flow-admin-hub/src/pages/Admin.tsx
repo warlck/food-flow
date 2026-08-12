@@ -157,10 +157,10 @@ function validateName(name: string) {
 }
 
 const Field = ({ label, htmlFor, required, hint, children }: { label: string; htmlFor: string; required?: boolean; hint?: string; children: React.ReactNode }) => (
-  <div className="flex flex-col justify-between h-full space-y-2">
-    <div className="flex items-baseline justify-between gap-2">
+  <div className="flex flex-col justify-between h-full space-y-1.5">
+    <div>
       <Label htmlFor={htmlFor} className="text-[13px] font-semibold text-[#374151]">{label}{required && <span className="ml-1 text-[#F44336]">*</span>}</Label>
-      {hint && <span className="shrink-0 text-[11px] text-[#9CA3AF]">{hint}</span>}
+      {hint && <p className="mt-0.5 text-[11px] text-[#9CA3AF]">{hint}</p>}
     </div>
     <div className="mt-auto">{children}</div>
   </div>
