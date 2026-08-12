@@ -16,8 +16,9 @@ import (
 )
 
 var (
-	ErrNotFound = errors.New("promotion not found")
-	ErrInvalid  = errors.New("invalid promotion data")
+	ErrNotFound     = errors.New("promotion not found")
+	ErrInvalid      = errors.New("invalid promotion data")
+	ErrLimitReached = errors.New("promo code usage limit reached")
 )
 
 type Storer interface {
@@ -55,6 +56,10 @@ func (b *Business) Create(ctx context.Context, np NewPromotion) (Promotion, erro
 
 	if np.DiscountValue <= 0 {
 		return Promotion{}, fmt.Errorf("%w: discount_value must be greater than 0", ErrInvalid)
+	}
+
+	if np.DiscountType == DiscountTypePercentage && np.DiscountValue > 100 {
+		return Promotion{}, fmt.Errorf("%w: percentage discount value cannot exceed 100", ErrInvalid)
 	}
 
 	now := time.Now()
@@ -109,6 +114,10 @@ func (b *Business) Update(ctx context.Context, promo Promotion, up UpdatePromoti
 			return Promotion{}, fmt.Errorf("%w: discount_value must be greater than 0", ErrInvalid)
 		}
 		promo.DiscountValue = *up.DiscountValue
+	}
+
+	if promo.DiscountType == DiscountTypePercentage && promo.DiscountValue > 100 {
+		return Promotion{}, fmt.Errorf("%w: percentage discount value cannot exceed 100", ErrInvalid)
 	}
 	if up.MinOrderAmount != nil {
 		promo.MinOrderAmount = *up.MinOrderAmount

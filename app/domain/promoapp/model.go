@@ -153,6 +153,11 @@ func (app NewPromotion) Validate() error {
 	if err := errs.Check(app); err != nil {
 		return fmt.Errorf("validate: %w", err)
 	}
+
+	if app.DiscountType == promobus.DiscountTypePercentage && app.DiscountValue > 100 {
+		return fmt.Errorf("validate: percentage discount value cannot exceed 100")
+	}
+
 	return nil
 }
 
@@ -233,6 +238,13 @@ func (app UpdatePromotion) Validate() error {
 	if err := errs.Check(app); err != nil {
 		return fmt.Errorf("validate: %w", err)
 	}
+
+	if app.DiscountType != nil && *app.DiscountType == promobus.DiscountTypePercentage {
+		if app.DiscountValue != nil && *app.DiscountValue > 100 {
+			return fmt.Errorf("validate: percentage discount value cannot exceed 100")
+		}
+	}
+
 	return nil
 }
 

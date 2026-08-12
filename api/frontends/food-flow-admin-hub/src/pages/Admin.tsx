@@ -1202,6 +1202,10 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
   const [isGeocoding, setIsGeocoding] = useState<boolean>(false);
   const [geoResults, setGeoResults] = useState<{ display_name: string; lat: string; lon: string }[]>([]);
   const [geoError, setGeoError] = useState<string>('');
+  // Promotion discount type state for max attribute & validation
+  const [promoDiscountType, setPromoDiscountType] = useState<'percentage' | 'fixed_amount'>(
+    (existing as AdminPromotion | undefined)?.discountType ?? 'percentage'
+  );
 
   useEffect(() => {
     if (editor?.kind === 'restaurant') {
@@ -1211,6 +1215,10 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
       setLon(rest?.longitude ?? null);
       setGeoResults([]);
       setGeoError('');
+    }
+    if (editor?.kind === 'promotion') {
+      const promo = editor.value as AdminPromotion | undefined;
+      setPromoDiscountType(promo?.discountType ?? 'percentage');
     }
   }, [editor]);
 
@@ -1329,16 +1337,23 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
       if (kind === 'addon' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), price: Number(data.get('price')), maxQuantity: Number(data.get('maxQuantity')), categoryId: String(data.get('categoryId')), restaurantId: workspace.restaurant.id }, existing?.id);
       if (kind === 'promotion') {
         const code = String(data.get('code')).trim();
+        const discountType = String(data.get('discountType')) as 'percentage' | 'fixed_amount';
         const discountVal = Number(data.get('discountValue'));
         const minOrder = Number(data.get('minOrderAmount') ?? 0);
         const maxDiscount = data.get('maxDiscountAmount') ? Number(data.get('maxDiscountAmount')) : null;
         const usageLim = data.get('usageLimit') ? Number(data.get('usageLimit')) : null;
 
+        if (discountType === 'percentage' && discountVal > 100) {
+          setError('Percentage discount cannot exceed 100%');
+          setSaving(false);
+          return;
+        }
+
         await onSave(kind, {
           code,
           name: String(data.get('name')),
           description: String(data.get('description')),
-          discountType: String(data.get('discountType')) as 'percentage' | 'fixed_amount',
+          discountType,
           discountValue: discountVal,
           minOrderAmount: minOrder,
           maxDiscountAmount: maxDiscount,
@@ -1508,7 +1523,8 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
                   <Field label="Discount Type" htmlFor="discountType" required>
                     <Select
                       name="discountType"
-                      defaultValue={(existing as AdminPromotion | undefined)?.discountType ?? 'percentage'}
+                      value={promoDiscountType}
+                      onValueChange={(val) => setPromoDiscountType(val as 'percentage' | 'fixed_amount')}
                     >
                       <SelectTrigger className="admin-input">
                         <SelectValue placeholder="Select type" />
@@ -1519,16 +1535,17 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label="Discount Value" htmlFor="discountValue" required hint="Percentage or $ amount">
+                  <Field label="Discount Value" htmlFor="discountValue" required hint={promoDiscountType === 'percentage' ? "Percentage (1–100%)" : "$ amount"}>
                     <Input
                       id="discountValue"
                       name="discountValue"
                       type="number"
                       min="0.01"
+                      max={promoDiscountType === 'percentage' ? '100' : undefined}
                       step="0.01"
                       defaultValue={(existing as AdminPromotion | undefined)?.discountValue ?? ''}
                       required
-                      placeholder="e.g. 15 or 5.00"
+                      placeholder={promoDiscountType === 'percentage' ? 'e.g. 15' : 'e.g. 5.00'}
                       className="admin-input"
                     />
                   </Field>

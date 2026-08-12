@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/warlck/food-flow/business/domain/promobus"
+	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
 	"github.com/warlck/food-flow/business/types/name"
 )
@@ -147,6 +148,159 @@ func Test_Promotion(t *testing.T) {
 	_, err = db.BusDomain.Promo.QueryByID(ctx, promoFixed.ID)
 	if err == nil {
 		t.Errorf("expected error querying deleted promo, got nil")
+	}
+}
+
+func Test_ValidatePromoCode_UnhappyPaths(t *testing.T) {
+	t.Parallel()
+
+	db := dbtest.New(t, "Test_ValidatePromoCode_UnhappyPaths")
+	ctx := context.Background()
+
+	// 1. Empty promo code
+	res, err := db.BusDomain.Promo.ValidatePromoCode(ctx, "  ", nil, 50.0)
+	if err != nil {
+		t.Fatalf("ValidatePromoCode empty error: %s", err)
+	}
+	if res.Valid || res.Reason != "Promo code is required" {
+		t.Errorf("expected invalid with reason 'Promo code is required', got valid=%v, reason=%q", res.Valid, res.Reason)
+	}
+
+	// 2. Non-existent promo code
+	res, err = db.BusDomain.Promo.ValidatePromoCode(ctx, "NONEXISTENTCODE", nil, 50.0)
+	if err != nil {
+		t.Fatalf("ValidatePromoCode non-existent error: %s", err)
+	}
+	if res.Valid || res.Reason != "Invalid promo code" {
+		t.Errorf("expected invalid with reason 'Invalid promo code', got valid=%v, reason=%q", res.Valid, res.Reason)
+	}
+
+	// 3. Disabled promo code
+	_, err = db.BusDomain.Promo.Create(ctx, promobus.NewPromotion{
+		Code:           "INACTIVE10",
+		Name:           name.MustParse("Inactive Promo"),
+		DiscountType:   promobus.DiscountTypePercentage,
+		DiscountValue:  10.0,
+		MinOrderAmount: 10.0,
+		Enabled:        false,
+	})
+	if err != nil {
+		t.Fatalf("Create inactive promo: %s", err)
+	}
+	res, err = db.BusDomain.Promo.ValidatePromoCode(ctx, "INACTIVE10", nil, 50.0)
+	if err != nil {
+		t.Fatalf("ValidatePromoCode inactive error: %s", err)
+	}
+	if res.Valid || res.Reason != "Promo code is inactive" {
+		t.Errorf("expected invalid with reason 'Promo code is inactive', got valid=%v, reason=%q", res.Valid, res.Reason)
+	}
+
+	// 4. Future start date
+	futureDate := time.Now().Add(24 * time.Hour)
+	_, err = db.BusDomain.Promo.Create(ctx, promobus.NewPromotion{
+		Code:           "FUTUREPROMO",
+		Name:           name.MustParse("Future Promo"),
+		DiscountType:   promobus.DiscountTypePercentage,
+		DiscountValue:  10.0,
+		MinOrderAmount: 10.0,
+		StartDate:      &futureDate,
+		Enabled:        true,
+	})
+	if err != nil {
+		t.Fatalf("Create future promo: %s", err)
+	}
+	res, err = db.BusDomain.Promo.ValidatePromoCode(ctx, "FUTUREPROMO", nil, 50.0)
+	if err != nil {
+		t.Fatalf("ValidatePromoCode future error: %s", err)
+	}
+	if res.Valid || res.Reason != "Promo code campaign has not started yet" {
+		t.Errorf("expected invalid with reason 'Promo code campaign has not started yet', got valid=%v, reason=%q", res.Valid, res.Reason)
+	}
+
+	// 5. Expired promo code
+	pastDate := time.Now().Add(-24 * time.Hour)
+	_, err = db.BusDomain.Promo.Create(ctx, promobus.NewPromotion{
+		Code:           "EXPIREDPROMO",
+		Name:           name.MustParse("Expired Promo"),
+		DiscountType:   promobus.DiscountTypePercentage,
+		DiscountValue:  10.0,
+		MinOrderAmount: 10.0,
+		EndDate:        &pastDate,
+		Enabled:        true,
+	})
+	if err != nil {
+		t.Fatalf("Create expired promo: %s", err)
+	}
+	res, err = db.BusDomain.Promo.ValidatePromoCode(ctx, "EXPIREDPROMO", nil, 50.0)
+	if err != nil {
+		t.Fatalf("ValidatePromoCode expired error: %s", err)
+	}
+	if res.Valid || res.Reason != "Promo code has expired" {
+		t.Errorf("expected invalid with reason 'Promo code has expired', got valid=%v, reason=%q", res.Valid, res.Reason)
+	}
+
+	// 6. Usage limit reached
+	limitPromo, err := db.BusDomain.Promo.Create(ctx, promobus.NewPromotion{
+		Code:           "LIMITPROMO",
+		Name:           name.MustParse("Limit Reached Promo"),
+		DiscountType:   promobus.DiscountTypePercentage,
+		DiscountValue:  10.0,
+		MinOrderAmount: 10.0,
+		UsageLimit:     ptr(1),
+		Enabled:        true,
+	})
+	if err != nil {
+		t.Fatalf("Create limit promo: %s", err)
+	}
+	if err := db.BusDomain.Promo.IncrementUsage(ctx, limitPromo.ID); err != nil {
+		t.Fatalf("Increment usage: %s", err)
+	}
+	res, err = db.BusDomain.Promo.ValidatePromoCode(ctx, "LIMITPROMO", nil, 50.0)
+	if err != nil {
+		t.Fatalf("ValidatePromoCode limit error: %s", err)
+	}
+	if res.Valid || res.Reason != "Promo code usage limit reached" {
+		t.Errorf("expected invalid with reason 'Promo code usage limit reached', got valid=%v, reason=%q", res.Valid, res.Reason)
+	}
+
+	// 7. Restaurant mismatch
+	rests, err := restaurantbus.TestSeedRestaurants(ctx, 2, db.BusDomain.Restaurant)
+	if err != nil {
+		t.Fatalf("Seed restaurants: %s", err)
+	}
+	restID := rests[0].ID
+	otherRestID := rests[1].ID
+	_, err = db.BusDomain.Promo.Create(ctx, promobus.NewPromotion{
+		Code:           "RESTAURANTPROMO",
+		Name:           name.MustParse("Rest Specific Promo"),
+		DiscountType:   promobus.DiscountTypePercentage,
+		DiscountValue:  10.0,
+		MinOrderAmount: 10.0,
+		RestaurantID:   &restID,
+		Enabled:        true,
+	})
+	if err != nil {
+		t.Fatalf("Create rest promo: %s", err)
+	}
+	res, err = db.BusDomain.Promo.ValidatePromoCode(ctx, "RESTAURANTPROMO", &otherRestID, 50.0)
+	if err != nil {
+		t.Fatalf("ValidatePromoCode rest mismatch error: %s", err)
+	}
+	if res.Valid || res.Reason != "Promo code is not applicable to this restaurant" {
+		t.Errorf("expected invalid with reason 'Promo code is not applicable to this restaurant', got valid=%v, reason=%q", res.Valid, res.Reason)
+	}
+
+	// 8. Percentage discount > 100 validation
+	_, err = db.BusDomain.Promo.Create(ctx, promobus.NewPromotion{
+		Code:           "INVALID150",
+		Name:           name.MustParse("Over 100 Percent"),
+		DiscountType:   promobus.DiscountTypePercentage,
+		DiscountValue:  150.0,
+		MinOrderAmount: 10.0,
+		Enabled:        true,
+	})
+	if err == nil {
+		t.Fatalf("expected error creating promo with percentage discount > 100, got nil")
 	}
 }
 
