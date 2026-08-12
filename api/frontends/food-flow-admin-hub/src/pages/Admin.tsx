@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ArrowRight, Banknote, BarChart3, Bell, Bike, BookOpen, Boxes, Building2, Check, ChevronDown, ChevronRight,
+  ArrowRight, Banknote, BarChart3, Bike, BookOpen, Boxes, Building2, Check, ChevronDown, ChevronRight,
   ChefHat, CircleAlert, Clock3, CreditCard, Grid2X2, HelpCircle, ImageOff, LayoutDashboard, List,
   Loader2, Mail, MapPin, Menu, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, ReceiptText,
   Puzzle, RefreshCw, Search, Settings, ShoppingBag, Sparkles, Store, Tag, Trash2, UtensilsCrossed, XCircle,
@@ -566,7 +566,6 @@ export default function Admin() {
               <span className="hidden sm:inline">Add Restaurant</span>
               <span className="sm:hidden">Add</span>
             </Button>
-            <button className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#4B5563]"><Bell size={17} /><span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#FF4500]" /></button>
           </div>
         </header>
 
