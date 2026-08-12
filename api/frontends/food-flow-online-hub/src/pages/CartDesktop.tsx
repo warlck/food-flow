@@ -45,6 +45,14 @@ const CartDesktop: React.FC = () => {
   };
 
   const handleCheckout = () => {
+    if (restaurant?.enabled === false) {
+      toast({
+        title: "Restaurant Paused",
+        description: `${restaurant.name || "This restaurant"} is currently paused and not accepting orders.`,
+        variant: "destructive",
+      });
+      return;
+    }
     if (subtotal < DEFAULT_MINIMUM_ORDER) {
       toast({
         title: "Minimum order not met",
@@ -72,6 +80,21 @@ const CartDesktop: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">Your Cart</h1>
           <p className="text-gray-600 mt-2">{items.length} items in your cart</p>
         </div>
+
+        {restaurant?.enabled === false && (
+          <div className="mb-6">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-900 flex items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+                <div>
+                  <h3 className="font-bold text-sm">Restaurant Paused</h3>
+                  <p className="text-xs text-red-700 mt-0.5">{restaurant.name} is currently paused and not taking new orders. Checkout is temporarily disabled.</p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold uppercase bg-red-200 text-red-900 px-2.5 py-1 rounded-full shrink-0">Paused</span>
+            </div>
+          </div>
+        )}
 
         {hasItems() ? (
           <div className="grid grid-cols-3 gap-8">
@@ -279,10 +302,10 @@ const CartDesktop: React.FC = () => {
                       className="w-full bg-food-primary hover:bg-food-accent text-white py-6 text-lg font-semibold rounded-lg mt-6 disabled:bg-gray-400"
                       size="lg"
                       onClick={handleCheckout}
-                      disabled={subtotal < DEFAULT_MINIMUM_ORDER}
+                      disabled={subtotal < DEFAULT_MINIMUM_ORDER || restaurant?.enabled === false}
                     >
-                      Proceed to Checkout
-                      <ArrowRight className="w-5 h-5 ml-2" />
+                      {restaurant?.enabled === false ? 'Restaurant Paused' : 'Proceed to Checkout'}
+                      {restaurant?.enabled !== false && <ArrowRight className="w-5 h-5 ml-2" />}
                     </Button>
 
                     {orderType === 'pickup' && (

@@ -87,9 +87,18 @@ const Menu: React.FC = () => {
               <span>Total:</span>
               <span>${getTotalPrice().toFixed(2)}</span>
             </div>
-            <Button className="w-full" size="lg" asChild>
-              <a href="/cart">Proceed to Checkout</a>
-            </Button>
+            {restaurant.enabled === false ? (
+              <div>
+                <p className="text-xs text-red-600 mb-2 font-medium">Restaurant is currently paused. Checkout unavailable.</p>
+                <Button className="w-full bg-gray-300 text-gray-600 cursor-not-allowed" size="lg" disabled>
+                  Checkout Paused
+                </Button>
+              </div>
+            ) : (
+              <Button className="w-full" size="lg" asChild>
+                <a href="/cart">Proceed to Checkout</a>
+              </Button>
+            )}
           </div>
         </>
       ) : (

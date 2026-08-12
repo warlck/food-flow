@@ -203,6 +203,11 @@ const CheckoutDesktop: React.FC = () => {
 
   // Submit handlers
   const onSubmitCustomerInfo = async (data: z.infer<typeof deliveryFormSchema> | z.infer<typeof pickupFormSchema>) => {
+    if (restaurant?.enabled === false) {
+      toast.error(`${restaurant.name || "This restaurant"} is currently paused and not accepting new orders.`);
+      return;
+    }
+
     if (orderType === "delivery") {
       if (!selectedLocation) {
         toast.error("Please search and select your delivery address.");

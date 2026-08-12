@@ -137,6 +137,12 @@ const MobileMenu: React.FC = () => {
         
         {/* Elegant Header */}
         <div className="bg-gradient-to-r from-food-primary to-food-accent text-white sticky top-0 z-30 shadow-lg">
+          {restaurant.enabled === false && (
+            <div className="bg-red-600 text-white px-4 py-2 text-xs font-bold text-center flex items-center justify-center gap-1.5 shadow">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>Storefront Paused - Not Taking Orders</span>
+            </div>
+          )}
           <div className="px-6 py-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
@@ -144,7 +150,14 @@ const MobileMenu: React.FC = () => {
                   <Star className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold">{restaurant.name} (v0.0.4)</h1>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl font-bold">{restaurant.name} (v0.0.4)</h1>
+                    {restaurant.enabled === false && (
+                      <Badge variant="destructive" className="bg-red-700 text-white text-[10px] uppercase font-bold">
+                        Paused
+                      </Badge>
+                    )}
+                  </div>
                   <div className="flex items-center space-x-2 text-white/90 text-sm">
                     <Clock className="w-4 h-4" />
                     <span>25-35 min</span>

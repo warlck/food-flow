@@ -35,6 +35,7 @@ export interface Restaurant {
   address: string;
   phone: string;
   email: string;
+  enabled?: boolean;
   openingHours: {
     [key: string]: {
       open: string;

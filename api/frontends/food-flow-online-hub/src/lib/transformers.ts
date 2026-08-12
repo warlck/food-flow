@@ -14,6 +14,7 @@ export function transformApiRestaurant(apiData: ApiRestaurantDetails): Restauran
     address: apiData.address,
     phone: apiData.phone,
     email: apiData.email,
+    enabled: apiData.enabled,
     openingHours: {
       monday: { open: "10:00", close: "22:00" },
       tuesday: { open: "10:00", close: "22:00" },
