@@ -10,17 +10,21 @@ The frontend accepts the `restaurant_id` parameter in three ways:
 
 1. **URL Path Parameter** (Recommended):
    ```
-   http://localhost:8080/menu/a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d
+   http://localhost:8080/restaurant/a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d
+   ```
+   or Mobile view:
+   ```
+   http://localhost:8080/mobile-restaurant/a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d
    ```
 
 2. **Query Parameter**:
    ```
-   http://localhost:8080/menu?restaurant_id=a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d
+   http://localhost:8080/restaurant?restaurant_id=a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d
    ```
 
 3. **Default** (if no parameter provided):
    ```
-   http://localhost:8080/menu
+   http://localhost:8080/restaurant/a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d
    ```
    Uses the default Donergy restaurant ID: `a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d`
 
@@ -117,7 +121,7 @@ Uses React Query for:
 
 1. **Access the menu with Donergy restaurant**:
    ```bash
-   open http://localhost:8080/menu/a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d
+   open http://localhost:8080/restaurant/a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d
    ```
 
 2. **Check the network tab** in browser DevTools to see the API call:
@@ -134,7 +138,7 @@ Uses React Query for:
 - `src/lib/transformers.ts` - Data transformation utilities
 - `src/hooks/useRestaurantDetails.ts` - React Query hook for fetching data
 - `src/vite-env.d.ts` - TypeScript environment variable definitions
-- `src/App.tsx` - Added route for `/menu/:restaurantId`
+- `src/App.tsx` - Added routes for `/restaurant/:restaurantId` and `/mobile-restaurant/:restaurantId`
 - `src/pages/Menu.tsx` - Updated to use API data with loading/error states
 
 ### Configuration
