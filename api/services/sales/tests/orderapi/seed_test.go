@@ -14,6 +14,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
+	"github.com/warlck/food-flow/business/types/name"
 	"github.com/warlck/food-flow/business/types/role"
 )
 
@@ -124,8 +125,16 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Order: orders[1],
 	}
 
-	// Create promotions
-	_, err = promobus.TestSeedPromotions(ctx, 1, busDomain.Promo)
+	// Create promotions (with 0.0 MinOrderAmount so integration tests aren't flaky regardless of seeded menu item prices)
+	_, err = busDomain.Promo.Create(ctx, promobus.NewPromotion{
+		Code:           "TESTPROMO1",
+		Name:           name.MustParse("Test Promo 1"),
+		Description:    "Test promo with no min order amount",
+		DiscountType:   promobus.DiscountTypePercentage,
+		DiscountValue:  10.0,
+		MinOrderAmount: 0.0,
+		Enabled:        true,
+	})
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding promotions: %w", err)
 	}

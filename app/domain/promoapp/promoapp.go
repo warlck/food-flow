@@ -2,6 +2,7 @@ package promoapp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -125,6 +126,9 @@ func (a *app) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	promo, err := a.promoBus.QueryByID(ctx, promotionID)
 	if err != nil {
+		if errors.Is(err, promobus.ErrNotFound) {
+			return errs.New(errs.NotFound, err)
+		}
 		return fmt.Errorf("querybyid: promotionID[%s]: %w", promotionID, err)
 	}
 
@@ -152,6 +156,9 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	promo, err := a.promoBus.QueryByID(ctx, promotionID)
 	if err != nil {
+		if errors.Is(err, promobus.ErrNotFound) {
+			return errs.New(errs.NotFound, err)
+		}
 		return fmt.Errorf("querybyid: promotionID[%s]: %w", promotionID, err)
 	}
 
@@ -174,6 +181,9 @@ func (a *app) delete(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	promo, err := a.promoBus.QueryByID(ctx, promotionID)
 	if err != nil {
+		if errors.Is(err, promobus.ErrNotFound) {
+			return errs.New(errs.NotFound, err)
+		}
 		return fmt.Errorf("querybyid: promotionID[%s]: %w", promotionID, err)
 	}
 

@@ -114,4 +114,3 @@ func create401(sd apitest.SeedData) []apitest.Table {
 
 	return table
 }
-

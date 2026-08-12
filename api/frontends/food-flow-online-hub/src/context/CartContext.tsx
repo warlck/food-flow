@@ -83,6 +83,57 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [restaurantId]);
 
+  // Re-validate applied promo code whenever items or restaurantId changes
+  const promoCode = appliedPromo?.code;
+
+  useEffect(() => {
+    if (!promoCode) return;
+
+    if (items.length === 0) {
+      setAppliedPromo(null);
+      return;
+    }
+
+    const subtotal = items.reduce((total, item) => {
+      let itemTotal = item.menuItem.price * item.quantity;
+      if (item.selectedAddons) {
+        item.selectedAddons.forEach((selectedAddon) => {
+          itemTotal += selectedAddon.addon.price * selectedAddon.quantity * item.quantity;
+        });
+      }
+      return total + itemTotal;
+    }, 0);
+
+    let isCurrent = true;
+
+    orderService
+      .validatePromoCode({
+        promoCode,
+        restaurantId: restaurantId || undefined,
+        subtotal,
+      })
+      .then((res) => {
+        if (!isCurrent) return;
+        if (res.valid) {
+          setAppliedPromo(res);
+        } else {
+          setAppliedPromo(null);
+          toast({
+            description: `Promo code ${promoCode} is no longer applicable: ${res.reason}`,
+            variant: 'destructive',
+          });
+        }
+      })
+      .catch(() => {
+        if (!isCurrent) return;
+        setAppliedPromo(null);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [items, restaurantId, promoCode]);
+
   const addToCart = (menuItem: MenuItem, quantity: number = 1, selectedAddons?: SelectedAddon[], specialInstructions?: string) => {
     setItems(prevItems => {
       // When addons or special instructions are provided, always add as new item

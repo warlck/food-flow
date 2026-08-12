@@ -81,4 +81,3 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		StripeWebhookSecret: cfg.StripeWebhookSecret,
 	})
 }
-

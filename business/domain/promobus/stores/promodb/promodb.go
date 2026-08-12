@@ -207,10 +207,21 @@ func (s *Store) IncrementUsage(ctx context.Context, promotionID uuid.UUID) error
 	SET
 		usage_count = usage_count + 1
 	WHERE
-		promotion_id = :promotion_id`
+		promotion_id = :promotion_id
+		AND (usage_limit IS NULL OR usage_count < usage_limit)`
 
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
-		return fmt.Errorf("namedexeccontext: %w", err)
+	res, err := sqldb.NamedExecResultContext(ctx, s.log, s.db, q, data)
+	if err != nil {
+		return fmt.Errorf("namedexecresultcontext: %w", err)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rowsaffected: %w", err)
+	}
+
+	if rows == 0 {
+		return promobus.ErrLimitReached
 	}
 
 	return nil

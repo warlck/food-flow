@@ -28,7 +28,7 @@ type Order struct {
 	Tax                   float64          `json:"tax"`
 	Total                 float64          `json:"total"`
 	SpecialInstructions   string           `json:"specialInstructions,omitempty"`
-	StripePaymentIntentID string           `json:"stripePaymentIntentID,omitempty"`
+	StripePaymentIntentID string           `json:"stripePaymentIntentId,omitempty"`
 	Items                 []OrderItem      `json:"items"`
 	DeliveryAddress       *DeliveryAddress `json:"deliveryAddress,omitempty"`
 	DateCreated           string           `json:"dateCreated"`

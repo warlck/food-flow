@@ -10,6 +10,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
+	"github.com/warlck/food-flow/business/types/name"
 	"github.com/warlck/food-flow/business/types/role"
 )
 
@@ -59,6 +60,35 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (SeedData, error) {
 	if err != nil {
 		return SeedData{}, fmt.Errorf("seeding promotions : %w", err)
 	}
+
+	// Additional unhappy-path test promotions
+	disabledPromo, err := busDomain.Promo.Create(ctx, promobus.NewPromotion{
+		Code:           "DISABLED10",
+		Name:           name.MustParse("Disabled Promotion"),
+		DiscountType:   promobus.DiscountTypePercentage,
+		DiscountValue:  10.0,
+		MinOrderAmount: 10.0,
+		Enabled:        false,
+	})
+	if err != nil {
+		return SeedData{}, fmt.Errorf("seeding disabled promo : %w", err)
+	}
+	promos = append(promos, disabledPromo)
+
+	rest1ID := rests[1].ID
+	restPromo, err := busDomain.Promo.Create(ctx, promobus.NewPromotion{
+		Code:           "REST2ONLY",
+		Name:           name.MustParse("Restaurant 2 Only Promotion"),
+		DiscountType:   promobus.DiscountTypePercentage,
+		DiscountValue:  15.0,
+		MinOrderAmount: 10.0,
+		RestaurantID:   &rest1ID,
+		Enabled:        true,
+	})
+	if err != nil {
+		return SeedData{}, fmt.Errorf("seeding rest promo : %w", err)
+	}
+	promos = append(promos, restPromo)
 
 	sd := SeedData{
 		SeedData: apitest.SeedData{

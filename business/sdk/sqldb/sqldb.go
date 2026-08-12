@@ -153,6 +153,44 @@ func NamedExecContext(ctx context.Context, log *logger.Logger, db sqlx.ExtContex
 	return nil
 }
 
+// NamedExecResultContext is a helper function to execute a CUD operation with
+// logging and tracing where field replacement is necessary, returning sql.Result.
+func NamedExecResultContext(ctx context.Context, log *logger.Logger, db sqlx.ExtContext, query string, data any) (res sql.Result, err error) {
+	ctx, span := otel.Tracer("sqldb").Start(ctx, "sqldb.NamedExecResultContext")
+	defer span.End()
+
+	q := queryString(query, data)
+	span.SetAttributes(semconv.DBQueryTextKey.String(q))
+
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			switch data.(type) {
+			case struct{}:
+				log.Infoc(ctx, 6, "database.NamedExecResultContext", "query", q, "ERROR", err)
+			default:
+				log.Infoc(ctx, 5, "database.NamedExecResultContext", "query", q, "ERROR", err)
+			}
+		}
+	}()
+
+	res, err = sqlx.NamedExecContext(ctx, db, query, data)
+	if err != nil {
+		var pqerr *pgconn.PgError
+		if errors.As(err, &pqerr) {
+			switch pqerr.Code {
+			case undefinedTable:
+				return nil, ErrUndefinedTable
+			case uniqueViolation:
+				return nil, ErrDBDuplicatedEntry
+			}
+		}
+		return nil, err
+	}
+
+	return res, nil
+}
+
 // QuerySlice is a helper function for executing queries that return a
 // collection of data to be unmarshalled into a slice.
 func QuerySlice[T any](ctx context.Context, log *logger.Logger, db sqlx.ExtContext, query string, dest *[]T) error {

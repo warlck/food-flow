@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
@@ -42,6 +43,9 @@ func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	ord, err := a.orderBus.Create(ctx, nb)
 	if err != nil {
+		if strings.Contains(err.Error(), "invalid promo code") {
+			return errs.New(errs.InvalidArgument, err)
+		}
 		return fmt.Errorf("create: order[%+v]: %w", ord, err)
 	}
 

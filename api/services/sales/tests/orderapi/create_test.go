@@ -423,6 +423,33 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(got, exp)
 			},
 		},
+		{
+			Name:       "invalid-promo-code",
+			URL:        "/v1/orders",
+			Token:      sd.Users[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input: &orderapp.NewOrder{
+				RestaurantID:  sd.Restaurants[0].ID.String(),
+				CustomerName:  "Bad Promo",
+				CustomerEmail: "badpromo@example.com",
+				CustomerPhone: "555-1234",
+				OrderType:     "pickup",
+				PaymentMethod: "creditCard",
+				PromoCode:     "NOTREAL99",
+				Items: []orderapp.NewOrderItem{
+					{
+						MenuItemID: sd.MenuItems[0].ID.String(),
+						Quantity:   1,
+					},
+				},
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.InvalidArgument, "invalid promo code: Invalid promo code"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
 	}
 
 	return table

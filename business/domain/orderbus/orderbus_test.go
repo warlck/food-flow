@@ -446,6 +446,274 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			},
 		},
 		{
+			Name:    "pickup-order-disabled-promo",
+			ExpResp: errors.New("invalid promo code: Promo code is inactive"),
+			ExcFunc: func(ctx context.Context) any {
+				_, err := busDomain.Promo.Create(ctx, promobus.NewPromotion{
+					Code:           "DISABLEDPROMO",
+					Name:           name.MustParse("Disabled Promo"),
+					DiscountType:   "percentage",
+					DiscountValue:  10,
+					MinOrderAmount: 0,
+					Enabled:        false,
+				})
+				if err != nil {
+					return err
+				}
+
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Disabled Promo User",
+					CustomerEmail: "disabledpromo@example.com",
+					CustomerPhone: "555-0001",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					PromoCode:     "DISABLEDPROMO",
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   1,
+						},
+					},
+				}
+
+				_, err = busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "error expected"
+				}
+
+				expErr := exp.(error)
+				if gotErr.Error() != expErr.Error() {
+					return fmt.Sprintf("got error %q, want %q", gotErr.Error(), expErr.Error())
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "pickup-order-subtotal-below-min-promo",
+			ExpResp: errors.New("invalid promo code: Minimum order subtotal of $500.00 required for this promo code"),
+			ExcFunc: func(ctx context.Context) any {
+				_, err := busDomain.Promo.Create(ctx, promobus.NewPromotion{
+					Code:           "HIGHMINPROMO",
+					Name:           name.MustParse("High Min Promo"),
+					DiscountType:   "percentage",
+					DiscountValue:  10,
+					MinOrderAmount: 500.0,
+					Enabled:        true,
+				})
+				if err != nil {
+					return err
+				}
+
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Below Min User",
+					CustomerEmail: "belowmin@example.com",
+					CustomerPhone: "555-0002",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					PromoCode:     "HIGHMINPROMO",
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   1,
+						},
+					},
+				}
+
+				_, err = busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "error expected"
+				}
+
+				expErr := exp.(error)
+				if gotErr.Error() != expErr.Error() {
+					return fmt.Sprintf("got error %q, want %q", gotErr.Error(), expErr.Error())
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "pickup-order-expired-promo",
+			ExpResp: errors.New("invalid promo code: Promo code has expired"),
+			ExcFunc: func(ctx context.Context) any {
+				past := time.Now().Add(-24 * time.Hour)
+				_, err := busDomain.Promo.Create(ctx, promobus.NewPromotion{
+					Code:           "EXPIREDORDERPROMO",
+					Name:           name.MustParse("Expired Order Promo"),
+					DiscountType:   "percentage",
+					DiscountValue:  10,
+					MinOrderAmount: 0,
+					EndDate:        &past,
+					Enabled:        true,
+				})
+				if err != nil {
+					return err
+				}
+
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Expired Promo User",
+					CustomerEmail: "expired@example.com",
+					CustomerPhone: "555-0003",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					PromoCode:     "EXPIREDORDERPROMO",
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   1,
+						},
+					},
+				}
+
+				_, err = busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "error expected"
+				}
+
+				expErr := exp.(error)
+				if gotErr.Error() != expErr.Error() {
+					return fmt.Sprintf("got error %q, want %q", gotErr.Error(), expErr.Error())
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "pickup-order-restaurant-mismatch-promo",
+			ExpResp: errors.New("invalid promo code: Promo code is not applicable to this restaurant"),
+			ExcFunc: func(ctx context.Context) any {
+				rest1ID := sd.Restaurants[1].ID
+				_, err := busDomain.Promo.Create(ctx, promobus.NewPromotion{
+					Code:           "REST1ONLYPROMO",
+					Name:           name.MustParse("Rest 1 Promo"),
+					DiscountType:   "percentage",
+					DiscountValue:  10,
+					MinOrderAmount: 0,
+					RestaurantID:   &rest1ID,
+					Enabled:        true,
+				})
+				if err != nil {
+					return err
+				}
+
+				// Attempt order at Restaurant 0 with Restaurant 1's promo
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Rest Mismatch User",
+					CustomerEmail: "mismatch@example.com",
+					CustomerPhone: "555-0004",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					PromoCode:     "REST1ONLYPROMO",
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   1,
+						},
+					},
+				}
+
+				_, err = busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "error expected"
+				}
+
+				expErr := exp.(error)
+				if gotErr.Error() != expErr.Error() {
+					return fmt.Sprintf("got error %q, want %q", gotErr.Error(), expErr.Error())
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "pickup-order-usage-limit-exceeded-on-second-order",
+			ExpResp: errors.New("invalid promo code: Promo code usage limit reached"),
+			ExcFunc: func(ctx context.Context) any {
+				limit1 := 1
+				_, err := busDomain.Promo.Create(ctx, promobus.NewPromotion{
+					Code:           "LIMIT1PROMO",
+					Name:           name.MustParse("Limit 1 Promo"),
+					DiscountType:   "percentage",
+					DiscountValue:  10,
+					MinOrderAmount: 0,
+					UsageLimit:     &limit1,
+					Enabled:        true,
+				})
+				if err != nil {
+					return err
+				}
+
+				// First order succeeds and increments usage count to 1
+				no1 := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "First Order User",
+					CustomerEmail: "user1@example.com",
+					CustomerPhone: "555-0010",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					PromoCode:     "LIMIT1PROMO",
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   1,
+						},
+					},
+				}
+				if _, err := busDomain.Order.Create(ctx, no1); err != nil {
+					return fmt.Errorf("first order failed: %w", err)
+				}
+
+				// Second order fails atomically on increment because limit has been reached
+				no2 := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Second Order User",
+					CustomerEmail: "user2@example.com",
+					CustomerPhone: "555-0011",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					PromoCode:     "LIMIT1PROMO",
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[0].ID.String(),
+							Quantity:   1,
+						},
+					},
+				}
+
+				_, err = busDomain.Order.Create(ctx, no2)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "error expected"
+				}
+
+				expErr := exp.(error)
+				if gotErr.Error() != expErr.Error() {
+					return fmt.Sprintf("got error %q, want %q", gotErr.Error(), expErr.Error())
+				}
+				return ""
+			},
+		},
+		{
 			Name: "delivery-order",
 			ExpResp: orderbus.Order{
 				RestaurantID:  sd.Restaurants[0].ID,
