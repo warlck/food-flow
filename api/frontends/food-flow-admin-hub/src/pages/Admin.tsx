@@ -157,12 +157,12 @@ function validateName(name: string) {
 }
 
 const Field = ({ label, htmlFor, required, hint, children }: { label: string; htmlFor: string; required?: boolean; hint?: string; children: React.ReactNode }) => (
-  <div className="space-y-2">
-    <div className="flex items-center justify-between gap-3">
+  <div className="flex flex-col justify-between h-full space-y-2">
+    <div className="flex items-baseline justify-between gap-2">
       <Label htmlFor={htmlFor} className="text-[13px] font-semibold text-[#374151]">{label}{required && <span className="ml-1 text-[#F44336]">*</span>}</Label>
-      {hint && <span className="text-[11px] text-[#9CA3AF]">{hint}</span>}
+      {hint && <span className="shrink-0 text-[11px] text-[#9CA3AF]">{hint}</span>}
     </div>
-    {children}
+    <div className="mt-auto">{children}</div>
   </div>
 );
 
@@ -1518,8 +1518,8 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
               <input type="hidden" name="latitude" value={lat ?? ''} />
               <input type="hidden" name="longitude" value={lon ?? ''} />
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Max delivery distance (km)" htmlFor="maxDeliveryDistanceKm" hint="0 for unlimited"><Input id="maxDeliveryDistanceKm" name="maxDeliveryDistanceKm" type="number" min="0" step="0.1" defaultValue={(existing as AdminRestaurant | undefined)?.maxDeliveryDistanceKm ?? 0} placeholder="0" className="admin-input" /></Field>
-                <Field label="Tax rate (%)" htmlFor="taxRatePct" hint="e.g. 10 for 10%, 0 for none"><Input id="taxRatePct" name="taxRatePct" type="number" min="0" max="100" step="0.1" defaultValue={((existing as AdminRestaurant | undefined)?.taxRate ?? 0.10) * 100} placeholder="10" className="admin-input" /></Field>
+                <Field label="Max delivery distance (km)" htmlFor="maxDeliveryDistanceKm" hint="0 = unlimited"><Input id="maxDeliveryDistanceKm" name="maxDeliveryDistanceKm" type="number" min="0" step="0.1" defaultValue={(existing as AdminRestaurant | undefined)?.maxDeliveryDistanceKm ?? 0} placeholder="0" className="admin-input" /></Field>
+                <Field label="Tax rate (%)" htmlFor="taxRatePct" hint="e.g. 10 = 10%"><Input id="taxRatePct" name="taxRatePct" type="number" min="0" max="100" step="0.1" defaultValue={((existing as AdminRestaurant | undefined)?.taxRate ?? 0.10) * 100} placeholder="10" className="admin-input" /></Field>
               </div>
               <Field label="Storefront Status" htmlFor="enabled" hint="Live allows guests to place online orders">
                 <div className="flex items-center gap-3 pt-1">
