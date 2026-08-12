@@ -233,6 +233,24 @@ export default function Admin() {
     }
   };
 
+  const toggleRestaurantStatus = async () => {
+    if (!workspace) return;
+    const newStatus = !workspace.restaurant.enabled;
+    try {
+      if (isDemo) {
+        setWorkspace((current) => current ? { ...current, restaurant: { ...current.restaurant, enabled: newStatus } } : current);
+        toast.success(newStatus ? 'Restaurant is now Live' : 'Restaurant is now Paused');
+        return;
+      }
+      await mutateWorkspace(
+        () => adminApi.updateRestaurant(workspace.restaurant.id, { enabled: newStatus }),
+        newStatus ? 'Restaurant is now Live' : 'Restaurant is now Paused'
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not update restaurant status');
+    }
+  };
+
   const loadWorkspace = useCallback(async (restaurantId: string, quiet = false) => {
     if (!restaurantId) return;
     if (!quiet) setLoading(true); else setRefreshing(true);
@@ -511,7 +529,28 @@ export default function Admin() {
                     {restaurants.map((restaurant) => <SelectItem value={restaurant.id} key={restaurant.id}>{restaurant.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                {workspace && <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.1em] ${workspace.restaurant.enabled ? 'bg-[#E8F5E9] text-[#2E7D32]' : 'bg-[#FFEBEE] text-[#C62828]'}`}>{workspace.restaurant.enabled ? 'Live' : 'Paused'}</span>}
+                {workspace && (
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[.1em] ${
+                      workspace.restaurant.enabled
+                        ? 'bg-[#E8F5E9] text-[#2E7D32]'
+                        : 'bg-[#FFEBEE] text-[#C62828]'
+                    }`}
+                  >
+                    {workspace.restaurant.enabled ? 'Live' : 'Paused'}
+                  </span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1 rounded-md px-2 text-[11px] font-semibold text-[#6B7280] hover:bg-[#FFF7F3] hover:text-[#FF4500]"
+                  onClick={() => workspace && setEditor({ kind: 'restaurant', value: workspace.restaurant })}
+                  disabled={!workspace}
+                  title="Edit restaurant profile and settings"
+                >
+                  <Pencil size={12} className="text-[#FF4500]" />
+                  <span>Edit</span>
+                </Button>
               </div>
               <div className="mt-0.5 flex items-center gap-1 text-[11px] text-[#6B7280]"><MapPin size={11} /> <span className="truncate">{workspace?.restaurant.address ?? 'Restaurant workspace'}</span></div>
             </div>
@@ -519,14 +558,13 @@ export default function Admin() {
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              className="h-9 gap-1.5 rounded-xl border-[#E5E7EB] bg-white px-3.5 text-xs font-semibold text-[#374151] shadow-sm hover:border-[#FF8C42] hover:bg-[#FFF7F3] hover:text-[#FF4500] transition-colors"
-              onClick={() => workspace && setEditor({ kind: 'restaurant', value: workspace.restaurant })}
-              disabled={!workspace}
-              title="Edit restaurant profile and settings"
+              className="h-9 gap-1.5 rounded-xl border-[#E5E7EB] bg-white px-3 text-xs font-semibold text-[#374151] shadow-sm hover:border-[#FF8C42] hover:bg-[#FFF7F3] hover:text-[#FF4500] transition-colors"
+              onClick={() => setEditor({ kind: 'restaurant' })}
+              title="Add a new restaurant"
             >
-              <Pencil size={14} className="text-[#FF4500]" />
-              <span className="hidden sm:inline">Edit Restaurant</span>
-              <span className="sm:hidden">Edit</span>
+              <Plus size={14} className="text-[#FF4500]" />
+              <span className="hidden sm:inline">Add Restaurant</span>
+              <span className="sm:hidden">Add</span>
             </Button>
             <button className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#4B5563]"><Bell size={17} /><span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#FF4500]" /></button>
           </div>
@@ -550,7 +588,6 @@ export default function Admin() {
             </div>
             <div className="flex gap-2">
               <Button variant="outline" className="h-9 gap-2 rounded-lg border-[#E5E7EB] bg-white text-xs hover:border-[#FF8C42] hover:bg-[#FFF7F3] hover:text-[#FF4500]" onClick={() => setEditor({ kind: 'category' })} disabled={!workspace}><Plus size={15} /> Add category</Button>
-              <Button variant="outline" className="h-9 gap-2 rounded-lg border-[#E5E7EB] bg-white text-xs hover:border-[#FF8C42] hover:bg-[#FFF7F3] hover:text-[#FF4500]" onClick={() => setEditor({ kind: 'restaurant' })}><Building2 size={15} /> Add restaurant</Button>
             </div>
           </section>
 
@@ -1346,6 +1383,7 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
           phone: String(data.get('phone')),
           email: String(data.get('email')),
           imageUrl: String(data.get('imageUrl')),
+          enabled: data.get('enabled') === 'true',
           latitude: latitudeVal,
           longitude: longitudeVal,
           maxDeliveryDistanceKm: maxDeliveryDistanceKm === '' ? 0 : Number(maxDeliveryDistanceKm),
@@ -1484,6 +1522,19 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
                 <Field label="Max delivery distance (km)" htmlFor="maxDeliveryDistanceKm" hint="0 for unlimited"><Input id="maxDeliveryDistanceKm" name="maxDeliveryDistanceKm" type="number" min="0" step="0.1" defaultValue={(existing as AdminRestaurant | undefined)?.maxDeliveryDistanceKm ?? 0} placeholder="0" className="admin-input" /></Field>
                 <Field label="Tax rate (%)" htmlFor="taxRatePct" hint="e.g. 10 for 10%, 0 for none"><Input id="taxRatePct" name="taxRatePct" type="number" min="0" max="100" step="0.1" defaultValue={((existing as AdminRestaurant | undefined)?.taxRate ?? 0.10) * 100} placeholder="10" className="admin-input" /></Field>
               </div>
+              <Field label="Storefront Status" htmlFor="enabled" hint="Live allows guests to place online orders">
+                <div className="flex items-center gap-3 pt-1">
+                  <Switch
+                    id="enabled"
+                    name="enabled"
+                    defaultChecked={(existing as AdminRestaurant | undefined)?.enabled ?? true}
+                    value="true"
+                  />
+                  <span className="text-xs font-semibold text-[#374151]">
+                    {(existing as AdminRestaurant | undefined)?.enabled ?? true ? 'Live (Storefront enabled)' : 'Paused (Storefront paused)'}
+                  </span>
+                </div>
+              </Field>
             </>}
             {kind === 'item' && workspace && <>
               <div className="grid gap-4 sm:grid-cols-2"><Field label="Price" htmlFor="price" required><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">$</span><Input id="price" name="price" type="number" min="0.01" step="0.01" defaultValue={(existing as AdminMenuItem | undefined)?.price ?? ''} required placeholder="0.00" className="admin-input pl-7" /></div></Field><Field label="Category" htmlFor="categoryId" required><Select name="categoryId" defaultValue={itemCategoryId}><SelectTrigger className="admin-input"><SelectValue placeholder="Choose category" /></SelectTrigger><SelectContent>{workspace.categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}</SelectContent></Select></Field></div>
