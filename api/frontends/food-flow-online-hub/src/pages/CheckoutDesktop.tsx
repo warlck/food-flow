@@ -420,7 +420,7 @@ const CheckoutDesktop: React.FC = () => {
                                   <span>Full Name</span>
                                 </FormLabel>
                                 <FormControl>
-                                  <Input placeholder="John Doe" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
+                                  <Input placeholder="e.g. Alex Tan" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -438,7 +438,7 @@ const CheckoutDesktop: React.FC = () => {
                                     <span>Email</span>
                                   </FormLabel>
                                   <FormControl>
-                                    <Input placeholder="john@example.com" type="email" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
+                                    <Input placeholder="alex@example.com" type="email" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -455,7 +455,7 @@ const CheckoutDesktop: React.FC = () => {
                                     <span>Phone Number</span>
                                   </FormLabel>
                                   <FormControl>
-                                    <Input placeholder="+1 (555) 123-4567" type="tel" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
+                                    <Input placeholder="+65 9123 4567" type="tel" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -575,7 +575,7 @@ const CheckoutDesktop: React.FC = () => {
                                       <span>Street Address</span>
                                     </FormLabel>
                                     <FormControl>
-                                      <Input placeholder="123 Main Street" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
+                                      <Input placeholder="e.g. 100 Beach Road" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                   </FormItem>
@@ -618,7 +618,7 @@ const CheckoutDesktop: React.FC = () => {
                                     <FormItem>
                                       <FormLabel className="text-base">Postal Code</FormLabel>
                                       <FormControl>
-                                        <Input placeholder="e.g. 048582" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
+                                        <Input placeholder="e.g. 189702" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
                                       </FormControl>
                                       <FormMessage />
                                     </FormItem>

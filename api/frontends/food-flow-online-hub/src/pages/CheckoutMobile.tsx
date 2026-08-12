@@ -473,7 +473,7 @@ const CheckoutMobile: React.FC = () => {
                               <span>Full Name</span>
                             </FormLabel>
                             <FormControl>
-                              <Input placeholder="John Doe" className="border-2 focus:border-food-primary" {...field} />
+                              <Input placeholder="e.g. Alex Tan" className="border-2 focus:border-food-primary" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -491,7 +491,7 @@ const CheckoutMobile: React.FC = () => {
                                 <span>Email</span>
                               </FormLabel>
                               <FormControl>
-                                <Input placeholder="john@example.com" type="email" className="border-2 focus:border-food-primary" {...field} />
+                                <Input placeholder="alex@example.com" type="email" className="border-2 focus:border-food-primary" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -508,7 +508,7 @@ const CheckoutMobile: React.FC = () => {
                                 <span>Phone Number</span>
                               </FormLabel>
                               <FormControl>
-                                <Input placeholder="+1 (555) 123-4567" type="tel" className="border-2 focus:border-food-primary" {...field} />
+                                <Input placeholder="+65 9123 4567" type="tel" className="border-2 focus:border-food-primary" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -629,7 +629,7 @@ const CheckoutMobile: React.FC = () => {
                                   <span>Street Address</span>
                                 </FormLabel>
                                 <FormControl>
-                                  <Input placeholder="123 Main Street" className="border-2 focus:border-food-primary" {...field} />
+                                  <Input placeholder="e.g. 100 Beach Road" className="border-2 focus:border-food-primary" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -672,7 +672,7 @@ const CheckoutMobile: React.FC = () => {
                                 <FormItem>
                                   <FormLabel>Postal Code</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="048582" className="border-2 focus:border-food-primary" {...field} />
+                                    <Input placeholder="189702" className="border-2 focus:border-food-primary" {...field} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -719,7 +719,7 @@ const CheckoutMobile: React.FC = () => {
                               <span>Full Name</span>
                             </FormLabel>
                             <FormControl>
-                              <Input placeholder="John Doe" className="border-2 focus:border-food-primary" {...field} />
+                              <Input placeholder="e.g. Alex Tan" className="border-2 focus:border-food-primary" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -736,7 +736,7 @@ const CheckoutMobile: React.FC = () => {
                               <span>Email</span>
                             </FormLabel>
                             <FormControl>
-                              <Input placeholder="john@example.com" type="email" className="border-2 focus:border-food-primary" {...field} />
+                              <Input placeholder="alex@example.com" type="email" className="border-2 focus:border-food-primary" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -753,7 +753,7 @@ const CheckoutMobile: React.FC = () => {
                               <span>Phone Number</span>
                             </FormLabel>
                             <FormControl>
-                              <Input placeholder="+1 (555) 123-4567" type="tel" className="border-2 focus:border-food-primary" {...field} />
+                              <Input placeholder="+65 9123 4567" type="tel" className="border-2 focus:border-food-primary" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -762,7 +762,7 @@ const CheckoutMobile: React.FC = () => {
 
                       <div className="bg-gray-50 p-4 rounded-xl">
                         <h4 className="font-semibold text-gray-900 mb-2">Pickup Location</h4>
-                        <p className="text-gray-600 text-sm">{DEFAULT_RESTAURANT_ADDRESS}</p>
+                        <p className="text-gray-600 text-sm">{restaurant?.address || "Address unavailable"}</p>
                         <p className="text-gray-600 text-sm mt-1">Estimated pickup time: {getEstimatedTime()}</p>
                       </div>
 
