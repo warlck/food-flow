@@ -23,7 +23,7 @@ import './Admin.css';
 type EditorState =
   | { kind: 'restaurant'; value?: AdminRestaurant }
   | { kind: 'category'; value?: AdminCategory }
-  | { kind: 'item'; value?: AdminMenuItem }
+  | { kind: 'item'; value?: AdminMenuItem; categoryId?: string }
   | { kind: 'addon'; value?: AdminAddon; categoryId?: string }
   | { kind: 'promotion'; value?: AdminPromotion }
   | null;
@@ -519,11 +519,6 @@ export default function Admin() {
           </div>
           <div className="flex items-center gap-2">
             <button className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#4B5563]"><Bell size={17} /><span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#FF4500]" /></button>
-            {section === 'menu' && (
-              <Button className="admin-primary h-9 gap-2 rounded-lg px-3.5 text-xs font-semibold" onClick={() => setEditor({ kind: 'item' })} disabled={!workspace?.categories.length}>
-                <Plus size={16} /> <span className="hidden sm:inline">New menu item</span><span className="sm:hidden">New</span>
-              </Button>
-            )}
           </div>
         </header>
 
@@ -564,17 +559,6 @@ export default function Admin() {
 
               <SetupGuide restaurant={workspace.restaurant} categoryCount={workspace.categories.length} itemCount={workspace.menuItems.length} />
 
-              <AddonManager
-                categories={workspace.categories}
-                addons={workspace.addons}
-                selectedCategory={addonCategory}
-                onCategoryChange={setAddonCategory}
-                onCreate={() => setEditor({ kind: 'addon', categoryId: addonCategory || workspace.categories[0]?.id })}
-                onEdit={(addon) => setEditor({ kind: 'addon', value: addon })}
-                onDelete={deleteAddon}
-                onAvailability={toggleAddonAvailability}
-              />
-
               <section className="admin-panel mt-6 overflow-hidden rounded-2xl">
                 <div className="flex flex-col border-b border-[#E5E7EB] lg:flex-row">
                   <CategoryRail
@@ -584,6 +568,7 @@ export default function Admin() {
                     selected={selectedCategory}
                     onSelect={setSelectedCategory}
                     onAdd={() => setEditor({ kind: 'category' })}
+                    onAddItem={(catId) => setEditor({ kind: 'item', categoryId: catId })}
                     onEdit={(category) => setEditor({ kind: 'category', value: category })}
                   />
                   <div className="min-w-0 flex-1">
@@ -593,7 +578,14 @@ export default function Admin() {
                         <p className="mt-0.5 text-[11px] text-[#9CA3AF]">{filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'} shown</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="relative min-w-[180px] flex-1 sm:w-[220px] sm:flex-none">
+                        <Button
+                          className="admin-primary h-9 gap-1.5 rounded-lg px-3 text-xs"
+                          onClick={() => setEditor({ kind: 'item', categoryId: selectedCategory !== 'all' ? selectedCategory : undefined })}
+                          disabled={!workspace.categories.length}
+                        >
+                          <Plus size={15} /> New Menu Item
+                        </Button>
+                        <div className="relative min-w-[180px] flex-1 sm:w-[200px] sm:flex-none">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" size={15} />
                           <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search menu" className="admin-input h-9 rounded-lg pl-9 text-xs" />
                         </div>
@@ -632,6 +624,17 @@ export default function Admin() {
                   <span className="flex items-center gap-1.5"><Clock3 size={12} /> Last synced {isDemo ? 'in preview mode' : 'just now'}</span>
                 </div>
               </section>
+
+              <AddonManager
+                categories={workspace.categories}
+                addons={workspace.addons}
+                selectedCategory={addonCategory}
+                onCategoryChange={setAddonCategory}
+                onCreate={() => setEditor({ kind: 'addon', categoryId: addonCategory || workspace.categories[0]?.id })}
+                onEdit={(addon) => setEditor({ kind: 'addon', value: addon })}
+                onDelete={deleteAddon}
+                onAvailability={toggleAddonAvailability}
+              />
             </>
           )}
             </>
@@ -865,12 +868,15 @@ function AddonManager({ categories, addons, selectedCategory, onCategoryChange, 
   );
 }
 
-function CategoryRail({ categories, counts, total, selected, onSelect, onAdd, onEdit }: { categories: AdminCategory[]; counts: Map<string, number>; total: number; selected: string; onSelect: (id: string) => void; onAdd: () => void; onEdit: (category: AdminCategory) => void }) {
+function CategoryRail({ categories, counts, total, selected, onSelect, onAdd, onAddItem, onEdit }: { categories: AdminCategory[]; counts: Map<string, number>; total: number; selected: string; onSelect: (id: string) => void; onAdd: () => void; onAddItem: (categoryId?: string) => void; onEdit: (category: AdminCategory) => void }) {
   return (
     <aside className="w-full border-b border-[#E5E7EB] bg-[#FAFAFA] lg:w-[230px] lg:shrink-0 lg:border-b-0 lg:border-r">
       <div className="flex items-center justify-between px-4 pb-2 pt-4">
         <span className="text-[10px] font-bold uppercase tracking-[.13em] text-[#9CA3AF]">Categories</span>
-        <button onClick={onAdd} className="flex h-6 w-6 items-center justify-center rounded-md text-[#FF4500] hover:bg-[#FFF1EB]" aria-label="Add category"><Plus size={14} /></button>
+        <div className="flex items-center gap-1">
+          <button onClick={() => onAddItem(selected !== 'all' ? selected : undefined)} className="flex h-6 items-center gap-1 rounded-md px-1.5 text-[11px] font-semibold text-[#FF4500] hover:bg-[#FFF1EB]" title="Add menu item" aria-label="Add menu item"><Plus size={13} /> Item</button>
+          <button onClick={onAdd} className="flex h-6 w-6 items-center justify-center rounded-md text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#111827]" title="Add category" aria-label="Add category"><Plus size={14} /></button>
+        </div>
       </div>
       <div className="flex gap-1 overflow-x-auto px-2 pb-3 lg:block lg:space-y-0.5 lg:overflow-visible lg:pb-5">
         <button onClick={() => onSelect('all')} className={`admin-category-button flex min-w-fit items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] font-semibold lg:w-full ${selected === 'all' ? 'active' : ''}`}>
@@ -880,10 +886,13 @@ function CategoryRail({ categories, counts, total, selected, onSelect, onAdd, on
           <div key={category.id} className={`group flex min-w-fit items-center rounded-lg lg:w-full ${selected === category.id ? 'admin-category-button active' : ''}`}>
             <button onClick={() => onSelect(category.id)} className={`admin-category-button flex min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] font-medium ${selected === category.id ? 'active !bg-transparent !shadow-none' : ''}`}>
               <span className={`h-2 w-2 shrink-0 rounded-full ${category.enabled ? 'bg-[#FFB72B]' : 'bg-[#9CA3AF]'}`} />
-              <span className="max-w-[120px] truncate">{category.name}</span>
+              <span className="max-w-[110px] truncate">{category.name}</span>
               <span className="ml-auto rounded bg-black/[.04] px-1.5 py-0.5 text-[9px]">{counts.get(category.id) ?? 0}</span>
             </button>
-            <button onClick={() => onEdit(category)} className="mr-1 hidden p-1 text-[#9CA3AF] hover:text-[#FF4500] lg:group-hover:block" aria-label={`Edit ${category.name}`}><Pencil size={12} /></button>
+            <div className="mr-1 hidden items-center gap-0.5 lg:group-hover:flex">
+              <button onClick={() => onAddItem(category.id)} className="p-1 text-[#9CA3AF] hover:text-[#FF4500]" title={`Add menu item to ${category.name}`} aria-label={`Add menu item to ${category.name}`}><Plus size={13} /></button>
+              <button onClick={() => onEdit(category)} className="p-1 text-[#9CA3AF] hover:text-[#FF4500]" title={`Edit ${category.name}`} aria-label={`Edit ${category.name}`}><Pencil size={12} /></button>
+            </div>
           </div>
         ))}
       </div>
@@ -1194,6 +1203,7 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
   const kind = editor?.kind;
   const existing = editor?.value;
   const addonCategoryId = editor?.kind === 'addon' ? (editor.value as AdminAddon | undefined)?.categoryId ?? editor.categoryId ?? workspace?.categories[0]?.id ?? '' : '';
+  const itemCategoryId = editor?.kind === 'item' ? (editor.value as AdminMenuItem | undefined)?.categoryId ?? editor.categoryId ?? workspace?.categories[0]?.id ?? '' : '';
 
   // Address search & resolution state for restaurant profile
   const [addressInput, setAddressInput] = useState<string>((existing as AdminRestaurant | undefined)?.address ?? '');
@@ -1466,7 +1476,7 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
               </div>
             </>}
             {kind === 'item' && workspace && <>
-              <div className="grid gap-4 sm:grid-cols-2"><Field label="Price" htmlFor="price" required><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">$</span><Input id="price" name="price" type="number" min="0.01" step="0.01" defaultValue={(existing as AdminMenuItem | undefined)?.price ?? ''} required placeholder="0.00" className="admin-input pl-7" /></div></Field><Field label="Category" htmlFor="categoryId" required><Select name="categoryId" defaultValue={(existing as AdminMenuItem | undefined)?.categoryId ?? workspace.categories[0]?.id}><SelectTrigger className="admin-input"><SelectValue placeholder="Choose category" /></SelectTrigger><SelectContent>{workspace.categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}</SelectContent></Select></Field></div>
+              <div className="grid gap-4 sm:grid-cols-2"><Field label="Price" htmlFor="price" required><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">$</span><Input id="price" name="price" type="number" min="0.01" step="0.01" defaultValue={(existing as AdminMenuItem | undefined)?.price ?? ''} required placeholder="0.00" className="admin-input pl-7" /></div></Field><Field label="Category" htmlFor="categoryId" required><Select name="categoryId" defaultValue={itemCategoryId}><SelectTrigger className="admin-input"><SelectValue placeholder="Choose category" /></SelectTrigger><SelectContent>{workspace.categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}</SelectContent></Select></Field></div>
               <Field label="Dish image URL" htmlFor="imageUrl" hint="Optional"><Input id="imageUrl" name="imageUrl" type="url" defaultValue={(existing as AdminMenuItem | undefined)?.imageUrl ?? ''} placeholder="https://images.example.com/dish.jpg" className="admin-input" /></Field>
             </>}
             {kind === 'addon' && workspace && <>
