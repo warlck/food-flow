@@ -194,10 +194,6 @@ const CartMobile: React.FC = () => {
                           <p className="text-sm text-gray-500">Collect from restaurant</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-green-600">Free</p>
-                        <p className="text-xs text-gray-500">no fee</p>
-                      </div>
                     </label>
                   </div>
                 </RadioGroup>

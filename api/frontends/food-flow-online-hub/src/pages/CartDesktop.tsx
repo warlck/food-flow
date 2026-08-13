@@ -186,7 +186,6 @@ const CartDesktop: React.FC = () => {
                           <p className="font-semibold text-gray-900">Pickup</p>
                         </div>
                         <p className="text-sm text-gray-500 ml-13">Collect from restaurant</p>
-                        <p className="font-semibold text-green-600 mt-2">Free</p>
                       </label>
                     </div>
                   </RadioGroup>
