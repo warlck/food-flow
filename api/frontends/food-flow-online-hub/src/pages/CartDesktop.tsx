@@ -13,7 +13,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 // Default values for restaurant settings
 const DEFAULT_DELIVERY_FEE = 3.99;
-const DEFAULT_MINIMUM_ORDER = 15.00;
 const DEFAULT_DELIVERY_TIME = { min: 30, max: 45 };
 const DEFAULT_PICKUP_TIME = { min: 15, max: 25 };
 
