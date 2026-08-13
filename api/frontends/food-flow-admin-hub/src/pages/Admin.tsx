@@ -105,40 +105,7 @@ const ORDER_TYPE_OPTIONS: { value: 'all' | OrderType; label: string }[] = [
   { value: 'delivery', label: 'Delivery' },
 ];
 
-const demoRestaurant: AdminRestaurant = {
-  id: 'demo-restaurant', name: 'Juniper & Grain', description: 'Seasonal plates and thoughtful pantry staples.',
-  address: '28 Greenwood Avenue, Singapore', phone: '+65 6123 7788', email: 'hello@junipergrain.co',
-  imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80',
-  enabled: true, latitude: 1.3319, longitude: 103.8072, maxDeliveryDistanceKm: 8, taxRate: 0.10,
-  dateCreated: '2026-07-21T08:00:00Z', dateUpdated: '2026-07-28T08:00:00Z',
-};
 
-const demoCategories: AdminCategory[] = [
-  { id: 'cat-breakfast', name: 'All day breakfast', description: 'Bright starts and slow mornings', restaurantId: demoRestaurant.id, enabled: true },
-  { id: 'cat-bowls', name: 'Harvest bowls', description: 'Wholesome seasonal bowls', restaurantId: demoRestaurant.id, enabled: true },
-  { id: 'cat-drinks', name: 'Drinks', description: 'Coffee, tonics and juices', restaurantId: demoRestaurant.id, enabled: true },
-  { id: 'cat-bakes', name: 'Bakes', description: 'Made fresh each morning', restaurantId: demoRestaurant.id, enabled: true },
-];
-
-const demoItems: AdminMenuItem[] = [
-  { id: 'item-1', name: 'Sourdough garden toast', description: 'Whipped ricotta, heirloom tomatoes, basil oil and toasted seeds.', price: 18, categoryId: 'cat-breakfast', restaurantId: demoRestaurant.id, imageUrl: 'https://images.unsplash.com/photo-1541519227354-08fa5d50c44d?auto=format&fit=crop&w=900&q=80', available: true },
-  { id: 'item-2', name: 'Miso mushroom eggs', description: 'Soft eggs, roasted mushrooms, miso butter and sourdough.', price: 21, categoryId: 'cat-breakfast', restaurantId: demoRestaurant.id, imageUrl: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=900&q=80', available: true },
-  { id: 'item-3', name: 'Green goddess bowl', description: 'Charred greens, avocado, herbed grains, edamame and tahini.', price: 19.5, categoryId: 'cat-bowls', restaurantId: demoRestaurant.id, imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=80', available: true },
-  { id: 'item-4', name: 'Roasted pumpkin bowl', description: 'Maple pumpkin, lentils, feta, leaves and pepita crunch.', price: 18.5, categoryId: 'cat-bowls', restaurantId: demoRestaurant.id, imageUrl: 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80', available: false },
-  { id: 'item-5', name: 'Cloud cold brew', description: 'Slow steeped coffee with a silky oat cloud.', price: 7.5, categoryId: 'cat-drinks', restaurantId: demoRestaurant.id, imageUrl: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=900&q=80', available: true },
-  { id: 'item-6', name: 'Pistachio morning bun', description: 'Laminated pastry with pistachio praline and citrus sugar.', price: 8, categoryId: 'cat-bakes', restaurantId: demoRestaurant.id, imageUrl: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=900&q=80', available: false },
-];
-
-const demoAddons: AdminAddon[] = [
-  { id: 'addon-1', name: 'Extra avocado', description: 'Fresh sliced avocado', price: 4, maxQuantity: 2, categoryId: 'cat-breakfast', restaurantId: demoRestaurant.id, available: true },
-  { id: 'addon-2', name: 'Smoked salmon', description: 'House cured salmon', price: 6, maxQuantity: 2, categoryId: 'cat-breakfast', restaurantId: demoRestaurant.id, available: true },
-  { id: 'addon-3', name: 'Soft egg', description: 'Jammy free range egg', price: 3, maxQuantity: 3, categoryId: 'cat-bowls', restaurantId: demoRestaurant.id, available: true },
-  { id: 'addon-4', name: 'Extra greens', description: 'Seasonal dressed leaves', price: 2.5, maxQuantity: 2, categoryId: 'cat-bowls', restaurantId: demoRestaurant.id, available: false },
-];
-
-function demoWorkspace(): AdminWorkspace {
-  return { restaurant: demoRestaurant, categories: demoCategories, menuItems: demoItems, addons: demoAddons };
-}
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-SG', { style: 'currency', currency: 'SGD' }).format(value);
@@ -172,7 +139,6 @@ export default function Admin() {
   const [workspace, setWorkspace] = useState<AdminWorkspace | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [isDemo, setIsDemo] = useState(false);
   const [editor, setEditor] = useState<EditorState>(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [addonCategory, setAddonCategory] = useState('');
@@ -237,11 +203,6 @@ export default function Admin() {
     if (!workspace) return;
     const newStatus = !workspace.restaurant.enabled;
     try {
-      if (isDemo) {
-        setWorkspace((current) => current ? { ...current, restaurant: { ...current.restaurant, enabled: newStatus } } : current);
-        toast.success(newStatus ? 'Restaurant is now Live' : 'Restaurant is now Paused');
-        return;
-      }
       await mutateWorkspace(
         () => adminApi.updateRestaurant(workspace.restaurant.id, { enabled: newStatus }),
         newStatus ? 'Restaurant is now Live' : 'Restaurant is now Paused'
@@ -258,23 +219,13 @@ export default function Admin() {
       const data = await adminApi.getWorkspace(restaurantId);
       setWorkspace(data);
       setAddonCategory((current) => data.categories.some((category) => category.id === current) ? current : data.categories[0]?.id ?? '');
-      setIsDemo(false);
     } catch (error) {
-      if (!workspace) {
-        const preview = demoWorkspace();
-        setWorkspace(preview);
-        setAddonCategory(preview.categories[0]?.id ?? '');
-        setRestaurants([preview.restaurant]);
-        setSelectedId(preview.restaurant.id);
-        setIsDemo(true);
-      } else {
-        toast.error(error instanceof Error ? error.message : 'Could not refresh workspace');
-      }
+      toast.error(error instanceof Error ? error.message : 'Could not load workspace');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [workspace]);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -289,20 +240,13 @@ export default function Admin() {
         } else {
           setLoading(false);
         }
-      } catch {
+      } catch (error) {
         if (!active) return;
-        const preview = demoWorkspace();
-        setRestaurants([preview.restaurant]);
-        setSelectedId(preview.restaurant.id);
-        setWorkspace(preview);
-        setAddonCategory(preview.categories[0]?.id ?? '');
-        setIsDemo(true);
+        toast.error(error instanceof Error ? error.message : 'Could not load restaurants');
         setLoading(false);
       }
     })();
     return () => { active = false; };
-    // Initial bootstrap only; restaurant changes are handled explicitly.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const categoryCounts = useMemo(() => {
@@ -331,7 +275,7 @@ export default function Admin() {
       await operation();
       toast.success(successMessage);
       setEditor(null);
-      if (selectedId && !isDemo) await loadWorkspace(selectedId, true);
+      if (selectedId) await loadWorkspace(selectedId, true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Something went wrong');
       throw error;
@@ -340,7 +284,6 @@ export default function Admin() {
 
   const toggleAvailability = async (item: AdminMenuItem, available: boolean) => {
     setWorkspace((current) => current ? { ...current, menuItems: current.menuItems.map((entry) => entry.id === item.id ? { ...entry, available } : entry) } : current);
-    if (isDemo) return toast.success(available ? 'Item is now available' : 'Item marked unavailable');
     try {
       await adminApi.updateMenuItem(item.id, { available });
       toast.success(available ? 'Item is now available' : 'Item marked unavailable');
@@ -356,27 +299,16 @@ export default function Admin() {
     setOrders([]);
     setOrdersLoaded(false);
     setSelectedOrder(null);
-    if (id === demoRestaurant.id) {
-      setWorkspace(demoWorkspace());
-      setAddonCategory(demoCategories[0]?.id ?? '');
-      setIsDemo(true);
-    } else {
-      await loadWorkspace(id);
-    }
+    await loadWorkspace(id);
   };
 
   const deleteItem = async (item: AdminMenuItem) => {
     if (!window.confirm(`Delete ${item.name}? This cannot be undone.`)) return;
-    if (isDemo) {
-      setWorkspace((current) => current ? { ...current, menuItems: current.menuItems.filter((entry) => entry.id !== item.id) } : current);
-      return toast.success('Menu item deleted');
-    }
     await mutateWorkspace(() => adminApi.deleteMenuItem(item.id), 'Menu item deleted');
   };
 
   const toggleAddonAvailability = async (addon: AdminAddon, available: boolean) => {
     setWorkspace((current) => current ? { ...current, addons: current.addons.map((entry) => entry.id === addon.id ? { ...entry, available } : entry) } : current);
-    if (isDemo) return toast.success(available ? 'Add-on is now available' : 'Add-on marked unavailable');
     try {
       await adminApi.updateAddon(addon.id, { available });
       toast.success(available ? 'Add-on is now available' : 'Add-on marked unavailable');
@@ -388,15 +320,11 @@ export default function Admin() {
 
   const deleteAddon = async (addon: AdminAddon) => {
     if (!window.confirm(`Delete ${addon.name}? This removes it from every item in this category.`)) return;
-    if (isDemo) {
-      setWorkspace((current) => current ? { ...current, addons: current.addons.filter((entry) => entry.id !== addon.id) } : current);
-      return toast.success('Add-on deleted');
-    }
     await mutateWorkspace(() => adminApi.deleteAddon(addon.id), 'Add-on deleted');
   };
 
   useEffect(() => {
-    if (section !== 'orders' || !selectedId || isDemo) return;
+    if (section !== 'orders' || !selectedId) return;
     let active = true;
     setOrdersLoading(true);
     adminApi.listOrders(selectedId, {
@@ -416,7 +344,7 @@ export default function Admin() {
         if (active) setOrdersLoading(false);
       });
     return () => { active = false; };
-  }, [section, selectedId, orderStatusFilter, orderTypeFilter, ordersRefreshKey, isDemo]);
+  }, [section, selectedId, orderStatusFilter, orderTypeFilter, ordersRefreshKey]);
 
   const visibleOrders = useMemo(() => {
     const normalizedQuery = orderQuery.trim().toLowerCase();
@@ -570,13 +498,6 @@ export default function Admin() {
         </header>
 
         <div className="admin-content">
-          {isDemo && (
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#FFD78A] bg-[#FFF8E7] px-4 py-3 text-xs text-[#6B4E16]">
-              <div className="flex items-center gap-2"><Sparkles size={15} className="text-[#D97706]" /><span><strong>Preview workspace.</strong> Start the local API services to load and save live restaurant data.</span></div>
-              <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-[#92400E] hover:bg-[#FFF0CC]" onClick={() => window.location.reload()}><RefreshCw size={13} /> Reconnect</Button>
-            </div>
-          )}
-
           {section === 'menu' ? (
             <>
           <section className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-end">
@@ -643,7 +564,7 @@ export default function Admin() {
                           <button onClick={() => setView('grid')} className={`rounded-md p-1.5 ${view === 'grid' ? 'bg-white text-[#FF4500] shadow-sm' : 'text-[#9CA3AF]'}`} aria-label="Grid view"><Grid2X2 size={15} /></button>
                           <button onClick={() => setView('list')} className={`rounded-md p-1.5 ${view === 'list' ? 'bg-white text-[#FF4500] shadow-sm' : 'text-[#9CA3AF]'}`} aria-label="List view"><List size={15} /></button>
                         </div>
-                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => loadWorkspace(selectedId, true)} disabled={refreshing || isDemo} aria-label="Refresh workspace"><RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /></Button>
+                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => loadWorkspace(selectedId, true)} disabled={refreshing} aria-label="Refresh workspace"><RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /></Button>
                       </div>
                     </div>
 
@@ -667,7 +588,7 @@ export default function Admin() {
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3 bg-[#FAFAFA] px-5 py-3 text-[10px] text-[#6B7280]">
                   <span>Changes update the customer menu immediately.</span>
-                  <span className="flex items-center gap-1.5"><Clock3 size={12} /> Last synced {isDemo ? 'in preview mode' : 'just now'}</span>
+                  <span className="flex items-center gap-1.5"><Clock3 size={12} /> Last synced just now</span>
                 </div>
               </section>
 
@@ -701,7 +622,6 @@ export default function Admin() {
               orders={visibleOrders}
               loading={ordersLoading}
               loaded={ordersLoaded}
-              isDemo={isDemo}
               statusFilter={orderStatusFilter}
               onStatusFilter={setOrderStatusFilter}
               typeFilter={orderTypeFilter}
@@ -718,7 +638,6 @@ export default function Admin() {
       <EditorDialog
         editor={editor}
         workspace={workspace}
-        isDemo={isDemo}
         onClose={() => setEditor(null)}
         onSave={async (kind, input, existingId) => {
           if (kind === 'promotion') {
@@ -737,12 +656,6 @@ export default function Admin() {
           if (kind === 'restaurant') {
             const restaurantInput = input as RestaurantInput;
             validateName(restaurantInput.name);
-            if (isDemo) {
-              const created = { ...demoRestaurant, ...restaurantInput, id: existingId ?? `demo-${Date.now()}` };
-              setRestaurants((current) => existingId ? current.map((entry) => entry.id === existingId ? created : entry) : [...current, created]);
-              setWorkspace((current) => existingId && current ? { ...current, restaurant: created } : { restaurant: created, categories: [], menuItems: [], addons: [] });
-              setSelectedId(created.id); setEditor(null); toast.success(existingId ? 'Restaurant updated' : 'Restaurant created'); return;
-            }
             if (existingId) await mutateWorkspace(() => adminApi.updateRestaurant(existingId, restaurantInput), 'Restaurant updated');
             else {
               await mutateWorkspace(async () => {
@@ -755,29 +668,16 @@ export default function Admin() {
           if (kind === 'category' && workspace) {
             const categoryInput = input as CategoryInput;
             validateName(categoryInput.name);
-            if (isDemo) {
-              setWorkspace((current) => current ? { ...current, categories: existingId ? current.categories.map((entry) => entry.id === existingId ? { ...entry, ...categoryInput } : entry) : [...current.categories, { ...categoryInput, id: `demo-category-${Date.now()}`, enabled: true }] } : current);
-              setEditor(null); toast.success(existingId ? 'Category updated' : 'Category created'); return;
-            }
             await mutateWorkspace(() => existingId ? adminApi.updateCategory(existingId, categoryInput) : adminApi.createCategory(categoryInput), existingId ? 'Category updated' : 'Category created');
           }
           if (kind === 'item' && workspace) {
             const itemInput = input as MenuItemInput;
             validateName(itemInput.name);
-            if (isDemo) {
-              setWorkspace((current) => current ? { ...current, menuItems: existingId ? current.menuItems.map((entry) => entry.id === existingId ? { ...entry, ...itemInput } : entry) : [...current.menuItems, { ...itemInput, id: `demo-item-${Date.now()}`, available: true }] } : current);
-              setEditor(null); toast.success(existingId ? 'Menu item updated' : 'Menu item created'); return;
-            }
             await mutateWorkspace(() => existingId ? adminApi.updateMenuItem(existingId, itemInput) : adminApi.createMenuItem(itemInput), existingId ? 'Menu item updated' : 'Menu item created');
           }
           if (kind === 'addon' && workspace) {
             const addonInput = input as AddonInput;
             validateName(addonInput.name);
-            if (isDemo) {
-              setWorkspace((current) => current ? { ...current, addons: existingId ? current.addons.map((entry) => entry.id === existingId ? { ...entry, ...addonInput } : entry) : [...current.addons, { ...addonInput, id: `demo-addon-${Date.now()}`, available: true }] } : current);
-              setAddonCategory(addonInput.categoryId);
-              setEditor(null); toast.success(existingId ? 'Add-on updated' : 'Add-on created'); return;
-            }
             await mutateWorkspace(() => existingId ? adminApi.updateAddon(existingId, { name: addonInput.name, description: addonInput.description, price: addonInput.price, maxQuantity: addonInput.maxQuantity }) : adminApi.createAddon(addonInput), existingId ? 'Add-on updated' : 'Add-on created');
             setAddonCategory(addonInput.categoryId);
           }
@@ -997,11 +897,10 @@ function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
   return <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.08em] ${PAYMENT_STATUS_STYLES[status]}`}>{status}</span>;
 }
 
-function OrdersSection({ orders, loading, loaded, isDemo, statusFilter, onStatusFilter, typeFilter, onTypeFilter, query, onQuery, onRefresh, onSelect }: {
+function OrdersSection({ orders, loading, loaded, statusFilter, onStatusFilter, typeFilter, onTypeFilter, query, onQuery, onRefresh, onSelect }: {
   orders: AdminOrder[];
   loading: boolean;
   loaded: boolean;
-  isDemo: boolean;
   statusFilter: 'all' | OrderStatus;
   onStatusFilter: (value: 'all' | OrderStatus) => void;
   typeFilter: 'all' | OrderType;
@@ -1052,7 +951,7 @@ function OrdersSection({ orders, loading, loaded, isDemo, statusFilter, onStatus
               <SelectTrigger className="admin-input h-9 w-[120px] rounded-lg text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>{ORDER_TYPE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
             </Select>
-            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onRefresh} disabled={loading || isDemo} aria-label="Refresh orders"><RefreshCw size={15} className={loading ? 'animate-spin' : ''} /></Button>
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onRefresh} disabled={loading} aria-label="Refresh orders"><RefreshCw size={15} className={loading ? 'animate-spin' : ''} /></Button>
           </div>
         </div>
 
@@ -1066,14 +965,14 @@ function OrdersSection({ orders, loading, loaded, isDemo, statusFilter, onStatus
           ) : (
             <div className="flex min-h-[390px] flex-col items-center justify-center px-5 text-center">
               <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#FED7C7] bg-white text-[#FF4500] shadow-sm"><ReceiptText size={23} /></div>
-              <h3 className="text-base font-bold">{isDemo || !loaded ? 'Orders need the API services' : 'No orders match these filters'}</h3>
-              <p className="mt-1 max-w-sm text-xs leading-relaxed text-[#6B7280]">{isDemo || !loaded ? 'Start the local API services to load live orders for this restaurant.' : 'Try a different status or clear the search to see more orders.'}</p>
+              <h3 className="text-base font-bold">{!loaded ? 'Loading orders...' : 'No orders match these filters'}</h3>
+              <p className="mt-1 max-w-sm text-xs leading-relaxed text-[#6B7280]">{!loaded ? 'Connecting to backend service...' : 'Try a different status or clear the search to see more orders.'}</p>
             </div>
           )}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 bg-[#FAFAFA] px-5 py-3 text-[10px] text-[#6B7280]">
           <span>Status updates apply to the customer order immediately.</span>
-          <span className="flex items-center gap-1.5"><Clock3 size={12} /> Last synced {isDemo ? 'in preview mode' : 'just now'}</span>
+          <span className="flex items-center gap-1.5"><Clock3 size={12} /> Last synced just now</span>
         </div>
       </section>
     </>
@@ -1243,7 +1142,7 @@ function OrderDetailDialog({ order, busy, onClose, onAdvance, onMarkPaid, onCanc
   );
 }
 
-function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: EditorState; workspace: AdminWorkspace | null; isDemo: boolean; onClose: () => void; onSave: (kind: 'restaurant' | 'category' | 'item' | 'addon' | 'promotion', input: RestaurantInput | CategoryInput | MenuItemInput | AddonInput | PromotionInput, existingId?: string) => Promise<void> }) {
+function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorState; workspace: AdminWorkspace | null; onClose: () => void; onSave: (kind: 'restaurant' | 'category' | 'item' | 'addon' | 'promotion', input: RestaurantInput | CategoryInput | MenuItemInput | AddonInput | PromotionInput, existingId?: string) => Promise<void> }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const kind = editor?.kind;
@@ -1660,7 +1559,6 @@ function EditorDialog({ editor, workspace, isDemo, onClose, onSave }: { editor: 
                 </div>
               </>
             )}
-            {isDemo && <div className="rounded-lg bg-[#FFF8E7] px-3 py-2.5 text-[11px] leading-relaxed text-[#6B4E16]">Preview mode changes stay in this browser session. Connect the API to save them permanently.</div>}
             {error && <div className="rounded-lg bg-red-50 px-3 py-2.5 text-xs text-red-700">{error}</div>}
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-[#E5E7EB] bg-[#FAFAFA] px-6 py-4"><Button type="button" variant="outline" onClick={onClose} className="h-9 text-xs">Cancel</Button><Button type="submit" disabled={saving} className="admin-primary h-9 min-w-[112px] gap-2 text-xs">{saving && <Loader2 size={14} className="animate-spin" />}{existing ? 'Save changes' : kind === 'addon' ? 'Create add-on' : `Create ${kind}`}</Button></div>
