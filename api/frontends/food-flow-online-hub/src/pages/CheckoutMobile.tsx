@@ -35,7 +35,6 @@ const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
 // Default values for restaurant settings
 const DEFAULT_DELIVERY_TIME = { min: 30, max: 45 };
 const DEFAULT_PICKUP_TIME = { min: 15, max: 25 };
-const DEFAULT_RESTAURANT_ADDRESS = "123 Main Street, City, State 12345";
 
 // Form schemas
 const deliveryFormSchema = z.object({
@@ -491,7 +490,7 @@ const CheckoutMobile: React.FC = () => {
                                 <span>Email</span>
                               </FormLabel>
                               <FormControl>
-                                <Input placeholder="alex@example.com" type="email" className="border-2 focus:border-food-primary" {...field} />
+                                <Input placeholder="alex@gmail.com" type="email" className="border-2 focus:border-food-primary" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -736,7 +735,7 @@ const CheckoutMobile: React.FC = () => {
                               <span>Email</span>
                             </FormLabel>
                             <FormControl>
-                              <Input placeholder="alex@example.com" type="email" className="border-2 focus:border-food-primary" {...field} />
+                              <Input placeholder="alex@gmail.com" type="email" className="border-2 focus:border-food-primary" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -768,7 +767,7 @@ const CheckoutMobile: React.FC = () => {
                         {restaurant?.name && (
                           <p className="font-semibold text-gray-900 text-sm mb-1">{restaurant.name}</p>
                         )}
-                        <p className="text-gray-600 text-sm">{restaurant?.address || DEFAULT_RESTAURANT_ADDRESS}</p>
+                        <p className="text-gray-600 text-sm">{restaurant?.address || "Address unavailable"}</p>
                         <p className="text-gray-600 text-sm mt-1 flex items-center">
                           <Clock className="w-3.5 h-3.5 mr-1 text-food-primary" />
                           Estimated pickup time: {getEstimatedTime()}

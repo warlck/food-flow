@@ -27,9 +27,6 @@ import {
 const DEFAULT_DELIVERY_FEE = 3.99;
 const DEFAULT_DELIVERY_TIME = { min: 30, max: 45 };
 const DEFAULT_PICKUP_TIME = { min: 15, max: 25 };
-const DEFAULT_RESTAURANT_NAME = "Restaurant";
-const DEFAULT_RESTAURANT_ADDRESS = "123 Main Street, City, State 12345";
-const DEFAULT_RESTAURANT_PHONE = "(555) 123-4567";
 
 // Form schemas
 const deliveryFormSchema = z.object({
@@ -215,7 +212,7 @@ const Checkout: React.FC = () => {
                               <FormItem>
                                 <FormLabel>Email</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="you@example.com" {...field} />
+                                  <Input placeholder="alex@gmail.com" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -350,7 +347,7 @@ const Checkout: React.FC = () => {
                               <FormItem>
                                 <FormLabel>Email</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="you@example.com" {...field} />
+                                  <Input placeholder="alex@gmail.com" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -378,9 +375,7 @@ const Checkout: React.FC = () => {
                             Pickup Location
                           </h3>
                           <div className="bg-gray-50 p-4 mt-3 rounded-lg">
-                            <p className="font-medium">{DEFAULT_RESTAURANT_NAME}</p>
-                            <p className="text-gray-600">{DEFAULT_RESTAURANT_ADDRESS}</p>
-                            <p className="text-gray-600">{DEFAULT_RESTAURANT_PHONE}</p>
+                            <p className="text-gray-600">Address unavailable</p>
                           </div>
                           <div className="mt-4 flex items-center text-gray-600">
                             <Clock size={16} className="mr-2" />

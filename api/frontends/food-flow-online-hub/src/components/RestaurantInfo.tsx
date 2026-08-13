@@ -57,13 +57,15 @@ const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ restaurant }) => {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex items-end">
           <div className="container mx-auto px-4 pb-6 flex items-center">
-            <div className="bg-white p-2 rounded-full mr-4 shadow-lg">
-              <img
-                src={restaurant.logo || "https://via.placeholder.com/80"}
-                alt={`${restaurant.name} logo`}
-                className="w-20 h-20 rounded-full"
-              />
-            </div>
+            {restaurant.logo && (
+              <div className="bg-white p-2 rounded-full mr-4 shadow-lg">
+                <img
+                  src={restaurant.logo}
+                  alt={`${restaurant.name} logo`}
+                  className="w-20 h-20 rounded-full"
+                />
+              </div>
+            )}
             <div className="text-white">
               <div className="flex items-center gap-3">
                 <h1 className="text-3xl font-bold drop-shadow-lg">{restaurant.name}</h1>

@@ -61,7 +61,6 @@ const paymentFormSchema = z.object({
 
 const DEFAULT_DELIVERY_TIME = { min: 30, max: 45 };
 const DEFAULT_PICKUP_TIME = { min: 15, max: 25 };
-const DEFAULT_RESTAURANT_ADDRESS = "123 Main Street, City, State 12345";
 
 const CheckoutDesktop: React.FC = () => {
   const navigate = useNavigate();
@@ -438,7 +437,7 @@ const CheckoutDesktop: React.FC = () => {
                                     <span>Email</span>
                                   </FormLabel>
                                   <FormControl>
-                                    <Input placeholder="alex@example.com" type="email" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
+                                    <Input placeholder="alex@gmail.com" type="email" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -694,7 +693,7 @@ const CheckoutDesktop: React.FC = () => {
                                     <span>Email</span>
                                   </FormLabel>
                                   <FormControl>
-                                    <Input placeholder="alex@example.com" type="email" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
+                                    <Input placeholder="alex@gmail.com" type="email" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -727,7 +726,7 @@ const CheckoutDesktop: React.FC = () => {
                             {restaurant?.name && (
                               <p className="font-semibold text-gray-900 mb-1">{restaurant.name}</p>
                             )}
-                            <p className="text-gray-600">{restaurant?.address || DEFAULT_RESTAURANT_ADDRESS}</p>
+                            <p className="text-gray-600">{restaurant?.address || "Address unavailable"}</p>
                             <p className="text-gray-600 mt-2 flex items-center">
                               <Clock className="w-4 h-4 mr-2 text-food-primary" />
                               Estimated pickup time: {getEstimatedTime()}
