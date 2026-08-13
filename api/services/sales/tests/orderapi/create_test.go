@@ -450,6 +450,32 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(got, exp)
 			},
 		},
+		{
+			Name:       "min-spend-not-met",
+			URL:        "/v1/orders",
+			Token:      sd.Users[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input: &orderapp.NewOrder{
+				RestaurantID:  sd.Restaurants[1].ID.String(),
+				CustomerName:  "Min Spend Customer",
+				CustomerEmail: "minspend@example.com",
+				CustomerPhone: "555-9999",
+				OrderType:     "pickup",
+				PaymentMethod: "creditCard",
+				Items: []orderapp.NewOrderItem{
+					{
+						MenuItemID: sd.MenuItems[2].ID.String(),
+						Quantity:   1,
+					},
+				},
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.InvalidArgument, "subtotal does not meet restaurant minimum spend: subtotal %.2f is less than minimum spend 1000.00", sd.MenuItems[2].Price.Value()),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
 	}
 
 	return table

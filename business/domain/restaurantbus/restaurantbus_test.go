@@ -231,6 +231,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 					Email:       ptr("updated@example.com"),
 					ImageURL:    ptr("updated.jpg"),
 					Enabled:     ptr(false),
+					MinSpend:    ptr(25.00),
 				}
 
 				resp, err := busDomain.Restaurant.Update(ctx, sd.Restaurants[0].Restaurant, ur)
@@ -247,7 +248,49 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				}
 
 				expResp := exp.(restaurantbus.Restaurant)
+				expResp.MinSpend = 25.00
+				expResp.DateUpdated = gotResp.DateUpdated
 
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+		{
+			Name: "min-spend-update",
+			ExpResp: restaurantbus.Restaurant{
+				ID:                    sd.Restaurants[1].ID,
+				Name:                  sd.Restaurants[1].Name,
+				Description:           sd.Restaurants[1].Description,
+				Address:               sd.Restaurants[1].Address,
+				Phone:                 sd.Restaurants[1].Phone,
+				Email:                 sd.Restaurants[1].Email,
+				ImageURL:              sd.Restaurants[1].ImageURL,
+				Enabled:               sd.Restaurants[1].Enabled,
+				Latitude:              sd.Restaurants[1].Latitude,
+				Longitude:             sd.Restaurants[1].Longitude,
+				MaxDeliveryDistanceKm: sd.Restaurants[1].MaxDeliveryDistanceKm,
+				MinSpend:              50.00,
+				TaxRate:               sd.Restaurants[1].TaxRate,
+				DateCreated:           sd.Restaurants[1].DateCreated,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				ur := restaurantbus.UpdateRestaurant{
+					MinSpend: ptr(50.00),
+				}
+
+				resp, err := busDomain.Restaurant.Update(ctx, sd.Restaurants[1].Restaurant, ur)
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(restaurantbus.Restaurant)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(restaurantbus.Restaurant)
 				expResp.DateUpdated = gotResp.DateUpdated
 
 				return cmp.Diff(gotResp, expResp)

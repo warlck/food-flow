@@ -56,13 +56,24 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	// -------------------------------------------------------------------------
 	// Create restaurant
 
-	restaurants, err := restaurantbus.TestSeedRestaurants(ctx, 1, busDomain.Restaurant)
+	restaurants, err := restaurantbus.TestSeedRestaurants(ctx, 2, busDomain.Restaurant)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding restaurants: %w", err)
 	}
 
+	ms := 1000.00
+	restaurants[1], err = busDomain.Restaurant.Update(ctx, restaurants[1], restaurantbus.UpdateRestaurant{
+		MinSpend: &ms,
+	})
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("updating 2nd restaurant min spend: %w", err)
+	}
+
 	tr1 := apitest.Restaurant{
 		Restaurant: restaurants[0],
+	}
+	tr2 := apitest.Restaurant{
+		Restaurant: restaurants[1],
 	}
 
 	// -------------------------------------------------------------------------
@@ -75,6 +86,15 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	tc1 := apitest.Category{
 		Category: categories[0],
+	}
+
+	categories2, err := categorybus.TestSeedCategories(ctx, 1, restaurants[1].ID, busDomain.Category)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding categories 2: %w", err)
+	}
+
+	tc2 := apitest.Category{
+		Category: categories2[0],
 	}
 
 	// -------------------------------------------------------------------------
@@ -91,6 +111,15 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	tmi2 := apitest.MenuItem{
 		MenuItem: menuItems[1],
+	}
+
+	menuItems2, err := menuitembus.TestSeedMenuItems(ctx, 1, categories2[0].ID, restaurants[1].ID, busDomain.MenuItem)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding menu items 2: %w", err)
+	}
+
+	tmi3 := apitest.MenuItem{
+		MenuItem: menuItems2[0],
 	}
 
 	// -------------------------------------------------------------------------
@@ -144,9 +173,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	sd := apitest.SeedData{
 		Admins:      []apitest.User{tu1},
 		Users:       []apitest.User{tu2, tu3},
-		Restaurants: []apitest.Restaurant{tr1},
-		Categories:  []apitest.Category{tc1},
-		MenuItems:   []apitest.MenuItem{tmi1, tmi2},
+		Restaurants: []apitest.Restaurant{tr1, tr2},
+		Categories:  []apitest.Category{tc1, tc2},
+		MenuItems:   []apitest.MenuItem{tmi1, tmi2, tmi3},
 		Addons:      []apitest.Addon{ta1, ta2},
 		Orders:      []apitest.Order{to1, to2},
 	}

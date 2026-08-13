@@ -714,6 +714,54 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			},
 		},
 		{
+			Name:    "min-spend-not-met",
+			ExpResp: errors.New("subtotal does not meet restaurant minimum spend: subtotal 10.00 is less than minimum spend 100.00"),
+			ExcFunc: func(ctx context.Context) any {
+				// Update restaurant minimum spend to 100.00
+				ms := 100.00
+				_, err := busDomain.Restaurant.Update(ctx, sd.Restaurants[1].Restaurant, restaurantbus.UpdateRestaurant{
+					MinSpend: &ms,
+				})
+				if err != nil {
+					return fmt.Errorf("updating restaurant min spend: %w", err)
+				}
+
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[1].ID.String(),
+					CustomerName:  "Min Spend Tester",
+					CustomerEmail: "minspend@example.com",
+					CustomerPhone: "555-0099",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[3].ID.String(),
+							Quantity:   1, // item price is < 100.00
+						},
+					},
+				}
+
+				_, err = busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "error expected"
+				}
+
+				if !errors.Is(gotErr, orderbus.ErrMinSpendNotMet) {
+					return fmt.Sprintf("got error %v, want ErrMinSpendNotMet", gotErr)
+				}
+
+				expMsg := fmt.Sprintf("subtotal does not meet restaurant minimum spend: subtotal %.2f is less than minimum spend 100.00", sd.MenuItems[3].Price.Value())
+				if gotErr.Error() != expMsg {
+					return fmt.Sprintf("got error %q, want %q", gotErr.Error(), expMsg)
+				}
+				return ""
+			},
+		},
+		{
 			Name: "delivery-order",
 			ExpResp: orderbus.Order{
 				RestaurantID:  sd.Restaurants[0].ID,
