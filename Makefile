@@ -2,6 +2,9 @@
 SHELL_PATH = /bin/ash
 SHELL = $(if $(wildcard $(SHELL_PATH)),/bin/ash,/bin/bash)
 
+-include .env
+export
+
 # ==============================================================================
 # RSA Keys
 # 	To generate a private/public key PEM file.
@@ -200,6 +203,10 @@ dev-apply:
 	kubectl create namespace $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
 	kubectl create secret generic $(DATABASE_SECRET) --namespace=$(NAMESPACE) \
 		--from-literal=password="$$POSTGRES_PASSWORD" --dry-run=client -o yaml | kubectl apply -f -
+	@if [ -n "$$SALES_STRIPE_SECRET_KEY" ]; then \
+		echo "Uploading Stripe secrets..."; \
+		$(MAKE) dev-stripe-secrets; \
+	fi
 	helm upgrade --install $(HELM_RELEASE) $(HELM_CHART) \
 		--namespace=$(NAMESPACE) \
 		--values=$(HELM_DEV_VALUES) \
