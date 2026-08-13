@@ -724,7 +724,10 @@ const CheckoutDesktop: React.FC = () => {
                               <MapPinCheck className="w-5 h-5 mr-2 text-food-primary" />
                               Pickup Location
                             </h4>
-                            <p className="text-gray-600">{DEFAULT_RESTAURANT_ADDRESS}</p>
+                            {restaurant?.name && (
+                              <p className="font-semibold text-gray-900 mb-1">{restaurant.name}</p>
+                            )}
+                            <p className="text-gray-600">{restaurant?.address || DEFAULT_RESTAURANT_ADDRESS}</p>
                             <p className="text-gray-600 mt-2 flex items-center">
                               <Clock className="w-4 h-4 mr-2 text-food-primary" />
                               Estimated pickup time: {getEstimatedTime()}

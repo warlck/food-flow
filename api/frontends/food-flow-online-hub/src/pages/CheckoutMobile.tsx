@@ -761,9 +761,18 @@ const CheckoutMobile: React.FC = () => {
                       />
 
                       <div className="bg-gray-50 p-4 rounded-xl">
-                        <h4 className="font-semibold text-gray-900 mb-2">Pickup Location</h4>
-                        <p className="text-gray-600 text-sm">{restaurant?.address || "Address unavailable"}</p>
-                        <p className="text-gray-600 text-sm mt-1">Estimated pickup time: {getEstimatedTime()}</p>
+                        <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
+                          <MapPinCheck className="w-4 h-4 mr-1.5 text-food-primary" />
+                          Pickup Location
+                        </h4>
+                        {restaurant?.name && (
+                          <p className="font-semibold text-gray-900 text-sm mb-1">{restaurant.name}</p>
+                        )}
+                        <p className="text-gray-600 text-sm">{restaurant?.address || DEFAULT_RESTAURANT_ADDRESS}</p>
+                        <p className="text-gray-600 text-sm mt-1 flex items-center">
+                          <Clock className="w-3.5 h-3.5 mr-1 text-food-primary" />
+                          Estimated pickup time: {getEstimatedTime()}
+                        </p>
                       </div>
 
                       <Button type="submit" className="w-full bg-gradient-to-r from-food-primary to-food-accent hover:from-food-accent hover:to-food-primary text-white py-3 rounded-xl font-semibold text-lg">
