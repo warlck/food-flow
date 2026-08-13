@@ -23,6 +23,7 @@ type Restaurant struct {
 	Latitude              *float64 `json:"latitude,omitempty"`
 	Longitude             *float64 `json:"longitude,omitempty"`
 	MaxDeliveryDistanceKm float64  `json:"maxDeliveryDistanceKm"`
+	MinSpend              float64  `json:"minSpend"`
 	TaxRate               float64  `json:"taxRate"`
 	DateCreated           string   `json:"dateCreated"`
 	DateUpdated           string   `json:"dateUpdated"`
@@ -48,6 +49,7 @@ func ToAppRestaurant(bus restaurantbus.Restaurant) Restaurant {
 		Latitude:              bus.Latitude,
 		Longitude:             bus.Longitude,
 		MaxDeliveryDistanceKm: bus.MaxDeliveryDistanceKm,
+		MinSpend:              bus.MinSpend,
 		TaxRate:               bus.TaxRate,
 		DateCreated:           bus.DateCreated.Format(time.RFC3339),
 		DateUpdated:           bus.DateUpdated.Format(time.RFC3339),
@@ -77,6 +79,7 @@ type NewRestaurant struct {
 	Latitude              *float64 `json:"latitude" validate:"omitempty,latitude"`
 	Longitude             *float64 `json:"longitude" validate:"omitempty,longitude"`
 	MaxDeliveryDistanceKm float64  `json:"maxDeliveryDistanceKm" validate:"gte=0"`
+	MinSpend              float64  `json:"minSpend" validate:"gte=0"`
 	TaxRate               float64  `json:"taxRate" validate:"gte=0"`
 }
 
@@ -110,6 +113,7 @@ func toBusNewRestaurant(app NewRestaurant) (restaurantbus.NewRestaurant, error) 
 		Latitude:              app.Latitude,
 		Longitude:             app.Longitude,
 		MaxDeliveryDistanceKm: app.MaxDeliveryDistanceKm,
+		MinSpend:              app.MinSpend,
 		TaxRate:               app.TaxRate,
 	}
 
@@ -130,6 +134,7 @@ type UpdateRestaurant struct {
 	Latitude              *float64 `json:"latitude" validate:"omitempty,latitude"`
 	Longitude             *float64 `json:"longitude" validate:"omitempty,longitude"`
 	MaxDeliveryDistanceKm *float64 `json:"maxDeliveryDistanceKm" validate:"omitempty,gte=0"`
+	MinSpend              *float64 `json:"minSpend" validate:"omitempty,gte=0"`
 	TaxRate               *float64 `json:"taxRate" validate:"omitempty,gte=0"`
 }
 
@@ -168,6 +173,7 @@ func toBusUpdateRestaurant(app UpdateRestaurant) (restaurantbus.UpdateRestaurant
 		Latitude:              app.Latitude,
 		Longitude:             app.Longitude,
 		MaxDeliveryDistanceKm: app.MaxDeliveryDistanceKm,
+		MinSpend:              app.MinSpend,
 		TaxRate:               app.TaxRate,
 	}
 
@@ -223,6 +229,7 @@ type RestaurantWithMenuCategories struct {
 	Latitude              *float64   `json:"latitude,omitempty"`
 	Longitude             *float64   `json:"longitude,omitempty"`
 	MaxDeliveryDistanceKm float64    `json:"maxDeliveryDistanceKm"`
+	MinSpend              float64    `json:"minSpend"`
 	TaxRate               float64    `json:"taxRate"`
 	Categories            []Category `json:"categories"`
 	DateCreated           string     `json:"dateCreated"`

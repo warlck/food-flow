@@ -149,6 +149,7 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 		Latitude:              res.Latitude,
 		Longitude:             res.Longitude,
 		MaxDeliveryDistanceKm: res.MaxDeliveryDistanceKm,
+		MinSpend:              res.MinSpend,
 		TaxRate:               res.TaxRate,
 		DateCreated:           res.DateCreated.Format("2006-01-02T15:04:05Z07:00"),
 		DateUpdated:           res.DateUpdated.Format("2006-01-02T15:04:05Z07:00"),
