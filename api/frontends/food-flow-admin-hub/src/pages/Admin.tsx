@@ -1272,6 +1272,7 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
         }
 
         const maxDeliveryDistanceKm = String(data.get('maxDeliveryDistanceKm') ?? '').trim();
+        const minSpendStr = String(data.get('minSpend') ?? '').trim();
         const taxRatePct = String(data.get('taxRatePct') ?? '').trim();
         const taxRateVal = taxRatePct === '' ? 0.10 : Number(taxRatePct) / 100;
         await onSave(kind, {
@@ -1285,6 +1286,7 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
           latitude: latitudeVal,
           longitude: longitudeVal,
           maxDeliveryDistanceKm: maxDeliveryDistanceKm === '' ? 0 : Number(maxDeliveryDistanceKm),
+          minSpend: minSpendStr === '' ? 0 : Number(minSpendStr),
           taxRate: taxRateVal,
         }, existing?.id);
       }
@@ -1416,8 +1418,9 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
               <Field label="Cover image URL" htmlFor="imageUrl" hint="Optional"><Input id="imageUrl" name="imageUrl" type="url" defaultValue={(existing as AdminRestaurant | undefined)?.imageUrl ?? ''} placeholder="https://images.unsplash.com/restaurant.jpg" className="admin-input" /></Field>
               <input type="hidden" name="latitude" value={lat ?? ''} />
               <input type="hidden" name="longitude" value={lon ?? ''} />
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
                 <Field label="Max delivery distance (km)" htmlFor="maxDeliveryDistanceKm" hint="0 = unlimited"><Input id="maxDeliveryDistanceKm" name="maxDeliveryDistanceKm" type="number" min="0" step="0.1" defaultValue={(existing as AdminRestaurant | undefined)?.maxDeliveryDistanceKm ?? 0} placeholder="0" className="admin-input" /></Field>
+                <Field label="Minimum spend ($)" htmlFor="minSpend" hint="0 = no minimum"><Input id="minSpend" name="minSpend" type="number" min="0" step="0.01" defaultValue={(existing as AdminRestaurant | undefined)?.minSpend ?? 0} placeholder="0.00" className="admin-input" /></Field>
                 <Field label="Tax rate (%)" htmlFor="taxRatePct" hint="e.g. 10 = 10%"><Input id="taxRatePct" name="taxRatePct" type="number" min="0" max="100" step="0.1" defaultValue={((existing as AdminRestaurant | undefined)?.taxRate ?? 0.10) * 100} placeholder="10" className="admin-input" /></Field>
               </div>
               <Field label="Storefront Status" htmlFor="enabled" hint="Live allows guests to place online orders">
