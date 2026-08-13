@@ -58,6 +58,7 @@ func (b *Business) Create(ctx context.Context, nr NewRestaurant) (Restaurant, er
 		Latitude:              nr.Latitude,
 		Longitude:             nr.Longitude,
 		MaxDeliveryDistanceKm: nr.MaxDeliveryDistanceKm,
+		MinSpend:              nr.MinSpend,
 		TaxRate:               nr.TaxRate,
 		DateCreated:           now,
 		DateUpdated:           now,
@@ -110,6 +111,10 @@ func (b *Business) Update(ctx context.Context, res Restaurant, ur UpdateRestaura
 
 	if ur.MaxDeliveryDistanceKm != nil {
 		res.MaxDeliveryDistanceKm = *ur.MaxDeliveryDistanceKm
+	}
+
+	if ur.MinSpend != nil {
+		res.MinSpend = *ur.MinSpend
 	}
 
 	if ur.TaxRate != nil {
