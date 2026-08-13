@@ -29,7 +29,7 @@ export function transformApiRestaurant(apiData: ApiRestaurantDetails): Restauran
     maxDeliveryDistanceKm: apiData.maxDeliveryDistanceKm,
     taxRate: apiData.taxRate,
     deliveryFee: 2.50,
-    minimumOrder: 20.00,
+    minimumOrder: apiData.minSpend ?? 0,
     estimatedDeliveryTime: {
       min: 25,
       max: 45,

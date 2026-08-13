@@ -25,6 +25,7 @@ const CartDesktop: React.FC = () => {
   const navigate = useNavigate();
 
   const { data: restaurant } = useRestaurantDetails(restaurantId || "");
+  const minSpend = restaurant?.minSpend ?? 0;
   const subtotal = getTotalPrice();
   const discount = appliedPromo ? appliedPromo.discountAmount : 0;
   const taxableSubtotal = Math.max(0, subtotal - discount);
@@ -53,10 +54,10 @@ const CartDesktop: React.FC = () => {
       });
       return;
     }
-    if (subtotal < DEFAULT_MINIMUM_ORDER) {
+    if (minSpend > 0 && subtotal < minSpend) {
       toast({
         title: "Minimum order not met",
-        description: `Please add more items to meet the minimum order amount of $${DEFAULT_MINIMUM_ORDER.toFixed(2)}`,
+        description: `Please add more items to meet the minimum order amount of $${minSpend.toFixed(2)}`,
         variant: "destructive",
       });
       return;
@@ -283,14 +284,14 @@ const CartDesktop: React.FC = () => {
                       </div>
                     </div>
                     
-                    {subtotal < DEFAULT_MINIMUM_ORDER && (
+                    {minSpend > 0 && subtotal < minSpend && (
                       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4">
                         <div className="flex items-start gap-3">
                           <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                           <div>
                             <p className="font-semibold text-amber-800 text-sm">Minimum Order Required</p>
                             <p className="text-amber-700 text-sm mt-1">
-                              Add ${(DEFAULT_MINIMUM_ORDER - subtotal).toFixed(2)} more to meet the minimum of ${DEFAULT_MINIMUM_ORDER.toFixed(2)}
+                              Add ${(minSpend - subtotal).toFixed(2)} more to meet the minimum of ${minSpend.toFixed(2)}
                             </p>
                           </div>
                         </div>
@@ -301,7 +302,7 @@ const CartDesktop: React.FC = () => {
                       className="w-full bg-food-primary hover:bg-food-accent text-white py-6 text-lg font-semibold rounded-lg mt-6 disabled:bg-gray-400"
                       size="lg"
                       onClick={handleCheckout}
-                      disabled={subtotal < DEFAULT_MINIMUM_ORDER || restaurant?.enabled === false}
+                      disabled={(minSpend > 0 && subtotal < minSpend) || restaurant?.enabled === false}
                     >
                       {restaurant?.enabled === false ? 'Restaurant Paused' : 'Proceed to Checkout'}
                       {restaurant?.enabled !== false && <ArrowRight className="w-5 h-5 ml-2" />}

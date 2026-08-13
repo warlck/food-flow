@@ -207,6 +207,12 @@ const CheckoutDesktop: React.FC = () => {
       return;
     }
 
+    const minSpend = restaurant?.minSpend ?? 0;
+    if (minSpend > 0 && subtotal < minSpend) {
+      toast.error(`Minimum spend not met. Subtotal must be at least $${minSpend.toFixed(2)}.`);
+      return;
+    }
+
     if (orderType === "delivery") {
       if (!selectedLocation) {
         toast.error("Please search and select your delivery address.");
