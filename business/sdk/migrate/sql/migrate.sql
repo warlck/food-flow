@@ -246,4 +246,10 @@ ALTER TABLE orders
     ADD COLUMN promo_code TEXT           NULL,
     ADD COLUMN discount   NUMERIC(10, 2) NOT NULL DEFAULT 0.00;
 
+-- Version: 1.17
+-- Description: Add min_spend column to restaurants
+ALTER TABLE restaurants
+    ADD COLUMN min_spend NUMERIC(10, 2) NOT NULL DEFAULT 0.00;
+
+
 
