@@ -31,6 +31,9 @@ var (
 	// ErrAddonCategoryMismatch is returned when an addon does not belong to
 	// the same category as the menu item it is applied to.
 	ErrAddonCategoryMismatch = errors.New("addon does not belong to the menu item's category")
+
+	// ErrMinSpendNotMet is returned when the order subtotal is below the restaurant's minimum spend requirement.
+	ErrMinSpendNotMet = errors.New("subtotal does not meet restaurant minimum spend")
 )
 
 // Business manages the set of APIs for order access.
@@ -161,6 +164,11 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 
 	// Round subtotal to 2 decimal places to avoid precision errors
 	subtotal = roundToTwoDecimals(subtotal)
+
+	// Validate restaurant minimum spend
+	if restaurant.MinSpend > 0 && subtotal < restaurant.MinSpend {
+		return Order{}, fmt.Errorf("%w: subtotal %.2f is less than minimum spend %.2f", ErrMinSpendNotMet, subtotal, restaurant.MinSpend)
+	}
 
 	// Validate promo code if provided
 	var discountVal float64
