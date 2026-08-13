@@ -201,7 +201,7 @@ const Checkout: React.FC = () => {
                               <FormItem>
                                 <FormLabel>Full Name</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="John Doe" {...field} />
+                                  <Input placeholder="e.g. Alex Tan" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -336,7 +336,7 @@ const Checkout: React.FC = () => {
                               <FormItem>
                                 <FormLabel>Full Name</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="John Doe" {...field} />
+                                  <Input placeholder="e.g. Alex Tan" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
