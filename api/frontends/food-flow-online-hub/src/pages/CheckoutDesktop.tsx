@@ -437,7 +437,7 @@ const CheckoutDesktop: React.FC = () => {
                                     <span>Email</span>
                                   </FormLabel>
                                   <FormControl>
-                                    <Input placeholder="alex@gmail.com" type="email" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
+                                    <Input placeholder="alex@example.com" type="email" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -693,7 +693,7 @@ const CheckoutDesktop: React.FC = () => {
                                     <span>Email</span>
                                   </FormLabel>
                                   <FormControl>
-                                    <Input placeholder="alex@gmail.com" type="email" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
+                                    <Input placeholder="alex@example.com" type="email" className="border-2 focus:border-food-primary h-12 text-base" {...field} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>

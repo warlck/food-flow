@@ -490,7 +490,7 @@ const CheckoutMobile: React.FC = () => {
                                 <span>Email</span>
                               </FormLabel>
                               <FormControl>
-                                <Input placeholder="alex@gmail.com" type="email" className="border-2 focus:border-food-primary" {...field} />
+                                <Input placeholder="alex@example.com" type="email" className="border-2 focus:border-food-primary" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -735,7 +735,7 @@ const CheckoutMobile: React.FC = () => {
                               <span>Email</span>
                             </FormLabel>
                             <FormControl>
-                              <Input placeholder="alex@gmail.com" type="email" className="border-2 focus:border-food-primary" {...field} />
+                              <Input placeholder="alex@example.com" type="email" className="border-2 focus:border-food-primary" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

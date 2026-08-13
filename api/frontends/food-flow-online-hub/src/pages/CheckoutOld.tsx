@@ -212,7 +212,7 @@ const Checkout: React.FC = () => {
                               <FormItem>
                                 <FormLabel>Email</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="alex@gmail.com" {...field} />
+                                  <Input placeholder="alex@example.com" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -347,7 +347,7 @@ const Checkout: React.FC = () => {
                               <FormItem>
                                 <FormLabel>Email</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="alex@gmail.com" {...field} />
+                                  <Input placeholder="alex@example.com" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
