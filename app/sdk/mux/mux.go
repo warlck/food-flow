@@ -7,12 +7,14 @@ import (
 	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/categorybus"
+	"github.com/warlck/food-flow/business/domain/imagebus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
 	"github.com/warlck/food-flow/business/domain/promobus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/foundation/logger"
+	"github.com/warlck/food-flow/foundation/storage"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
@@ -24,6 +26,8 @@ type BusConfig struct {
 	OrderBus            *orderbus.Business
 	AddonBus            *addonbus.Business
 	PromoBus            *promobus.Business
+	ImageBus            *imagebus.Business
+	ImageLocalStore     storage.LocalStore
 	StripeSecretKey     string
 	StripeWebhookSecret string
 }

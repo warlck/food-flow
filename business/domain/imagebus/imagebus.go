@@ -62,6 +62,11 @@ func NewBusiness(log *logger.Logger, storer Storer, signer storage.Signer, maxSi
 	}
 }
 
+// MaxSizeBytes returns the configured upload size limit.
+func (b *Business) MaxSizeBytes() int64 {
+	return b.maxSizeBytes
+}
+
 // UploadRequest describes a desired image upload.
 type UploadRequest struct {
 	RestaurantID uuid.UUID

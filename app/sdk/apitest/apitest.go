@@ -25,6 +25,12 @@ type Test struct {
 	mux  http.Handler
 }
 
+// Handler returns the API handler so tests can issue raw requests, such as
+// direct file uploads, outside the table-driven helpers.
+func (at *Test) Handler() http.Handler {
+	return at.mux
+}
+
 // Run performs the actual test logic based on the table data.
 func (at *Test) Run(t *testing.T, table []Table, testName string) {
 	log := func(diff string, got any, exp any) {

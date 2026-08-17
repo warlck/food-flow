@@ -29,14 +29,15 @@ import (
 
 // BusDomain represents all the business domain apis needed for testing.
 type BusDomain struct {
-	User       *userbus.Business
-	Restaurant *restaurantbus.Business
-	Category   *categorybus.Business
-	MenuItem   *menuitembus.Business
-	Order      *orderbus.Business
-	Addon      *addonbus.Business
-	Promo      *promobus.Business
-	Image      *imagebus.Business
+	User            *userbus.Business
+	Restaurant      *restaurantbus.Business
+	Category        *categorybus.Business
+	MenuItem        *menuitembus.Business
+	Order           *orderbus.Business
+	Addon           *addonbus.Business
+	Promo           *promobus.Business
+	Image           *imagebus.Business
+	ImageLocalStore storage.LocalStore
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) (BusDomain, error) {
@@ -78,14 +79,17 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) (BusDomain, error) {
 	}
 	imageBus := imagebus.NewBusiness(log, imageStorage, imageSigner, 0)
 
+	imageLocalStore, _ := imageSigner.(storage.LocalStore)
+
 	return BusDomain{
-		User:       userBus,
-		Restaurant: restaurantBus,
-		Category:   categoryBus,
-		MenuItem:   menuItemBus,
-		Order:      orderBus,
-		Addon:      addonBus,
-		Promo:      promoBus,
-		Image:      imageBus,
+		User:            userBus,
+		Restaurant:      restaurantBus,
+		Category:        categoryBus,
+		MenuItem:        menuItemBus,
+		Order:           orderBus,
+		Addon:           addonBus,
+		Promo:           promoBus,
+		Image:           imageBus,
+		ImageLocalStore: imageLocalStore,
 	}, nil
 }

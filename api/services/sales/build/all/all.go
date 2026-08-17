@@ -5,6 +5,7 @@ import (
 	addonapi "github.com/warlck/food-flow/app/domain/addonapp"
 	categoryapi "github.com/warlck/food-flow/app/domain/categoryapp"
 	checkapi "github.com/warlck/food-flow/app/domain/checkapp"
+	imageapi "github.com/warlck/food-flow/app/domain/imageapp"
 	menuitemapi "github.com/warlck/food-flow/app/domain/menuitemapp"
 	orderapi "github.com/warlck/food-flow/app/domain/orderapp"
 	promoapi "github.com/warlck/food-flow/app/domain/promoapp"
@@ -70,6 +71,14 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		Log:        cfg.Log,
 		AuthClient: cfg.AuthClient,
 		PromoBus:   cfg.PromoBus,
+	})
+
+	imageapi.Routes(app, imageapi.Config{
+		Build:      cfg.Build,
+		Log:        cfg.Log,
+		AuthClient: cfg.AuthClient,
+		ImageBus:   cfg.ImageBus,
+		LocalStore: cfg.ImageLocalStore,
 	})
 
 	orderapi.Routes(app, orderapi.Config{

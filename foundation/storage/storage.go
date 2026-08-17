@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 )
 
@@ -81,6 +82,16 @@ type Signer interface {
 
 	// Delete removes an object. Deleting a missing object is not an error.
 	Delete(ctx context.Context, objectPath string) error
+}
+
+// LocalStore exposes the local backend's filesystem surface so the API can
+// receive and serve upload bytes directly in development.
+type LocalStore interface {
+	// Put writes the contents of r to the object path, enforcing maxBytes.
+	Put(ctx context.Context, objectPath string, r io.Reader, maxBytes int64) error
+
+	// LocalPath maps an object path to a filesystem path.
+	LocalPath(objectPath string) (string, error)
 }
 
 // NewSigner constructs a Signer based on the configured backend.

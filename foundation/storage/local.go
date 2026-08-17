@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"net/url"
@@ -95,6 +96,30 @@ func (s *localSigner) Delete(_ context.Context, objectPath string) error {
 
 	if err := os.Remove(fullPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("delete object: %w", err)
+	}
+	return nil
+}
+
+// Put writes the contents of r to the given object path, enforcing maxBytes.
+func (s *localSigner) Put(_ context.Context, objectPath string, r io.Reader, maxBytes int64) error {
+	fullPath, err := s.LocalPath(objectPath)
+	if err != nil {
+		return err
+	}
+
+	data, err := io.ReadAll(io.LimitReader(r, maxBytes+1))
+	if err != nil {
+		return fmt.Errorf("read upload body: %w", err)
+	}
+	if maxBytes > 0 && int64(len(data)) > maxBytes {
+		return fmt.Errorf("upload exceeds the limit of %d bytes", maxBytes)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
+		return fmt.Errorf("create object dir: %w", err)
+	}
+	if err := os.WriteFile(fullPath, data, 0o644); err != nil {
+		return fmt.Errorf("write object: %w", err)
 	}
 	return nil
 }

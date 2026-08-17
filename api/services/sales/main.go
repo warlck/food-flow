@@ -5,6 +5,7 @@ import (
 	"errors"
 	"expvar"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -21,6 +22,8 @@ import (
 	"github.com/warlck/food-flow/business/domain/addonbus/stores/addondb"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/categorybus/stores/categorydb"
+	"github.com/warlck/food-flow/business/domain/imagebus"
+	"github.com/warlck/food-flow/business/domain/imagebus/stores/imagedb"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/menuitembus/stores/menuitemdb"
 	"github.com/warlck/food-flow/business/domain/orderbus"
@@ -34,6 +37,7 @@ import (
 	"github.com/warlck/food-flow/business/sdk/sqldb"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/otel"
+	"github.com/warlck/food-flow/foundation/storage"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
@@ -104,6 +108,17 @@ func run(ctx context.Context, log *logger.Logger) error {
 		Stripe struct {
 			SecretKey     string `conf:"mask"`
 			WebhookSecret string `conf:"mask"`
+		}
+
+		Images struct {
+			Backend        string        `conf:"default:local"`
+			Bucket         string        `conf:"default:"`
+			ServiceAccount string        `conf:"default:"`
+			PublicBaseURL  string        `conf:"default:"`
+			URLTTL         time.Duration `conf:"default:15m"`
+			MaxSizeBytes   int64         `conf:"default:5242880"`
+			LocalDir       string        `conf:"default:/tmp/food-flow-images"`
+			LocalBaseURL   string        `conf:"default:/v1/images/local"`
 		}
 
 		Otel struct {
@@ -203,6 +218,39 @@ func run(ctx context.Context, log *logger.Logger) error {
 	orderBus := orderbus.NewBusiness(log, orderstore, menuitemBus, restaurantBus, addonBus, promoBus)
 
 	// -------------------------------------------------------------------------
+	// Image upload support
+
+	log.Info(ctx, "startup", "status", "initializing image storage", "backend", cfg.Images.Backend)
+
+	imageSigner, err := storage.NewSigner(ctx, storage.Config{
+		Backend:        cfg.Images.Backend,
+		Bucket:         cfg.Images.Bucket,
+		ServiceAccount: cfg.Images.ServiceAccount,
+		PublicBaseURL:  cfg.Images.PublicBaseURL,
+		URLTTL:         cfg.Images.URLTTL,
+		LocalDir:       cfg.Images.LocalDir,
+		LocalBaseURL:   cfg.Images.LocalBaseURL,
+	})
+	if err != nil {
+		return fmt.Errorf("creating image storage signer: %w", err)
+	}
+	if closer, ok := imageSigner.(io.Closer); ok {
+		defer func() {
+			if err := closer.Close(); err != nil {
+				log.Error(ctx, "shutdown", "status", "image signer close error", "err", err)
+			}
+		}()
+	}
+
+	imagestore := imagedb.NewStore(log, db)
+	imageBus := imagebus.NewBusiness(log, imagestore, imageSigner, cfg.Images.MaxSizeBytes)
+
+	var imageLocalStore storage.LocalStore
+	if ls, ok := imageSigner.(storage.LocalStore); ok {
+		imageLocalStore = ls
+	}
+
+	// -------------------------------------------------------------------------
 	// Initialize authentication support
 
 	log.Info(ctx, "startup", "status", "initializing authentication support")
@@ -243,6 +291,8 @@ func run(ctx context.Context, log *logger.Logger) error {
 				OrderBus:            orderBus,
 				AddonBus:            addonBus,
 				PromoBus:            promoBus,
+				ImageBus:            imageBus,
+				ImageLocalStore:     imageLocalStore,
 				StripeSecretKey:     cfg.Stripe.SecretKey,
 				StripeWebhookSecret: cfg.Stripe.WebhookSecret,
 			},
