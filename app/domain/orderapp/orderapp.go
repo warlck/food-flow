@@ -43,7 +43,7 @@ func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	ord, err := a.orderBus.Create(ctx, nb)
 	if err != nil {
-		if errors.Is(err, orderbus.ErrMinSpendNotMet) || strings.Contains(err.Error(), "subtotal does not meet restaurant minimum spend") || strings.Contains(err.Error(), "invalid promo code") {
+		if errors.Is(err, orderbus.ErrMinSpendNotMet) || strings.Contains(err.Error(), "invalid promo code") {
 			return errs.New(errs.InvalidArgument, err)
 		}
 		return fmt.Errorf("create: order[%+v]: %w", ord, err)
