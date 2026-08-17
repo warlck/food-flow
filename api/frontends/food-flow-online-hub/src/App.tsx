@@ -26,6 +26,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            <Route path="/" element={<Restaurant />} />
             <Route path="/restaurant/:restaurantId" element={<Restaurant />} />
             <Route path="/mobile-restaurant/:restaurantId" element={<MobileRestaurant />} />
             <Route path="/cart" element={<CartDesktop />} />
