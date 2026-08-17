@@ -345,6 +345,53 @@ class AdminApi {
   deletePromotion(id: string) {
     return this.request<void>(`/v1/promotions/${id}`, { method: 'DELETE' });
   }
+
+  requestImageUploadUrl(input: { restaurantId: string; entityType: ImageEntityType; contentType: string; sizeBytes: number }) {
+    return this.request<ImageUploadGrant>('/v1/images/upload-url', { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  completeImageUpload(imageId: string) {
+    return this.request<AdminImage>(`/v1/images/${imageId}/complete`, { method: 'POST' });
+  }
+
+  deleteImage(imageId: string) {
+    return this.request<void>(`/v1/images/${imageId}`, { method: 'DELETE' });
+  }
+
+  private async uploadToSignedUrl(grant: ImageUploadGrant, file: File) {
+    const headers = new Headers(grant.headers);
+    if (grant.uploadUrl.startsWith('/')) {
+      // Same-origin URLs come from the local development backend, whose
+      // endpoint still requires an admin token. GCS signed URLs must not
+      // carry one.
+      headers.set('Authorization', `Bearer ${await this.getToken()}`);
+    }
+    const response = await fetch(grant.uploadUrl, {
+      method: grant.method || 'PUT',
+      headers,
+      body: file,
+    });
+    if (!response.ok) {
+      throw new Error(`Upload to storage failed with ${response.status}. Please try again.`);
+    }
+  }
+
+  async uploadEntityImage(input: { restaurantId: string; entityType: ImageEntityType; file: File }): Promise<AdminImage> {
+    const grant = await this.requestImageUploadUrl({
+      restaurantId: input.restaurantId,
+      entityType: input.entityType,
+      contentType: input.file.type,
+      sizeBytes: input.file.size,
+    });
+    try {
+      await this.uploadToSignedUrl(grant, input.file);
+      return await this.completeImageUpload(grant.image.imageId);
+    } catch (err) {
+      // Best-effort cleanup so failed uploads do not linger as pending rows.
+      await this.deleteImage(grant.image.imageId).catch(() => undefined);
+      throw err;
+    }
+  }
 }
 
 export interface AdminPromotion {
@@ -378,5 +425,31 @@ export type PromotionInput = {
   usageLimit?: number | null;
   enabled: boolean;
 };
+
+export interface AdminImage {
+  imageId: string;
+  restaurantId: string;
+  entityType: ImageEntityType;
+  objectPath: string;
+  publicUrl: string;
+  contentType: string;
+  sizeBytes: number;
+  status: 'pending' | 'confirmed';
+  dateCreated: string;
+  dateUpdated: string;
+}
+
+export type ImageEntityType = 'restaurant' | 'menu_item';
+
+export interface ImageUploadGrant {
+  image: AdminImage;
+  uploadUrl: string;
+  method: string;
+  headers: Record<string, string>;
+  expiresAt: string;
+}
+
+export const IMAGE_UPLOAD_ACCEPT = 'image/jpeg,image/png,image/webp';
+export const IMAGE_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 
 export const adminApi = new AdminApi();
