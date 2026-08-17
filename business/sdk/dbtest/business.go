@@ -1,11 +1,18 @@
 package dbtest
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"time"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/addonbus/stores/addondb"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/categorybus/stores/categorydb"
+	"github.com/warlck/food-flow/business/domain/imagebus"
+	"github.com/warlck/food-flow/business/domain/imagebus/stores/imagedb"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/menuitembus/stores/menuitemdb"
 	"github.com/warlck/food-flow/business/domain/orderbus"
@@ -17,6 +24,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/domain/userbus/stores/userdb"
 	"github.com/warlck/food-flow/foundation/logger"
+	"github.com/warlck/food-flow/foundation/storage"
 )
 
 // BusDomain represents all the business domain apis needed for testing.
@@ -28,9 +36,10 @@ type BusDomain struct {
 	Order      *orderbus.Business
 	Addon      *addonbus.Business
 	Promo      *promobus.Business
+	Image      *imagebus.Business
 }
 
-func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
+func newBusDomains(log *logger.Logger, db *sqlx.DB) (BusDomain, error) {
 
 	userStorage := userdb.NewStore(log, db)
 	userBus := userbus.NewBusiness(log, userStorage)
@@ -53,6 +62,22 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	orderStorage := orderdb.NewStore(log, db)
 	orderBus := orderbus.NewBusiness(log, orderStorage, menuItemBus, restaurantBus, addonBus, promoBus)
 
+	imageStorage := imagedb.NewStore(log, db)
+	imageDir, err := os.MkdirTemp("", "ff-image-test-*")
+	if err != nil {
+		return BusDomain{}, fmt.Errorf("creating image test dir: %w", err)
+	}
+	imageSigner, err := storage.NewSigner(context.Background(), storage.Config{
+		Backend:      storage.BackendLocal,
+		LocalDir:     imageDir,
+		LocalBaseURL: "/v1/images/local",
+		URLTTL:       15 * time.Minute,
+	})
+	if err != nil {
+		return BusDomain{}, fmt.Errorf("creating image signer: %w", err)
+	}
+	imageBus := imagebus.NewBusiness(log, imageStorage, imageSigner, 0)
+
 	return BusDomain{
 		User:       userBus,
 		Restaurant: restaurantBus,
@@ -61,5 +86,6 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Order:      orderBus,
 		Addon:      addonBus,
 		Promo:      promoBus,
-	}
+		Image:      imageBus,
+	}, nil
 }

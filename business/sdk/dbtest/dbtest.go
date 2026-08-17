@@ -115,9 +115,14 @@ func New(t *testing.T, testName string) *Database {
 		t.Logf("******************** LOGS (%s) ********************\n", testName)
 	})
 
+	busDomain, err := newBusDomains(log, db)
+	if err != nil {
+		t.Fatalf("creating bus domains: %v", err)
+	}
+
 	return &Database{
 		DB:        db,
 		Log:       log,
-		BusDomain: newBusDomains(log, db),
+		BusDomain: busDomain,
 	}
 }

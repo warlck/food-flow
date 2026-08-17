@@ -251,5 +251,27 @@ ALTER TABLE orders
 ALTER TABLE restaurants
     ADD COLUMN min_spend NUMERIC(10, 2) NOT NULL DEFAULT 0.00;
 
+-- Version: 1.18
+-- Description: Create table images for tracking uploaded image objects
+CREATE TABLE images (
+    image_id      UUID        NOT NULL,
+    restaurant_id UUID        NOT NULL,
+    entity_type   TEXT        NOT NULL,
+    object_path   TEXT        NOT NULL UNIQUE,
+    public_url    TEXT        NOT NULL,
+    content_type  TEXT        NOT NULL,
+    size_bytes    BIGINT      NOT NULL DEFAULT 0,
+    status        TEXT        NOT NULL DEFAULT 'pending',
+    uploaded_by   UUID        NULL,
+    date_created  TIMESTAMP   NOT NULL,
+    date_updated  TIMESTAMP   NOT NULL,
+
+    PRIMARY KEY (image_id),
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants(restaurant_id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_images_restaurant_id ON images(restaurant_id);
+CREATE INDEX idx_images_status ON images(status);
+
 
 

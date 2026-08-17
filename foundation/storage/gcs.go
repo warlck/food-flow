@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/compute/metadata"
-	gcs "cloud.google.com/go/storage"
 	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	credentialspb "cloud.google.com/go/iam/credentials/apiv1/credentialspb"
+	gcs "cloud.google.com/go/storage"
 	"google.golang.org/api/option"
 )
 
