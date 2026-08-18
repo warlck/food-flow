@@ -164,6 +164,64 @@ func TestGCSSignUpload(t *testing.T) {
 	}
 }
 
+func TestGCSSignUploadTrimsLeadingSlash(t *testing.T) {
+	ctx := context.Background()
+	signer := newTestGCSSigner(t, "", func(_ context.Context, payload []byte) ([]byte, error) {
+		return []byte("sig"), nil
+	})
+
+	got, err := signer.SignUpload(ctx, SignRequest{
+		ObjectPath:  "/restaurants/r1/cover.png",
+		ContentType: "image/png",
+		SizeBytes:   1,
+	})
+	if err != nil {
+		t.Fatalf("signing upload: %v", err)
+	}
+
+	if got.ObjectPath != "restaurants/r1/cover.png" {
+		t.Errorf("object path = %q, want leading slash trimmed", got.ObjectPath)
+	}
+	if want := "https://storage.googleapis.com/test-bucket/restaurants/r1/cover.png"; got.PublicURL != want {
+		t.Errorf("public url = %q, want %q", got.PublicURL, want)
+	}
+
+	u, err := url.Parse(got.UploadURL)
+	if err != nil {
+		t.Fatalf("parsing upload url: %v", err)
+	}
+	if u.Path != "/test-bucket/restaurants/r1/cover.png" {
+		t.Errorf("signed url path = %q, want the trimmed object path", u.Path)
+	}
+}
+
+func TestGCSSignUploadEscapesPublicURL(t *testing.T) {
+	ctx := context.Background()
+	signer := newTestGCSSigner(t, "", func(_ context.Context, payload []byte) ([]byte, error) {
+		return []byte("sig"), nil
+	})
+
+	got, err := signer.SignUpload(ctx, SignRequest{
+		ObjectPath:  "restaurants/r1/my cover#1.png",
+		ContentType: "image/png",
+		SizeBytes:   1,
+	})
+	if err != nil {
+		t.Fatalf("signing upload: %v", err)
+	}
+
+	// The object name itself stays raw; only the URL representation escapes.
+	if got.ObjectPath != "restaurants/r1/my cover#1.png" {
+		t.Errorf("object path = %q, want the raw object name", got.ObjectPath)
+	}
+	if want := "https://storage.googleapis.com/test-bucket/restaurants/r1/my%20cover%231.png"; got.PublicURL != want {
+		t.Errorf("public url = %q, want %q", got.PublicURL, want)
+	}
+	if !strings.Contains(got.UploadURL, "my%20cover%231.png") {
+		t.Errorf("signed url = %q, want the escaped object path", got.UploadURL)
+	}
+}
+
 func TestGCSSignUploadSignError(t *testing.T) {
 	signer := newTestGCSSigner(t, "", func(context.Context, []byte) ([]byte, error) {
 		return nil, errors.New("iam unavailable")

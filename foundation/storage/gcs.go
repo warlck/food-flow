@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -88,10 +89,13 @@ func normalizePublicBaseURL(baseURL string) string {
 }
 
 // SignUpload mints a V4 signed URL for a PUT of the exact content type given.
+// Leading slashes are trimmed from the object path before signing so the
+// signed object and the returned public URL always refer to the same object.
 func (s *gcsSigner) SignUpload(ctx context.Context, req SignRequest) (SignedUpload, error) {
+	objectPath := strings.TrimLeft(req.ObjectPath, "/")
 	expires := time.Now().Add(s.ttl)
 
-	url, err := s.objects.Bucket(s.bucket).SignedURL(req.ObjectPath, &gcs.SignedURLOptions{
+	signedURL, err := s.objects.Bucket(s.bucket).SignedURL(objectPath, &gcs.SignedURLOptions{
 		Scheme:         gcs.SigningSchemeV4,
 		Method:         http.MethodPut,
 		Expires:        expires,
@@ -106,15 +110,26 @@ func (s *gcsSigner) SignUpload(ctx context.Context, req SignRequest) (SignedUplo
 	}
 
 	return SignedUpload{
-		UploadURL: url,
+		UploadURL: signedURL,
 		Method:    http.MethodPut,
 		Headers: map[string]string{
 			"Content-Type": req.ContentType,
 		},
-		PublicURL:  s.publicBaseURL + "/" + req.ObjectPath,
-		ObjectPath: req.ObjectPath,
+		PublicURL:  s.publicBaseURL + "/" + escapeObjectPath(objectPath),
+		ObjectPath: objectPath,
 		ExpiresAt:  expires,
 	}, nil
+}
+
+// escapeObjectPath percent-escapes each path segment while preserving the
+// slash separators, so object names with spaces or special characters still
+// produce a valid public URL.
+func escapeObjectPath(objectPath string) string {
+	segments := strings.Split(objectPath, "/")
+	for i, segment := range segments {
+		segments[i] = url.PathEscape(segment)
+	}
+	return strings.Join(segments, "/")
 }
 
 // Stat returns object metadata, mapping a missing object to ErrNotFound.
