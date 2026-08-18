@@ -112,9 +112,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 
 		Images struct {
 			Backend        string        `conf:"default:local"`
-			Bucket         string        `conf:"default:"`
-			ServiceAccount string        `conf:"default:"`
-			PublicBaseURL  string        `conf:"default:"`
+			Bucket         string
+			ServiceAccount string
+			PublicBaseURL  string
 			URLTTL         time.Duration `conf:"default:15m"`
 			MaxSizeBytes   int64         `conf:"default:5242880"`
 			LocalDir       string        `conf:"default:/tmp/food-flow-images"`
