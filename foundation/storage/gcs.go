@@ -20,6 +20,7 @@ import (
 type gcsSigner struct {
 	objects        *gcs.Client
 	signing        *credentials.IamCredentialsClient
+	signBlob       func(ctx context.Context, payload []byte) ([]byte, error)
 	serviceAccount string
 	bucket         string
 	publicBaseURL  string
@@ -57,14 +58,26 @@ func newGCSSigner(ctx context.Context, cfg Config) (*gcsSigner, error) {
 		return nil, fmt.Errorf("gcs backend: creating iam credentials client: %w", err)
 	}
 
-	return &gcsSigner{
+	signer := &gcsSigner{
 		objects:        objects,
 		signing:        signing,
 		serviceAccount: serviceAccount,
 		bucket:         cfg.Bucket,
 		publicBaseURL:  cfg.PublicBaseURL,
 		ttl:            cfg.URLTTL,
-	}, nil
+	}
+	signer.signBlob = func(ctx context.Context, payload []byte) ([]byte, error) {
+		resp, err := signing.SignBlob(ctx, &credentialspb.SignBlobRequest{
+			Name:    "projects/-/serviceAccounts/" + serviceAccount,
+			Payload: payload,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return resp.SignedBlob, nil
+	}
+
+	return signer, nil
 }
 
 // SignUpload mints a V4 signed URL for a PUT of the exact content type given.
@@ -78,14 +91,7 @@ func (s *gcsSigner) SignUpload(ctx context.Context, req SignRequest) (SignedUplo
 		ContentType:    req.ContentType,
 		GoogleAccessID: s.serviceAccount,
 		SignBytes: func(b []byte) ([]byte, error) {
-			resp, err := s.signing.SignBlob(ctx, &credentialspb.SignBlobRequest{
-				Name:    "projects/-/serviceAccounts/" + s.serviceAccount,
-				Payload: b,
-			})
-			if err != nil {
-				return nil, err
-			}
-			return resp.SignedBlob, nil
+			return s.signBlob(ctx, b)
 		},
 	})
 	if err != nil {
