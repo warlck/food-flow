@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight, Banknote, BarChart3, Bike, BookOpen, Boxes, Building2, Check, ChevronDown, ChevronRight,
-  ChefHat, CircleAlert, Clock3, CreditCard, Grid2X2, HelpCircle, ImageOff, LayoutDashboard, List,
+  ChefHat, CircleAlert, Clock3, Copy, CreditCard, Grid2X2, HelpCircle, ImageOff, LayoutDashboard, List,
   Loader2, Mail, MapPin, Menu, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, ReceiptText,
   Puzzle, RefreshCw, Search, Settings, ShoppingBag, Sparkles, Store, Tag, Trash2, UtensilsCrossed, XCircle,
 } from 'lucide-react';
@@ -1146,6 +1146,7 @@ function OrderDetailDialog({ order, busy, onClose, onAdvance, onMarkPaid, onCanc
 function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorState; workspace: AdminWorkspace | null; onClose: () => void; onSave: (kind: 'restaurant' | 'category' | 'item' | 'addon' | 'promotion', input: RestaurantInput | CategoryInput | MenuItemInput | AddonInput | PromotionInput, existingId?: string) => Promise<void> }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [copiedId, setCopiedId] = useState(false);
   const kind = editor?.kind;
   const existing = editor?.value;
   const addonCategoryId = editor?.kind === 'addon' ? (editor.value as AdminAddon | undefined)?.categoryId ?? editor.categoryId ?? workspace?.categories[0]?.id ?? '' : '';
@@ -1164,6 +1165,7 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
   );
 
   useEffect(() => {
+    setCopiedId(false);
     if (editor?.kind === 'restaurant') {
       const rest = editor.value as AdminRestaurant | undefined;
       setAddressInput(rest?.address ?? '');
@@ -1333,6 +1335,33 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
         {kind && <form onSubmit={submit}>
           <DialogHeader className="border-b border-[#E5E7EB] px-6 py-5 text-left"><div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]">{kind === 'restaurant' ? <Building2 size={18} /> : kind === 'category' ? <Boxes size={18} /> : kind === 'addon' ? <Puzzle size={18} /> : kind === 'promotion' ? <Tag size={18} /> : <UtensilsCrossed size={18} />}</div><DialogTitle className="text-xl tracking-[-.025em]">{titles[kind]}</DialogTitle><DialogDescription className="text-xs">{descriptions[kind]}</DialogDescription></DialogHeader>
           <div className="space-y-4 px-6 py-5">
+            {kind === 'restaurant' && (existing as AdminRestaurant | undefined)?.id && (
+              <Field label="Restaurant ID" htmlFor="restaurantId" hint="Unique system UUID">
+                <div className="flex gap-2">
+                  <Input
+                    id="restaurantId"
+                    value={(existing as AdminRestaurant).id}
+                    readOnly
+                    className="admin-input flex-1 font-mono text-xs bg-[#F9FAFB] text-[#4B5563] cursor-text select-all"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      navigator.clipboard.writeText((existing as AdminRestaurant).id);
+                      setCopiedId(true);
+                      toast.success('Restaurant UUID copied to clipboard');
+                      setTimeout(() => setCopiedId(false), 2000);
+                    }}
+                    className="border-[#E5E7EB] bg-white text-xs font-medium text-[#374151] hover:bg-[#F9FAFB] hover:text-[#111827] shrink-0"
+                    title="Copy Restaurant UUID"
+                  >
+                    {copiedId ? <Check size={14} className="mr-1 text-[#10B981]" /> : <Copy size={14} className="mr-1" />}
+                    {copiedId ? 'Copied' : 'Copy'}
+                  </Button>
+                </div>
+              </Field>
+            )}
             {kind !== 'promotion' && <Field label={kind === 'restaurant' ? 'Restaurant name' : kind === 'category' ? 'Category name' : kind === 'addon' ? 'Add-on name' : 'Item name'} htmlFor="name" required hint="3–100 characters"><Input id="name" name="name" defaultValue={existing?.name ?? ''} required minLength={3} maxLength={100} placeholder={kind === 'restaurant' ? 'e.g. Juniper Kitchen' : kind === 'category' ? 'e.g. Seasonal plates' : kind === 'addon' ? 'e.g. Extra avocado' : 'e.g. Garden harvest bowl'} className="admin-input" /></Field>}
             {kind !== 'promotion' && <Field label="Description" htmlFor="description" hint="Recommended"><Textarea id="description" name="description" defaultValue={existing?.description ?? ''} rows={3} placeholder="Add a concise, useful description" className="admin-input resize-none" /></Field>}
             {kind === 'restaurant' && <>
