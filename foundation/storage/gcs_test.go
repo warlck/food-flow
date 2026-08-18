@@ -222,6 +222,36 @@ func TestGCSSignUploadEscapesPublicURL(t *testing.T) {
 	}
 }
 
+func TestGCSEmptyObjectPathRejected(t *testing.T) {
+	ctx := context.Background()
+
+	// Any remote call or signing attempt fails the test: the guard must fire
+	// before either can happen.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected remote call: %s %s", r.Method, r.URL.EscapedPath())
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+
+	signer := newTestGCSSigner(t, srv.URL+"/storage/v1/", func(context.Context, []byte) ([]byte, error) {
+		t.Error("signBlob must not be called for an empty object path")
+		return nil, errors.New("unexpected call")
+	})
+
+	if _, err := signer.SignUpload(ctx, SignRequest{ObjectPath: "", ContentType: "image/png", SizeBytes: 1}); err == nil || err.Error() != "object path is empty" {
+		t.Errorf("sign empty path: got %v, want object path is empty", err)
+	}
+	if _, err := signer.SignUpload(ctx, SignRequest{ObjectPath: "/", ContentType: "image/png", SizeBytes: 1}); err == nil || err.Error() != "object path is empty" {
+		t.Errorf("sign slash-only path: got %v, want object path is empty", err)
+	}
+	if _, err := signer.Stat(ctx, ""); err == nil || err.Error() != "object path is empty" {
+		t.Errorf("stat empty path: got %v, want object path is empty", err)
+	}
+	if err := signer.Delete(ctx, ""); err == nil || err.Error() != "object path is empty" {
+		t.Errorf("delete empty path: got %v, want object path is empty", err)
+	}
+}
+
 func TestGCSSignUploadSignError(t *testing.T) {
 	signer := newTestGCSSigner(t, "", func(context.Context, []byte) ([]byte, error) {
 		return nil, errors.New("iam unavailable")

@@ -93,6 +93,9 @@ func normalizePublicBaseURL(baseURL string) string {
 // signed object and the returned public URL always refer to the same object.
 func (s *gcsSigner) SignUpload(ctx context.Context, req SignRequest) (SignedUpload, error) {
 	objectPath := strings.TrimLeft(req.ObjectPath, "/")
+	if err := validateObjectPath(objectPath); err != nil {
+		return SignedUpload{}, err
+	}
 	expires := time.Now().Add(s.ttl)
 
 	signedURL, err := s.objects.Bucket(s.bucket).SignedURL(objectPath, &gcs.SignedURLOptions{
@@ -121,6 +124,16 @@ func (s *gcsSigner) SignUpload(ctx context.Context, req SignRequest) (SignedUplo
 	}, nil
 }
 
+// validateObjectPath rejects empty object paths before any remote call, so
+// misconfiguration surfaces as a clean local error instead of a cryptic GCS
+// API failure.
+func validateObjectPath(objectPath string) error {
+	if objectPath == "" {
+		return errors.New("object path is empty")
+	}
+	return nil
+}
+
 // escapeObjectPath percent-escapes each path segment while preserving the
 // slash separators, so object names with spaces or special characters still
 // produce a valid public URL.
@@ -134,6 +147,10 @@ func escapeObjectPath(objectPath string) string {
 
 // Stat returns object metadata, mapping a missing object to ErrNotFound.
 func (s *gcsSigner) Stat(ctx context.Context, objectPath string) (ObjectInfo, error) {
+	if err := validateObjectPath(objectPath); err != nil {
+		return ObjectInfo{}, err
+	}
+
 	attrs, err := s.objects.Bucket(s.bucket).Object(objectPath).Attrs(ctx)
 	if err != nil {
 		if errors.Is(err, gcs.ErrObjectNotExist) {
@@ -151,6 +168,10 @@ func (s *gcsSigner) Stat(ctx context.Context, objectPath string) (ObjectInfo, er
 
 // Delete removes the object. A missing object is treated as already deleted.
 func (s *gcsSigner) Delete(ctx context.Context, objectPath string) error {
+	if err := validateObjectPath(objectPath); err != nil {
+		return err
+	}
+
 	err := s.objects.Bucket(s.bucket).Object(objectPath).Delete(ctx)
 	if err != nil && !errors.Is(err, gcs.ErrObjectNotExist) {
 		return fmt.Errorf("delete object: %w", err)
