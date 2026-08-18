@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/compute/metadata"
@@ -63,7 +64,7 @@ func newGCSSigner(ctx context.Context, cfg Config) (*gcsSigner, error) {
 		signing:        signing,
 		serviceAccount: serviceAccount,
 		bucket:         cfg.Bucket,
-		publicBaseURL:  cfg.PublicBaseURL,
+		publicBaseURL:  normalizePublicBaseURL(cfg.PublicBaseURL),
 		ttl:            cfg.URLTTL,
 	}
 	signer.signBlob = func(ctx context.Context, payload []byte) ([]byte, error) {
@@ -78,6 +79,12 @@ func newGCSSigner(ctx context.Context, cfg Config) (*gcsSigner, error) {
 	}
 
 	return signer, nil
+}
+
+// normalizePublicBaseURL strips a trailing slash so joining the base URL with
+// an object path never produces a double slash.
+func normalizePublicBaseURL(baseURL string) string {
+	return strings.TrimSuffix(baseURL, "/")
 }
 
 // SignUpload mints a V4 signed URL for a PUT of the exact content type given.

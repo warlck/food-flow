@@ -46,6 +46,25 @@ func newTestGCSSigner(t *testing.T, endpoint string, signBlob func(context.Conte
 	}
 }
 
+func TestNormalizePublicBaseURL(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"no trailing slash", "https://storage.googleapis.com/test-bucket", "https://storage.googleapis.com/test-bucket"},
+		{"trailing slash", "https://storage.googleapis.com/test-bucket/", "https://storage.googleapis.com/test-bucket"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := normalizePublicBaseURL(tc.in); got != tc.want {
+				t.Errorf("normalizePublicBaseURL(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestNewGCSSignerValidation(t *testing.T) {
 	ctx := context.Background()
 	base := Config{
