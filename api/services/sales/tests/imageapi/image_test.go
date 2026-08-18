@@ -48,7 +48,7 @@ func codeOnlyCmp(got any, exp any) string {
 }
 
 func uploadUrlTable(sd apitest.SeedData) []apitest.Table {
-	restID := sd.Restaurants[0].ID.String()
+	restID := sd.Restaurants[0].ID
 
 	table := []apitest.Table{
 		{
@@ -143,11 +143,11 @@ func uploadUrlTable(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &imageapp.NewUpload{
-				RestaurantID: "not-a-uuid",
-				EntityType:   "restaurant",
-				ContentType:  "image/jpeg",
-				SizeBytes:    100,
+			Input: map[string]any{
+				"restaurantId": "not-a-uuid",
+				"entityType":   "restaurant",
+				"contentType":  "image/jpeg",
+				"sizeBytes":    100,
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.InvalidArgument, ""),
@@ -222,7 +222,7 @@ func completeDeleteTable(sd apitest.SeedData) []apitest.Table {
 func uploadFlow(t *testing.T, test *apitest.Test, sd apitest.SeedData) {
 	h := test.Handler()
 	token := sd.Admins[0].Token
-	restID := sd.Restaurants[0].ID.String()
+	restID := sd.Restaurants[0].ID
 
 	do := func(method, url, contentType string, body []byte, decode any, wantStatus int) *httptest.ResponseRecorder {
 		t.Helper()
@@ -259,7 +259,7 @@ func uploadFlow(t *testing.T, test *apitest.Test, sd apitest.SeedData) {
 	var grant imageapp.UploadGrant
 	do(http.MethodPost, "/v1/images/upload-url", "application/json", grantBody, &grant, http.StatusCreated)
 
-	if !strings.HasPrefix(grant.UploadURL, "/v1/images/local/menu-items%2F"+restID) {
+	if !strings.HasPrefix(grant.UploadURL, "/v1/images/local/menu-items%2F"+restID.String()) {
 		t.Fatalf("unexpected upload url: %s", grant.UploadURL)
 	}
 	if !strings.HasSuffix(grant.UploadURL, ".png") {
@@ -291,7 +291,7 @@ func uploadFlow(t *testing.T, test *apitest.Test, sd apitest.SeedData) {
 
 	// 5. Query lists the confirmed image for the restaurant.
 	var list query.Result[imageapp.Image]
-	do(http.MethodGet, "/v1/images?restaurant_id="+restID+"&status=confirmed", "", nil, &list, http.StatusOK)
+	do(http.MethodGet, "/v1/images?restaurant_id="+restID.String()+"&status=confirmed", "", nil, &list, http.StatusOK)
 	if list.Total != 1 || len(list.Items) != 1 || list.Items[0].ID != confirmed.ID {
 		t.Fatalf("list = %+v, want the confirmed image", list)
 	}
@@ -307,7 +307,7 @@ func uploadFlow(t *testing.T, test *apitest.Test, sd apitest.SeedData) {
 	do(http.MethodGet, confirmed.PublicURL, "", nil, nil, http.StatusNotFound)
 
 	var after query.Result[imageapp.Image]
-	do(http.MethodGet, "/v1/images?restaurant_id="+restID, "", nil, &after, http.StatusOK)
+	do(http.MethodGet, "/v1/images?restaurant_id="+restID.String(), "", nil, &after, http.StatusOK)
 	if after.Total != 0 {
 		t.Fatalf("list after delete: total = %d, want 0", after.Total)
 	}

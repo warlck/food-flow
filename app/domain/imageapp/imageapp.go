@@ -38,18 +38,13 @@ func (a *app) createUpload(ctx context.Context, w http.ResponseWriter, r *http.R
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	restaurantID, err := uuid.Parse(req.RestaurantID)
-	if err != nil {
-		return errs.NewFieldErrors("restaurantId", err)
-	}
-
 	var uploadedBy *uuid.UUID
 	if userID, err := mid.GetUserID(ctx); err == nil {
 		uploadedBy = &userID
 	}
 
 	grant, err := a.imageBus.CreateUpload(ctx, imagebus.UploadRequest{
-		RestaurantID: restaurantID,
+		RestaurantID: req.RestaurantID,
 		EntityType:   req.EntityType,
 		ContentType:  req.ContentType,
 		SizeBytes:    req.SizeBytes,
@@ -118,7 +113,8 @@ func (a *app) query(ctx context.Context, w http.ResponseWriter, r *http.Request)
 
 	filter, err := parseFilter(qp)
 	if err != nil {
-		return err.(*errs.Error)
+		// TODO: Apply this safer error assertion pattern to other app domains (userapp, restaurantapp, etc.)
+		return errs.NewError(err)
 	}
 
 	orderBy, err := order.Parse(orderByFields, qp.OrderBy, defaultOrderBy)

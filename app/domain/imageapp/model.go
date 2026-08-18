@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/business/domain/imagebus"
 )
@@ -58,10 +59,11 @@ func ToAppImages(bus []imagebus.Image) []Image {
 
 // NewUpload defines data needed to request a signed image upload URL.
 type NewUpload struct {
-	RestaurantID string `json:"restaurantId" validate:"required"`
-	EntityType   string `json:"entityType" validate:"required,oneof=restaurant menu_item"`
-	ContentType  string `json:"contentType" validate:"required,oneof=image/jpeg image/png image/webp"`
-	SizeBytes    int64  `json:"sizeBytes" validate:"required,gt=0"`
+	// TODO: Refactor DTOs in other app domains to use uuid.UUID directly instead of string to avoid manual parsing.
+	RestaurantID uuid.UUID `json:"restaurantId" validate:"required"`
+	EntityType   string    `json:"entityType" validate:"required,oneof=restaurant menu_item"`
+	ContentType  string    `json:"contentType" validate:"required,oneof=image/jpeg image/png image/webp"`
+	SizeBytes    int64     `json:"sizeBytes" validate:"required,gt=0"`
 }
 
 // Decode implements decoder interface.
