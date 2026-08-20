@@ -209,6 +209,14 @@ func toBusUpdateUser(app UpdateUser) (userbus.UpdateUser, error) {
 		department = &dep
 	}
 
+	// The bus layer hashes the raw password without parsing it, so the
+	// password policy is enforced here at the app edge.
+	if app.Password != nil {
+		if _, err := password.Parse(*app.Password); err != nil {
+			return userbus.UpdateUser{}, fmt.Errorf("parse: %w", err)
+		}
+	}
+
 	bus := userbus.UpdateUser{
 		Name:       nme,
 		Email:      addr,

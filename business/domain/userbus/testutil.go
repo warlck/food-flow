@@ -24,7 +24,7 @@ func TestNewUsers(n int, rle role.Role) []NewUser {
 			Email:      mail.Address{Address: fmt.Sprintf("Email%d@gmail.com", idx)},
 			Roles:      []role.Role{rle},
 			Department: name.MustParseNull(fmt.Sprintf("Department%d", idx)),
-			Password:   password.MustParse("123"),
+			Password:   password.MustParse("test-password-1"),
 		}
 
 		newUsrs[i] = nu

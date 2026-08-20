@@ -28,7 +28,11 @@ func (p Password) MarshalText() ([]byte, error) {
 
 // =============================================================================
 
-var passwordRegEx = regexp.MustCompile("^[a-zA-Z0-9#@!-]{3,19}$")
+// Passwords are 12-64 printable ASCII characters (no spaces or control
+// characters). The policy is enforced at the app edge (user creation,
+// password change, useradd tooling); login bcrypt-compares the raw string
+// and never parses, so existing passwords keep working.
+var passwordRegEx = regexp.MustCompile(`^[\x21-\x7E]{12,64}$`)
 
 // Parse parses the string value and returns a password if the value complies
 // with the rules for a password.
