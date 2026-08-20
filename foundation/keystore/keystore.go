@@ -93,8 +93,8 @@ func (ks *KeyStore) LoadByJSON(document string) (int, error) {
 // LoadByFileSystem loads a set of RSA PEM files rooted inside of a directory. The
 // name of each PEM file will be used as the key id. The function also returns
 // the total number of keys in the store.
-// Example: ks.LoadRSAKeys(os.DirFS("/zarf/keys/"))
-// Example: /zarf/keys/54bb2165-71e1-41a6-af3e-7da4a0e1e2c1.pem
+// Example: ks.LoadByFileSystem(os.DirFS("/zarf/keys/"))
+// Example: /zarf/keys/local-dev.pem
 func (ks *KeyStore) LoadByFileSystem(fsys fs.FS) (int, error) {
 	fn := func(fileName string, dirEntry fs.DirEntry, err error) error {
 		if err != nil {

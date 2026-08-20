@@ -25,6 +25,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	authapi.Routes(app, authapi.Config{
-		Auth: cfg.Auth,
+		Auth:    cfg.Auth,
+		UserBus: cfg.UserBus,
 	})
 }

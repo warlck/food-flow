@@ -3,9 +3,7 @@ package mid
 import (
 	"context"
 	"net/http"
-	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/app/sdk/authclient"
@@ -43,38 +41,6 @@ func Bearer(ath *auth.Auth) web.MidHandler {
 
 			if claims.Subject == "" {
 				return errs.Newf(errs.Unauthenticated, "authorize: you are not authorized for that action, no claims")
-			}
-
-			subjectID, err := uuid.Parse(claims.Subject)
-			if err != nil {
-				return errs.Newf(errs.Unauthenticated, "parsing subject: %s", err)
-			}
-
-			ctx = setUserID(ctx, subjectID)
-			ctx = setClaims(ctx, claims)
-
-			return handler(ctx, w, r)
-		}
-
-		return h
-	}
-
-	return m
-}
-
-// Basic processes basic authentication logic.
-func Basic(ath *auth.Auth) web.MidHandler {
-	m := func(handler web.Handler) web.Handler {
-		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-
-			claims := auth.Claims{
-				RegisteredClaims: jwt.RegisteredClaims{
-					Subject:   "5a4f42ef-5439-423d-881f-4a3628efeaf1", // TODO: Remove hardcoded subject and replace with actual user ID
-					Issuer:    ath.Issuer(),
-					ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(8760 * time.Hour)),
-					IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
-				},
-				Roles: []string{"ADMIN"},
 			}
 
 			subjectID, err := uuid.Parse(claims.Subject)

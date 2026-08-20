@@ -3,14 +3,10 @@
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3000' : '');
 
-// Helper to get auth token
-const getAuthHeaders = (): HeadersInit => {
-  const token = localStorage.getItem('authToken');
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-};
+// Storefront endpoints are public; no credentials are ever attached.
+const jsonHeaders = (): HeadersInit => ({
+  'Content-Type': 'application/json',
+});
 
 // =============================================================================
 // Types
@@ -141,7 +137,7 @@ export const orderService = {
   createOrder: async (request: CreateOrderRequest): Promise<Order> => {
     const response = await fetch(`${API_BASE_URL}/v1/orders`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: jsonHeaders(),
       body: JSON.stringify(request),
     });
 
@@ -161,7 +157,7 @@ export const orderService = {
   getOrder: async (orderId: string): Promise<Order> => {
     const response = await fetch(`${API_BASE_URL}/v1/orders/${orderId}`, {
       method: 'GET',
-      headers: getAuthHeaders(),
+      headers: jsonHeaders(),
     });
 
     if (!response.ok) {
@@ -178,7 +174,7 @@ export const orderService = {
   createPaymentIntent: async (orderId: string): Promise<PaymentIntentResponse> => {
     const response = await fetch(`${API_BASE_URL}/v1/orders/${orderId}/payment/intent`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: jsonHeaders(),
     });
 
     if (!response.ok) {
@@ -212,7 +208,7 @@ export const orderService = {
 
     const response = await fetch(`${API_BASE_URL}/v1/orders/delivery-quote?${params}`, {
       method: 'GET',
-      headers: getAuthHeaders(),
+      headers: jsonHeaders(),
     });
 
     if (!response.ok) {
@@ -229,7 +225,7 @@ export const orderService = {
   confirmPayment: async (orderId: string): Promise<Order> => {
     const response = await fetch(`${API_BASE_URL}/v1/orders/${orderId}/payment/confirm`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: jsonHeaders(),
     });
 
     if (!response.ok) {
@@ -246,7 +242,7 @@ export const orderService = {
   validatePromoCode: async (request: ValidatePromoRequest): Promise<ValidatePromoResponse> => {
     const response = await fetch(`${API_BASE_URL}/v1/promotions/validate`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: jsonHeaders(),
       body: JSON.stringify(request),
     });
 

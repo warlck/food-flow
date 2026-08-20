@@ -30,7 +30,7 @@ type config struct {
 	}
 	Auth struct {
 		KeysFolder string `conf:"default:infra/keys/"`
-		DefaultKID string `conf:"default:54bb2165-71e1-41a6-af3e-7da4a0e1e2c1"`
+		DefaultKID string `conf:"default:local-dev"`
 	}
 }
 

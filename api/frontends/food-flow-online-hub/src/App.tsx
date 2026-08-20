@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/context/CartContext";
 
 import Restaurant from "./pages/Restaurant";
-import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import MobileRestaurant from "./pages/MobileRestaurant";
 import CartMobile from "./pages/CartMobile";
@@ -38,7 +37,6 @@ const App = () => (
             <Route path="/track-order/:orderId" element={<OrderTracking />} />
             <Route path="/order-tracking" element={<OrderTracking />} />
             <Route path="/order-tracking/:orderId" element={<OrderTracking />} />
-            <Route path="/login" element={<Login />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

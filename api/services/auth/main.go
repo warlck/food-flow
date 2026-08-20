@@ -18,6 +18,8 @@ import (
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/app/sdk/debug"
 	"github.com/warlck/food-flow/app/sdk/mux"
+	"github.com/warlck/food-flow/business/domain/userbus"
+	"github.com/warlck/food-flow/business/domain/userbus/stores/userdb"
 	"github.com/warlck/food-flow/business/sdk/sqldb"
 	"github.com/warlck/food-flow/foundation/keystore"
 	"github.com/warlck/food-flow/foundation/logger"
@@ -32,7 +34,10 @@ func main() {
 
 	events := logger.Events{
 		Error: func(ctx context.Context, r logger.Record) {
-			log.Info(ctx, "******* SEND ALERT *******")
+			// Stable marker for log-based alerting: wire a GCP log-based
+			// metric on jsonPayload.alert="true" for the auth service (see
+			// the production auth runbook in docs/).
+			log.Info(ctx, "SEND ALERT", "alert", true, "errorMessage", r.Message)
 		},
 	}
 
@@ -74,10 +79,13 @@ func run(ctx context.Context, log *logger.Logger) error {
 			CORSAllowedOrigins []string      `conf:"default:*"`
 		}
 		Auth struct {
-			KeysEnvVar string `conf:"mask"`
-			KeysFolder string `conf:"default:infra/keys/"`
-			ActiveKID  string `conf:"default:54bb2165-71e1-41a6-af3e-7da4a0e1e2c1"`
-			Issuer     string `conf:"default:food-flow-auth"`
+			KeysEnvVar    string        `conf:"mask"`
+			KeysFolder    string        `conf:"default:infra/keys/"`
+			ActiveKID     string        `conf:"default:local-dev"`
+			Issuer        string        `conf:"default:food-flow-auth"`
+			TokenTTL      time.Duration `conf:"default:8h"`
+			LoginMaxFails int           `conf:"default:15"`
+			LoginLockout  time.Duration `conf:"default:15m"`
 		}
 		DB struct {
 			User         string `conf:"default:postgres"`
@@ -190,16 +198,28 @@ func run(ctx context.Context, log *logger.Logger) error {
 		return errors.New("no keys exist")
 	}
 
-	authCfg := auth.Config{
-		Log:       log,
-		KeyLookup: ks,
-		Issuer:    cfg.Auth.Issuer,
+	// The active key id must resolve to a private key or the service cannot
+	// sign tokens. Fail fast at startup instead of on the first login.
+	if _, err := ks.PrivateKey(cfg.Auth.ActiveKID); err != nil {
+		return fmt.Errorf("active kid %q not found in keystore: %w", cfg.Auth.ActiveKID, err)
 	}
 
-	ath := auth.New(authCfg)
-	if err != nil {
-		return fmt.Errorf("constructing auth: %w", err)
-	}
+	// -------------------------------------------------------------------------
+	// Initialize user business support
+
+	userStore := userdb.NewStore(log, db)
+	userBus := userbus.NewBusiness(log, userStore)
+
+	ath := auth.New(auth.Config{
+		Log:           log,
+		KeyLookup:     ks,
+		UserBus:       userBus,
+		Issuer:        cfg.Auth.Issuer,
+		ActiveKID:     cfg.Auth.ActiveKID,
+		TokenTTL:      cfg.Auth.TokenTTL,
+		LoginMaxFails: cfg.Auth.LoginMaxFails,
+		LoginLockout:  cfg.Auth.LoginLockout,
+	})
 
 	// -------------------------------------------------------------------------
 	// Start Debug Service
@@ -221,10 +241,14 @@ func run(ctx context.Context, log *logger.Logger) error {
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	cfgMux := mux.Config{
-		Build: build,
-		Log:   log,
-		Auth:  ath,
-		DB:    db,
+		Build:              build,
+		Log:                log,
+		Auth:               ath,
+		DB:                 db,
+		CORSAllowedOrigins: cfg.Web.CORSAllowedOrigins,
+		BusConfig: mux.BusConfig{
+			UserBus: userBus,
+		},
 	}
 
 	api := http.Server{

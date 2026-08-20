@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -44,32 +45,44 @@ type KeyLookup interface {
 
 // Config represents information required to initialize auth.
 type Config struct {
-	Log       *logger.Logger
-	UserBus   *userbus.Business
-	KeyLookup KeyLookup
-	Issuer    string
+	Log           *logger.Logger
+	UserBus       *userbus.Business
+	KeyLookup     KeyLookup
+	Issuer        string
+	ActiveKID     string
+	TokenTTL      time.Duration
+	LoginMaxFails int
+	LoginLockout  time.Duration
 }
 
 // Auth is used to authenticate clients. It can generate a token for a
 // set of user claims and recreate the claims by parsing the token.
 type Auth struct {
-	log       *logger.Logger
-	keyLookup KeyLookup
-	userBus   *userbus.Business
-	method    jwt.SigningMethod
-	parser    *jwt.Parser
-	issuer    string
+	log           *logger.Logger
+	keyLookup     KeyLookup
+	userBus       *userbus.Business
+	method        jwt.SigningMethod
+	parser        *jwt.Parser
+	issuer        string
+	activeKID     string
+	tokenTTL      time.Duration
+	loginMaxFails int
+	loginLockout  time.Duration
 }
 
 // New creates an Auth to support authentication/authorization.
 func New(cfg Config) *Auth {
 	a := Auth{
-		log:       cfg.Log,
-		keyLookup: cfg.KeyLookup,
-		userBus:   cfg.UserBus,
-		method:    jwt.GetSigningMethod(jwt.SigningMethodRS256.Name),
-		parser:    jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Name})),
-		issuer:    cfg.Issuer,
+		log:           cfg.Log,
+		keyLookup:     cfg.KeyLookup,
+		userBus:       cfg.UserBus,
+		method:        jwt.GetSigningMethod(jwt.SigningMethodRS256.Name),
+		parser:        jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Name})),
+		issuer:        cfg.Issuer,
+		activeKID:     cfg.ActiveKID,
+		tokenTTL:      cfg.TokenTTL,
+		loginMaxFails: cfg.LoginMaxFails,
+		loginLockout:  cfg.LoginLockout,
 	}
 
 	return &a
@@ -78,6 +91,28 @@ func New(cfg Config) *Auth {
 // Issuer provides the configured issuer used to authenticate tokens.
 func (a *Auth) Issuer() string {
 	return a.issuer
+}
+
+// ActiveKID provides the configured key id used to sign new tokens.
+func (a *Auth) ActiveKID() string {
+	return a.activeKID
+}
+
+// TokenTTL provides the configured lifetime of newly issued tokens.
+func (a *Auth) TokenTTL() time.Duration {
+	return a.tokenTTL
+}
+
+// LoginMaxFails provides the number of consecutive login failures after which
+// further attempts are locked out. Zero or less disables the lockout.
+func (a *Auth) LoginMaxFails() int {
+	return a.loginMaxFails
+}
+
+// LoginLockout provides how long login attempts are locked out for once the
+// failure limit is reached.
+func (a *Auth) LoginLockout() time.Duration {
+	return a.loginLockout
 }
 
 // GenerateToken generates a signed JWT token string representing the user Claims.
@@ -139,7 +174,9 @@ func (a *Auth) Authenticate(ctx context.Context, bearerToken string) (Claims, er
 	}
 
 	if err := a.opaPolicyEvaluation(ctx, regoAuthentication, RuleAuthenticate, input, ErrInvalidAuthOPA); err != nil {
-		a.log.Info(ctx, "**Authenticate-FAILED**", "token", jwtUnverified, "userID", claims.Subject)
+		// Never log the token itself: bearer tokens in logs are credential
+		// leakage. The subject and reason are enough to debug.
+		a.log.Info(ctx, "**Authenticate-FAILED**", "userID", claims.Subject, "err", err)
 		return Claims{}, fmt.Errorf("authentication failed: %w", err)
 	}
 

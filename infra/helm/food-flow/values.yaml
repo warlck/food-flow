@@ -115,6 +115,14 @@ auth:
     pullPolicy: IfNotPresent
   strategy:
     type: Recreate
+  # Local/kind signing key configuration. The key JSON lives in a Secret
+  # (created by `make dev-auth-keys`) and is injected as
+  # AUTH_AUTH_KEYS_ENV_VAR; activeKID must match the key id inside it.
+  # Staging and production inject the key from GCP Secret Manager instead
+  # (see infra/gcp/bootstrap-auth-secret.sh) and do not use these values.
+  activeKID: "local-dev"
+  # Leave empty to use the release-scoped Secret name (<release>-auth-keys).
+  keysSecretName: ""
   ports:
     - name: auth
       containerPort: 6000
