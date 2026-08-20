@@ -39,12 +39,14 @@ func Test_Login(t *testing.T) {
 	db := dbtest.New(t, "Test_Login")
 
 	ath := auth.New(auth.Config{
-		Log:       db.Log,
-		KeyLookup: newTestKeyStore(t),
-		UserBus:   db.BusDomain.User,
-		Issuer:    testIssuer,
-		ActiveKID: testKID,
-		TokenTTL:  testTTL,
+		Log:           db.Log,
+		KeyLookup:     newTestKeyStore(t),
+		UserBus:       db.BusDomain.User,
+		Issuer:        testIssuer,
+		ActiveKID:     testKID,
+		TokenTTL:      testTTL,
+		LoginMaxFails: 3,
+		LoginLockout:  15 * time.Minute,
 	})
 
 	app := mux.WebAPI(mux.Config{
@@ -66,14 +68,57 @@ func Test_Login(t *testing.T) {
 	admin := seedUser(t, ctx, db.BusDomain.User, testEmail, role.Admin, true)
 	seedUser(t, ctx, db.BusDomain.User, "login-user@example.com", role.User, true)
 	seedUser(t, ctx, db.BusDomain.User, "login-disabled@example.com", role.Admin, false)
+	seedUser(t, ctx, db.BusDomain.User, "login-lockout@example.com", role.Admin, true)
 
 	t.Run("valid admin credentials", testLoginSuccess(app, ath, admin))
-	t.Run("wrong password", testLoginFailure(app, `{"email":"`+testEmail+`","password":"WrongPassword1"}`, http.StatusUnauthorized, "invalid credentials"))
+	t.Run("wrong password", testLoginFailure(app, `{"email":"`+testEmail+`","password":"**************"}`, http.StatusUnauthorized, "invalid credentials"))
 	t.Run("unknown email", testLoginFailure(app, `{"email":"nobody@example.com","password":"`+testPassword+`"}`, http.StatusUnauthorized, "invalid credentials"))
 	t.Run("disabled user", testLoginFailure(app, `{"email":"login-disabled@example.com","password":"`+testPassword+`"}`, http.StatusUnauthorized, "invalid credentials"))
+	t.Run("malformed email", testLoginFailure(app, `{"email":"not-an-email","password":"`+testPassword+`"}`, http.StatusUnauthorized, "invalid credentials"))
 	t.Run("non-admin user", testLoginFailure(app, `{"email":"login-user@example.com","password":"`+testPassword+`"}`, http.StatusForbidden, "admin role required"))
 	t.Run("malformed json", testLoginFailure(app, `{`, http.StatusBadRequest, ""))
 	t.Run("missing password", testLoginFailure(app, `{"email":"`+testEmail+`"}`, http.StatusBadRequest, ""))
+	t.Run("lockout after repeated failures", testLoginLockout(app))
+}
+
+func testLoginLockout(app *web.App) func(t *testing.T) {
+	return func(t *testing.T) {
+		wrongPassword := `{"email":"login-lockout@example.com","password":"WrongPassw0rd"}`
+
+		// The configured test limit is 3 consecutive failures.
+		for i := range 3 {
+			rec := httptest.NewRecorder()
+			app.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(wrongPassword)))
+
+			if rec.Code != http.StatusUnauthorized {
+				t.Fatalf("attempt %d: status = %d, want %d, body: %s", i+1, rec.Code, http.StatusUnauthorized, rec.Body.String())
+			}
+		}
+
+		// The next attempts are locked out, even with the correct password.
+		for _, body := range []string{
+			wrongPassword,
+			`{"email":"login-lockout@example.com","password":"` + testPassword + `"}`,
+		} {
+			rec := httptest.NewRecorder()
+			app.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(body)))
+
+			if rec.Code != http.StatusTooManyRequests {
+				t.Fatalf("locked out: status = %d, want %d, body: %s", rec.Code, http.StatusTooManyRequests, rec.Body.String())
+			}
+
+			var errResp struct {
+				Message string `json:"message"`
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &errResp); err != nil {
+				t.Fatalf("decoding error response: %s", err)
+			}
+
+			if errResp.Message != "too many attempts" {
+				t.Errorf("message = %q, want %q", errResp.Message, "too many attempts")
+			}
+		}
+	}
 }
 
 func testLoginSuccess(app *web.App, ath *auth.Auth, admin userbus.User) func(t *testing.T) {

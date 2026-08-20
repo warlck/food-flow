@@ -2,6 +2,7 @@ package authapi
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/mail"
 	"slices"
@@ -17,38 +18,63 @@ import (
 	"github.com/warlck/food-flow/foundation/web"
 )
 
+// maxLoginBodyBytes caps the login request body. Credentials need a few
+// hundred bytes at most; anything larger is rejected during decode.
+const maxLoginBodyBytes = 4096
+
 type api struct {
-	auth    *auth.Auth
-	userBus *userbus.Business
+	auth     *auth.Auth
+	userBus  *userbus.Business
+	throttle *loginThrottle
 }
 
 func newAPI(a *auth.Auth, userBus *userbus.Business) *api {
-	return &api{
+	api := api{
 		auth:    a,
 		userBus: userBus,
 	}
+
+	if a.LoginMaxFails() > 0 {
+		api.throttle = newLoginThrottle(a.LoginMaxFails(), a.LoginLockout())
+	}
+
+	return &api
 }
 
 // login authenticates a user by email and password and issues a JWT signed
 // with the server's active key. Only users with the ADMIN role can log in.
 func (a *api) login(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	r.Body = http.MaxBytesReader(w, r.Body, maxLoginBodyBytes)
+
 	var lr LoginRequest
 	if err := web.Decode(r, &lr); err != nil {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
+	ip := clientIP(r)
+
+	if a.throttle != nil && a.throttle.locked(lr.Email, ip) {
+		return errs.New(errs.TooManyRequests, errTooManyAttempts)
+	}
+
 	email, err := mail.ParseAddress(lr.Email)
 	if err != nil {
-		return errs.New(errs.InvalidArgument, err)
+		a.recordFailure(lr.Email, ip)
+		return errs.New(errs.Unauthenticated, errInvalidCredentials)
 	}
 
 	usr, err := a.userBus.Authenticate(ctx, *email, lr.Password)
 	if err != nil {
+		a.recordFailure(lr.Email, ip)
 		return errs.New(errs.Unauthenticated, errInvalidCredentials)
 	}
 
 	if !slices.Contains(usr.Roles, role.Admin) {
 		return errs.New(errs.PermissionDenied, errAdminRequired)
+	}
+
+	if a.throttle != nil {
+		a.throttle.recordSuccess(lr.Email, ip)
 	}
 
 	now := time.Now().UTC()
@@ -75,6 +101,26 @@ func (a *api) login(ctx context.Context, w http.ResponseWriter, r *http.Request)
 	}
 
 	return web.Respond(ctx, w, resp, http.StatusOK)
+}
+
+func (a *api) recordFailure(email, ip string) {
+	if a.throttle != nil {
+		a.throttle.recordFailure(email, ip)
+	}
+}
+
+// clientIP extracts the client address used as the throttle's secondary key.
+// Only the direct peer address is used: X-Forwarded-For is client-spoofable,
+// so trusting it would let an attacker reset their own lockout by rotating
+// the header. Behind the admin nginx proxy the peer address is constant,
+// which effectively makes the lockout per-email — the intended behavior.
+func clientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+
+	return host
 }
 
 func (a *api) authenticate(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
