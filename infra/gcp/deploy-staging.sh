@@ -109,7 +109,7 @@ gcloud run deploy staging-auth \
     --service-account "${WORKLOAD_SERVICE_ACCOUNT}" \
     --remove-env-vars AUTH_DB_DISABLE_TLS \
     --update-env-vars "AUTH_DB_HOST=${POSTGRES_HOST},AUTH_AUTH_ACTIVE_KID=${AUTH_ACTIVE_KID}" \
-    --set-secrets "AUTH_AUTH_KEYS_ENV_VAR=${AUTH_SECRET_NAME}:latest" \
+    --set-secrets "AUTH_AUTH_KEYS_ENV_VAR=${AUTH_SECRET_NAME}:latest,AUTH_DB_PASSWORD=staging-postgres-password:latest" \
     --min-instances 0 \
     --max-instances 1 \
     --cpu-throttling \
