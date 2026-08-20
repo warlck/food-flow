@@ -31,7 +31,7 @@ func (ks *strictKeyStore) PublicKey(k string) (string, error) {
 	return publicKeyPEM, nil
 }
 
-func hardeningClaims(issuer string, exp time.Time) auth.Claims {
+func tokenClaims(issuer string, exp time.Time) auth.Claims {
 	return auth.Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    issuer,
@@ -43,7 +43,7 @@ func hardeningClaims(issuer string, exp time.Time) auth.Claims {
 	}
 }
 
-func signHardeningToken(t *testing.T, method jwt.SigningMethod, kidHeader string, claims auth.Claims, key any) string {
+func signToken(t *testing.T, method jwt.SigningMethod, kidHeader string, claims auth.Claims, key any) string {
 	t.Helper()
 
 	token := jwt.NewWithClaims(method, claims)
@@ -57,10 +57,10 @@ func signHardeningToken(t *testing.T, method jwt.SigningMethod, kidHeader string
 	return str
 }
 
-// Test_AuthenticateHardening proves the token verification chain (parser
+// Test_AuthenticateRejects proves the token verification chain (parser
 // pinned to RS256 plus the OPA io.jwt.decode_verify policy) rejects the
 // classic JWT attack classes.
-func Test_AuthenticateHardening(t *testing.T) {
+func Test_AuthenticateRejects(t *testing.T) {
 	log := newUnit(t)
 
 	ath := auth.New(auth.Config{
@@ -77,55 +77,55 @@ func Test_AuthenticateHardening(t *testing.T) {
 	}
 
 	validClaims := func() auth.Claims {
-		return hardeningClaims("foodflow.test", time.Now().UTC().Add(time.Hour))
+		return tokenClaims("foodflow.test", time.Now().UTC().Add(time.Hour))
 	}
 
 	t.Run("valid token accepted", func(t *testing.T) {
-		token := signHardeningToken(t, jwt.SigningMethodRS256, kid, validClaims(), rsaKey)
+		token := signToken(t, jwt.SigningMethodRS256, kid, validClaims(), rsaKey)
 		if _, err := ath.Authenticate(context.Background(), "Bearer "+token); err != nil {
 			t.Fatalf("valid token should authenticate: %s", err)
 		}
 	})
 
 	t.Run("alg none rejected", func(t *testing.T) {
-		token := signHardeningToken(t, jwt.SigningMethodNone, kid, validClaims(), jwt.UnsafeAllowNoneSignatureType)
+		token := signToken(t, jwt.SigningMethodNone, kid, validClaims(), jwt.UnsafeAllowNoneSignatureType)
 		if _, err := ath.Authenticate(context.Background(), "Bearer "+token); err == nil {
 			t.Fatal("alg=none token must be rejected")
 		}
 	})
 
 	t.Run("wrong alg HS256 rejected", func(t *testing.T) {
-		token := signHardeningToken(t, jwt.SigningMethodHS256, kid, validClaims(), []byte("hmac-secret"))
+		token := signToken(t, jwt.SigningMethodHS256, kid, validClaims(), []byte("hmac-secret"))
 		if _, err := ath.Authenticate(context.Background(), "Bearer "+token); err == nil {
 			t.Fatal("HS256-signed token must be rejected")
 		}
 	})
 
 	t.Run("unknown kid rejected", func(t *testing.T) {
-		token := signHardeningToken(t, jwt.SigningMethodRS256, "no-such-kid", validClaims(), rsaKey)
+		token := signToken(t, jwt.SigningMethodRS256, "no-such-kid", validClaims(), rsaKey)
 		if _, err := ath.Authenticate(context.Background(), "Bearer "+token); err == nil {
 			t.Fatal("token with unknown kid must be rejected")
 		}
 	})
 
 	t.Run("wrong issuer rejected", func(t *testing.T) {
-		claims := hardeningClaims("evil-issuer", time.Now().UTC().Add(time.Hour))
-		token := signHardeningToken(t, jwt.SigningMethodRS256, kid, claims, rsaKey)
+		claims := tokenClaims("evil-issuer", time.Now().UTC().Add(time.Hour))
+		token := signToken(t, jwt.SigningMethodRS256, kid, claims, rsaKey)
 		if _, err := ath.Authenticate(context.Background(), "Bearer "+token); err == nil {
 			t.Fatal("token with wrong issuer must be rejected")
 		}
 	})
 
 	t.Run("expired token rejected", func(t *testing.T) {
-		claims := hardeningClaims("foodflow.test", time.Now().UTC().Add(-time.Hour))
-		token := signHardeningToken(t, jwt.SigningMethodRS256, kid, claims, rsaKey)
+		claims := tokenClaims("foodflow.test", time.Now().UTC().Add(-time.Hour))
+		token := signToken(t, jwt.SigningMethodRS256, kid, claims, rsaKey)
 		if _, err := ath.Authenticate(context.Background(), "Bearer "+token); err == nil {
 			t.Fatal("expired token must be rejected")
 		}
 	})
 
 	t.Run("tampered signature rejected", func(t *testing.T) {
-		token := signHardeningToken(t, jwt.SigningMethodRS256, kid, validClaims(), rsaKey)
+		token := signToken(t, jwt.SigningMethodRS256, kid, validClaims(), rsaKey)
 
 		parts := strings.Split(token, ".")
 		sig := []byte(parts[2])
