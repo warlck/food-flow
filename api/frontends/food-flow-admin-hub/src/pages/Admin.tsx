@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight, Banknote, BarChart3, Bike, BookOpen, Boxes, Building2, Check, ChevronDown, ChevronRight,
-  ChefHat, CircleAlert, Clock3, CreditCard, Grid2X2, HelpCircle, ImageOff, LayoutDashboard, List,
+  ChefHat, CircleAlert, Clock3, Copy, CreditCard, Grid2X2, HelpCircle, ImageOff, LayoutDashboard, List,
   Loader2, LogOut, Mail, MapPin, Menu, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, ReceiptText,
   Puzzle, RefreshCw, Search, Settings, ShoppingBag, Sparkles, Store, Tag, Trash2, UtensilsCrossed, XCircle,
 } from 'lucide-react';
@@ -462,11 +462,10 @@ export default function Admin() {
                 </Select>
                 {workspace && (
                   <span
-                    className={`rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[.1em] ${
-                      workspace.restaurant.enabled
+                    className={`rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[.1em] ${workspace.restaurant.enabled
                         ? 'bg-[#E8F5E9] text-[#2E7D32]'
                         : 'bg-[#FFEBEE] text-[#C62828]'
-                    }`}
+                      }`}
                   >
                     {workspace.restaurant.enabled ? 'Live' : 'Paused'}
                   </span>
@@ -513,110 +512,110 @@ export default function Admin() {
         <div className="admin-content">
           {section === 'menu' ? (
             <>
-          <section className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-            <div>
-              <div className="mb-1.5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.14em] text-[#FF4500]"><BookOpen size={13} /> Menu workspace</div>
-              <h1 className="text-[28px] font-bold tracking-[-.035em] text-[#333333] sm:text-[32px]">Build a menu people remember.</h1>
-              <p className="mt-1 max-w-2xl text-[13px] text-[#6B7280]">Organise categories, curate every dish, and keep availability accurate from one calm workspace.</p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" className="h-9 gap-2 rounded-lg border-[#E5E7EB] bg-white text-xs hover:border-[#FF8C42] hover:bg-[#FFF7F3] hover:text-[#FF4500]" onClick={() => setEditor({ kind: 'category' })} disabled={!workspace}><Plus size={15} /> Add category</Button>
-            </div>
-          </section>
-
-          {loading ? (
-            <div className="flex min-h-[420px] items-center justify-center"><Loader2 className="animate-spin text-[#FF4500]" size={28} /></div>
-          ) : !workspace ? (
-            <EmptyRestaurant onCreate={() => setEditor({ kind: 'restaurant' })} />
-          ) : (
-            <>
-              <section className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
-                <Stat icon={Boxes} label="Categories" value={workspace.categories.length} note={`${workspace.addons.length} add-ons configured`} />
-                <Stat icon={ShoppingBag} label="Menu items" value={workspace.menuItems.length} note={`${formatCurrency(workspace.menuItems.reduce((sum, item) => sum + item.price, 0) / Math.max(workspace.menuItems.length, 1))} avg. price`} />
-                <Stat icon={PackageCheck} label="Available now" value={`${availabilityPercent}%`} note={`${availableItems} items can be ordered`} progress={availabilityPercent} />
-                <Stat icon={CircleAlert} label="Needs attention" value={unavailableItems} note={unavailableItems ? 'Unavailable items' : 'Everything looks good'} attention={unavailableItems > 0} />
+              <section className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                <div>
+                  <div className="mb-1.5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.14em] text-[#FF4500]"><BookOpen size={13} /> Menu workspace</div>
+                  <h1 className="text-[28px] font-bold tracking-[-.035em] text-[#333333] sm:text-[32px]">Build a menu people remember.</h1>
+                  <p className="mt-1 max-w-2xl text-[13px] text-[#6B7280]">Organise categories, curate every dish, and keep availability accurate from one calm workspace.</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="h-9 gap-2 rounded-lg border-[#E5E7EB] bg-white text-xs hover:border-[#FF8C42] hover:bg-[#FFF7F3] hover:text-[#FF4500]" onClick={() => setEditor({ kind: 'category' })} disabled={!workspace}><Plus size={15} /> Add category</Button>
+                </div>
               </section>
 
-              <SetupGuide restaurant={workspace.restaurant} categoryCount={workspace.categories.length} itemCount={workspace.menuItems.length} />
+              {loading ? (
+                <div className="flex min-h-[420px] items-center justify-center"><Loader2 className="animate-spin text-[#FF4500]" size={28} /></div>
+              ) : !workspace ? (
+                <EmptyRestaurant onCreate={() => setEditor({ kind: 'restaurant' })} />
+              ) : (
+                <>
+                  <section className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
+                    <Stat icon={Boxes} label="Categories" value={workspace.categories.length} note={`${workspace.addons.length} add-ons configured`} />
+                    <Stat icon={ShoppingBag} label="Menu items" value={workspace.menuItems.length} note={`${formatCurrency(workspace.menuItems.reduce((sum, item) => sum + item.price, 0) / Math.max(workspace.menuItems.length, 1))} avg. price`} />
+                    <Stat icon={PackageCheck} label="Available now" value={`${availabilityPercent}%`} note={`${availableItems} items can be ordered`} progress={availabilityPercent} />
+                    <Stat icon={CircleAlert} label="Needs attention" value={unavailableItems} note={unavailableItems ? 'Unavailable items' : 'Everything looks good'} attention={unavailableItems > 0} />
+                  </section>
 
-              <section className="admin-panel mt-6 overflow-hidden rounded-2xl">
-                <div className="flex flex-col border-b border-[#E5E7EB] lg:flex-row">
-                  <CategoryRail
+                  <SetupGuide restaurant={workspace.restaurant} categoryCount={workspace.categories.length} itemCount={workspace.menuItems.length} />
+
+                  <section className="admin-panel mt-6 overflow-hidden rounded-2xl">
+                    <div className="flex flex-col border-b border-[#E5E7EB] lg:flex-row">
+                      <CategoryRail
+                        categories={workspace.categories}
+                        counts={categoryCounts}
+                        total={workspace.menuItems.length}
+                        selected={selectedCategory}
+                        onSelect={setSelectedCategory}
+                        onAdd={() => setEditor({ kind: 'category' })}
+                        onAddItem={(catId) => setEditor({ kind: 'item', categoryId: catId })}
+                        onEdit={(category) => setEditor({ kind: 'category', value: category })}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-col gap-3 border-b border-[#E5E7EB] p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                          <div>
+                            <h2 className="text-[17px] font-bold tracking-[-.02em]">{selectedCategoryName}</h2>
+                            <p className="mt-0.5 text-[11px] text-[#9CA3AF]">{filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'} shown</p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              className="admin-primary h-9 gap-1.5 rounded-lg px-3 text-xs"
+                              onClick={() => setEditor({ kind: 'item', categoryId: selectedCategory !== 'all' ? selectedCategory : undefined })}
+                              disabled={!workspace.categories.length}
+                            >
+                              <Plus size={15} /> New Menu Item
+                            </Button>
+                            <div className="relative min-w-[180px] flex-1 sm:w-[200px] sm:flex-none">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" size={15} />
+                              <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search menu" className="admin-input h-9 rounded-lg pl-9 text-xs" />
+                            </div>
+                            <Select value={availability} onValueChange={setAvailability}>
+                              <SelectTrigger className="admin-input h-9 w-[126px] rounded-lg text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent><SelectItem value="all">All stock</SelectItem><SelectItem value="available">Available</SelectItem><SelectItem value="unavailable">Unavailable</SelectItem></SelectContent>
+                            </Select>
+                            <div className="flex rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] p-0.5">
+                              <button onClick={() => setView('grid')} className={`rounded-md p-1.5 ${view === 'grid' ? 'bg-white text-[#FF4500] shadow-sm' : 'text-[#9CA3AF]'}`} aria-label="Grid view"><Grid2X2 size={15} /></button>
+                              <button onClick={() => setView('list')} className={`rounded-md p-1.5 ${view === 'list' ? 'bg-white text-[#FF4500] shadow-sm' : 'text-[#9CA3AF]'}`} aria-label="List view"><List size={15} /></button>
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => loadWorkspace(selectedId, true)} disabled={refreshing} aria-label="Refresh workspace"><RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /></Button>
+                          </div>
+                        </div>
+
+                        <div className="admin-empty-pattern min-h-[440px] p-4 sm:p-5">
+                          {filteredItems.length ? (
+                            <div className={view === 'grid' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3' : 'space-y-3'}>
+                              {filteredItems.map((item) => (
+                                <MenuCard key={item.id} item={item} category={workspace.categories.find((category) => category.id === item.categoryId)} view={view} onEdit={() => setEditor({ kind: 'item', value: item })} onDelete={() => deleteItem(item)} onAvailability={(value) => toggleAvailability(item, value)} />
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="flex min-h-[390px] flex-col items-center justify-center px-5 text-center">
+                              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#FED7C7] bg-white text-[#FF4500] shadow-sm"><UtensilsCrossed size={23} /></div>
+                              <h3 className="text-base font-bold">No menu items here yet</h3>
+                              <p className="mt-1 max-w-sm text-xs leading-relaxed text-[#6B7280]">Create a dish in this category or clear your filters to see the rest of the menu.</p>
+                              <Button className="admin-primary mt-4 h-9 gap-2 text-xs" onClick={() => setEditor({ kind: 'item' })} disabled={!workspace.categories.length}><Plus size={15} /> Create menu item</Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-3 bg-[#FAFAFA] px-5 py-3 text-[10px] text-[#6B7280]">
+                      <span>Changes update the customer menu immediately.</span>
+                      <span className="flex items-center gap-1.5"><Clock3 size={12} /> Last synced just now</span>
+                    </div>
+                  </section>
+
+                  <AddonManager
                     categories={workspace.categories}
-                    counts={categoryCounts}
-                    total={workspace.menuItems.length}
-                    selected={selectedCategory}
-                    onSelect={setSelectedCategory}
-                    onAdd={() => setEditor({ kind: 'category' })}
-                    onAddItem={(catId) => setEditor({ kind: 'item', categoryId: catId })}
-                    onEdit={(category) => setEditor({ kind: 'category', value: category })}
+                    addons={workspace.addons}
+                    selectedCategory={addonCategory}
+                    onCategoryChange={setAddonCategory}
+                    onCreate={() => setEditor({ kind: 'addon', categoryId: addonCategory || workspace.categories[0]?.id })}
+                    onEdit={(addon) => setEditor({ kind: 'addon', value: addon })}
+                    onDelete={deleteAddon}
+                    onAvailability={toggleAddonAvailability}
                   />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-col gap-3 border-b border-[#E5E7EB] p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-                      <div>
-                        <h2 className="text-[17px] font-bold tracking-[-.02em]">{selectedCategoryName}</h2>
-                        <p className="mt-0.5 text-[11px] text-[#9CA3AF]">{filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'} shown</p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          className="admin-primary h-9 gap-1.5 rounded-lg px-3 text-xs"
-                          onClick={() => setEditor({ kind: 'item', categoryId: selectedCategory !== 'all' ? selectedCategory : undefined })}
-                          disabled={!workspace.categories.length}
-                        >
-                          <Plus size={15} /> New Menu Item
-                        </Button>
-                        <div className="relative min-w-[180px] flex-1 sm:w-[200px] sm:flex-none">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" size={15} />
-                          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search menu" className="admin-input h-9 rounded-lg pl-9 text-xs" />
-                        </div>
-                        <Select value={availability} onValueChange={setAvailability}>
-                          <SelectTrigger className="admin-input h-9 w-[126px] rounded-lg text-xs"><SelectValue /></SelectTrigger>
-                          <SelectContent><SelectItem value="all">All stock</SelectItem><SelectItem value="available">Available</SelectItem><SelectItem value="unavailable">Unavailable</SelectItem></SelectContent>
-                        </Select>
-                        <div className="flex rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] p-0.5">
-                          <button onClick={() => setView('grid')} className={`rounded-md p-1.5 ${view === 'grid' ? 'bg-white text-[#FF4500] shadow-sm' : 'text-[#9CA3AF]'}`} aria-label="Grid view"><Grid2X2 size={15} /></button>
-                          <button onClick={() => setView('list')} className={`rounded-md p-1.5 ${view === 'list' ? 'bg-white text-[#FF4500] shadow-sm' : 'text-[#9CA3AF]'}`} aria-label="List view"><List size={15} /></button>
-                        </div>
-                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => loadWorkspace(selectedId, true)} disabled={refreshing} aria-label="Refresh workspace"><RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /></Button>
-                      </div>
-                    </div>
-
-                    <div className="admin-empty-pattern min-h-[440px] p-4 sm:p-5">
-                      {filteredItems.length ? (
-                        <div className={view === 'grid' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3' : 'space-y-3'}>
-                          {filteredItems.map((item) => (
-                            <MenuCard key={item.id} item={item} category={workspace.categories.find((category) => category.id === item.categoryId)} view={view} onEdit={() => setEditor({ kind: 'item', value: item })} onDelete={() => deleteItem(item)} onAvailability={(value) => toggleAvailability(item, value)} />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex min-h-[390px] flex-col items-center justify-center px-5 text-center">
-                          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#FED7C7] bg-white text-[#FF4500] shadow-sm"><UtensilsCrossed size={23} /></div>
-                          <h3 className="text-base font-bold">No menu items here yet</h3>
-                          <p className="mt-1 max-w-sm text-xs leading-relaxed text-[#6B7280]">Create a dish in this category or clear your filters to see the rest of the menu.</p>
-                          <Button className="admin-primary mt-4 h-9 gap-2 text-xs" onClick={() => setEditor({ kind: 'item' })} disabled={!workspace.categories.length}><Plus size={15} /> Create menu item</Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-3 bg-[#FAFAFA] px-5 py-3 text-[10px] text-[#6B7280]">
-                  <span>Changes update the customer menu immediately.</span>
-                  <span className="flex items-center gap-1.5"><Clock3 size={12} /> Last synced just now</span>
-                </div>
-              </section>
-
-              <AddonManager
-                categories={workspace.categories}
-                addons={workspace.addons}
-                selectedCategory={addonCategory}
-                onCategoryChange={setAddonCategory}
-                onCreate={() => setEditor({ kind: 'addon', categoryId: addonCategory || workspace.categories[0]?.id })}
-                onEdit={(addon) => setEditor({ kind: 'addon', value: addon })}
-                onDelete={deleteAddon}
-                onAvailability={toggleAddonAvailability}
-              />
-            </>
-          )}
+                </>
+              )}
             </>
           ) : section === 'promotions' ? (
             <PromotionsSection
@@ -1158,6 +1157,7 @@ function OrderDetailDialog({ order, busy, onClose, onAdvance, onMarkPaid, onCanc
 function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorState; workspace: AdminWorkspace | null; onClose: () => void; onSave: (kind: 'restaurant' | 'category' | 'item' | 'addon' | 'promotion', input: RestaurantInput | CategoryInput | MenuItemInput | AddonInput | PromotionInput, existingId?: string) => Promise<void> }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [copiedId, setCopiedId] = useState(false);
   const kind = editor?.kind;
   const existing = editor?.value;
   const addonCategoryId = editor?.kind === 'addon' ? (editor.value as AdminAddon | undefined)?.categoryId ?? editor.categoryId ?? workspace?.categories[0]?.id ?? '' : '';
@@ -1176,6 +1176,7 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
   );
 
   useEffect(() => {
+    setCopiedId(false);
     if (editor?.kind === 'restaurant') {
       const rest = editor.value as AdminRestaurant | undefined;
       setAddressInput(rest?.address ?? '');
@@ -1345,6 +1346,33 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
         {kind && <form onSubmit={submit}>
           <DialogHeader className="border-b border-[#E5E7EB] px-6 py-5 text-left"><div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]">{kind === 'restaurant' ? <Building2 size={18} /> : kind === 'category' ? <Boxes size={18} /> : kind === 'addon' ? <Puzzle size={18} /> : kind === 'promotion' ? <Tag size={18} /> : <UtensilsCrossed size={18} />}</div><DialogTitle className="text-xl tracking-[-.025em]">{titles[kind]}</DialogTitle><DialogDescription className="text-xs">{descriptions[kind]}</DialogDescription></DialogHeader>
           <div className="space-y-4 px-6 py-5">
+            {kind === 'restaurant' && (existing as AdminRestaurant | undefined)?.id && (
+              <Field label="Restaurant ID" htmlFor="restaurantId" hint="Unique system UUID">
+                <div className="flex gap-2">
+                  <Input
+                    id="restaurantId"
+                    value={(existing as AdminRestaurant).id}
+                    readOnly
+                    className="admin-input flex-1 font-mono text-xs bg-[#F9FAFB] text-[#4B5563] cursor-text select-all"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      navigator.clipboard.writeText((existing as AdminRestaurant).id);
+                      setCopiedId(true);
+                      toast.success('Restaurant UUID copied to clipboard');
+                      setTimeout(() => setCopiedId(false), 2000);
+                    }}
+                    className="border-[#E5E7EB] bg-white text-xs font-medium text-[#374151] hover:bg-[#F9FAFB] hover:text-[#111827] shrink-0"
+                    title="Copy Restaurant UUID"
+                  >
+                    {copiedId ? <Check size={14} className="mr-1 text-[#10B981]" /> : <Copy size={14} className="mr-1" />}
+                    {copiedId ? 'Copied' : 'Copy'}
+                  </Button>
+                </div>
+              </Field>
+            )}
             {kind !== 'promotion' && <Field label={kind === 'restaurant' ? 'Restaurant name' : kind === 'category' ? 'Category name' : kind === 'addon' ? 'Add-on name' : 'Item name'} htmlFor="name" required hint="3–100 characters"><Input id="name" name="name" defaultValue={existing?.name ?? ''} required minLength={3} maxLength={100} placeholder={kind === 'restaurant' ? 'e.g. Juniper Kitchen' : kind === 'category' ? 'e.g. Seasonal plates' : kind === 'addon' ? 'e.g. Extra avocado' : 'e.g. Garden harvest bowl'} className="admin-input" /></Field>}
             {kind !== 'promotion' && <Field label="Description" htmlFor="description" hint="Recommended"><Textarea id="description" name="description" defaultValue={existing?.description ?? ''} rows={3} placeholder="Add a concise, useful description" className="admin-input resize-none" /></Field>}
             {kind === 'restaurant' && <>
