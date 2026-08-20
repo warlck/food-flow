@@ -92,6 +92,16 @@ spec:
                   key: stripe_webhook_secret
                   optional: true
             {{- end }}
+            {{- if eq $name "auth" }}
+            - name: AUTH_AUTH_ACTIVE_KID
+              value: {{ $app.activeKID | quote }}
+            - name: AUTH_AUTH_KEYS_ENV_VAR
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "food-flow.authKeysSecretName" $ }}
+                  key: keys_json
+                  optional: true
+            {{- end }}
 ---
 apiVersion: v1
 kind: Service
