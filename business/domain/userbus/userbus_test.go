@@ -191,7 +191,7 @@ func create(busDomain dbtest.BusDomain) []unittest.Table {
 					Email:      *email,
 					Roles:      []role.Role{role.Admin},
 					Department: name.MustParseNull("ITO"),
-					Password:   password.MustParse("123"),
+					Password:   password.MustParse("create-password-1"),
 				}
 
 				resp, err := busDomain.User.Create(ctx, nu)
@@ -207,7 +207,7 @@ func create(busDomain dbtest.BusDomain) []unittest.Table {
 					return "error occurred"
 				}
 
-				if err := bcrypt.CompareHashAndPassword(gotResp.PasswordHash, []byte("123")); err != nil {
+				if err := bcrypt.CompareHashAndPassword(gotResp.PasswordHash, []byte("create-password-1")); err != nil {
 					return err.Error()
 				}
 
@@ -247,7 +247,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 					Email:      email,
 					Roles:      []role.Role{role.Admin},
 					Department: dbtest.NameNullPointer("ITO"),
-					Password:   dbtest.StringPointer("1234"),
+					Password:   dbtest.StringPointer("updated-password-1"),
 				}
 
 				resp, err := busDomain.User.Update(ctx, sd.Users[0].User, uu)
@@ -263,7 +263,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 					return "error occurred"
 				}
 
-				if err := bcrypt.CompareHashAndPassword(gotResp.PasswordHash, []byte("1234")); err != nil {
+				if err := bcrypt.CompareHashAndPassword(gotResp.PasswordHash, []byte("updated-password-1")); err != nil {
 					return err.Error()
 				}
 
@@ -281,7 +281,8 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 }
 
 func authenticate(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
-	// Seed users are created with the password "123" by userbus.TestSeedUsers.
+	// Seed users are created with the password "test-password-1" by
+	// userbus.TestSeedUsers.
 	authErrCmp := func(got any, exp any) string {
 		gotErr, ok := got.(error)
 		if !ok {
@@ -305,7 +306,7 @@ func authenticate(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.T
 			Name:    "valid credentials",
 			ExpResp: sd.Admins[0].User,
 			ExcFunc: func(ctx context.Context) any {
-				resp, err := busDomain.User.Authenticate(ctx, sd.Admins[0].Email, "123")
+				resp, err := busDomain.User.Authenticate(ctx, sd.Admins[0].Email, "test-password-1")
 				if err != nil {
 					return err
 				}
@@ -344,7 +345,7 @@ func authenticate(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.T
 			Name:    "unknown email",
 			ExpResp: userbus.ErrAuthenticationFailure,
 			ExcFunc: func(ctx context.Context) any {
-				_, err := busDomain.User.Authenticate(ctx, mail.Address{Address: "nobody@example.com"}, "123")
+				_, err := busDomain.User.Authenticate(ctx, mail.Address{Address: "nobody@example.com"}, "test-password-1")
 				return err
 			},
 			CmpFunc: authErrCmp,
@@ -357,7 +358,7 @@ func authenticate(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.T
 					Name:     name.MustParse("Disabled Login"),
 					Email:    mail.Address{Address: "disabled-login@example.com"},
 					Roles:    []role.Role{role.Admin},
-					Password: password.MustParse("123"),
+					Password: password.MustParse("test-password-1"),
 				})
 				if err != nil {
 					return err
@@ -367,7 +368,7 @@ func authenticate(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.T
 					return err
 				}
 
-				_, err = busDomain.User.Authenticate(ctx, usr.Email, "123")
+				_, err = busDomain.User.Authenticate(ctx, usr.Email, "test-password-1")
 				return err
 			},
 			CmpFunc: authErrCmp,

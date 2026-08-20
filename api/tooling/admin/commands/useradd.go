@@ -38,10 +38,15 @@ func UserAdd(log *logger.Logger, cfg sqldb.Config, nme string, email string, pas
 		return fmt.Errorf("parsing email: %w", err)
 	}
 
+	passParsed, err := password.Parse(pass)
+	if err != nil {
+		return fmt.Errorf("parsing password: %w", err)
+	}
+
 	nu := userbus.NewUser{
 		Name:     name.MustParse(nme),
 		Email:    *addr,
-		Password: password.MustParse(pass),
+		Password: passParsed,
 		Roles:    []role.Role{role.Admin, role.User},
 	}
 
