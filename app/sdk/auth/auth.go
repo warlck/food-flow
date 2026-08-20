@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -48,6 +49,8 @@ type Config struct {
 	UserBus   *userbus.Business
 	KeyLookup KeyLookup
 	Issuer    string
+	ActiveKID string
+	TokenTTL  time.Duration
 }
 
 // Auth is used to authenticate clients. It can generate a token for a
@@ -59,6 +62,8 @@ type Auth struct {
 	method    jwt.SigningMethod
 	parser    *jwt.Parser
 	issuer    string
+	activeKID string
+	tokenTTL  time.Duration
 }
 
 // New creates an Auth to support authentication/authorization.
@@ -70,6 +75,8 @@ func New(cfg Config) *Auth {
 		method:    jwt.GetSigningMethod(jwt.SigningMethodRS256.Name),
 		parser:    jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Name})),
 		issuer:    cfg.Issuer,
+		activeKID: cfg.ActiveKID,
+		tokenTTL:  cfg.TokenTTL,
 	}
 
 	return &a
@@ -78,6 +85,16 @@ func New(cfg Config) *Auth {
 // Issuer provides the configured issuer used to authenticate tokens.
 func (a *Auth) Issuer() string {
 	return a.issuer
+}
+
+// ActiveKID provides the configured key id used to sign new tokens.
+func (a *Auth) ActiveKID() string {
+	return a.activeKID
+}
+
+// TokenTTL provides the configured lifetime of newly issued tokens.
+func (a *Auth) TokenTTL() time.Duration {
+	return a.tokenTTL
 }
 
 // GenerateToken generates a signed JWT token string representing the user Claims.

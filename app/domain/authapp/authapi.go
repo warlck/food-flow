@@ -2,45 +2,79 @@ package authapi
 
 import (
 	"context"
-	"errors"
 	"net/http"
+	"net/mail"
+	"slices"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/app/sdk/authclient"
 	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/app/sdk/mid"
+	"github.com/warlck/food-flow/business/domain/userbus"
+	"github.com/warlck/food-flow/business/types/role"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
 type api struct {
-	auth *auth.Auth
+	auth    *auth.Auth
+	userBus *userbus.Business
 }
 
-func newAPI(a *auth.Auth) *api {
+func newAPI(a *auth.Auth, userBus *userbus.Business) *api {
 	return &api{
-		auth: a,
+		auth:    a,
+		userBus: userBus,
 	}
 }
 
-type token struct {
-	Token string `json:"token"`
-}
-
-func (api *api) token(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	kid := web.Param(r, "kid")
-	if kid == "" {
-		return errs.NewFieldErrors("kid", errors.New("missing kid"))
+// login authenticates a user by email and password and issues a JWT signed
+// with the server's active key. Only users with the ADMIN role can log in.
+func (a *api) login(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	var lr LoginRequest
+	if err := web.Decode(r, &lr); err != nil {
+		return errs.New(errs.InvalidArgument, err)
 	}
 
-	// The BearerBasic middleware function generates the claims.
-	claims := mid.GetClaims(ctx)
-
-	tkn, err := api.auth.GenerateToken(kid, claims)
+	email, err := mail.ParseAddress(lr.Email)
 	if err != nil {
-		return errs.New(errs.Internal, err)
+		return errs.New(errs.InvalidArgument, err)
 	}
 
-	return web.Respond(ctx, w, token{Token: tkn}, http.StatusOK)
+	usr, err := a.userBus.Authenticate(ctx, *email, lr.Password)
+	if err != nil {
+		return errs.New(errs.Unauthenticated, errInvalidCredentials)
+	}
+
+	if !slices.Contains(usr.Roles, role.Admin) {
+		return errs.New(errs.PermissionDenied, errAdminRequired)
+	}
+
+	now := time.Now().UTC()
+	expiresAt := now.Add(a.auth.TokenTTL())
+
+	claims := auth.Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   usr.ID.String(),
+			Issuer:    a.auth.Issuer(),
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
+			IssuedAt:  jwt.NewNumericDate(now),
+		},
+		Roles: role.ParseToString(usr.Roles),
+	}
+
+	tkn, err := a.auth.GenerateToken(a.auth.ActiveKID(), claims)
+	if err != nil {
+		return errs.Newf(errs.Internal, "generating token: %s", err)
+	}
+
+	resp := LoginResponse{
+		Token:     tkn,
+		ExpiresAt: expiresAt,
+	}
+
+	return web.Respond(ctx, w, resp, http.StatusOK)
 }
 
 func (a *api) authenticate(ctx context.Context, w http.ResponseWriter, r *http.Request) error {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -157,13 +158,40 @@ func (b *Business) QueryByEmail(ctx context.Context, email mail.Address) (User, 
 	return user, nil
 }
 
-// Authenticate finds a user by their email and verifies their passworb. On
-// success it returns a Claims User representing this user. The claims can be
-// used to generate a token for future authentication.
-func (b *Business) Authenticate(ctx context.Context, email mail.Address, password string) (User, error) {
-	usr, err := b.QueryByEmail(ctx, email)
+// dummyHash lazily generates a bcrypt hash used to run a comparison when the
+// requested email does not belong to any account, so authentication attempts
+// against unknown accounts take the same time as attempts against real ones.
+var dummyHash = sync.OnceValue(func() []byte {
+	hash, err := bcrypt.GenerateFromPassword([]byte("timing-equalization-password"), bcrypt.DefaultCost)
 	if err != nil {
-		return User{}, fmt.Errorf("query: email[%s]: %w", email, err)
+		panic(fmt.Sprintf("generating dummy password hash: %s", err))
+	}
+
+	return hash
+})
+
+// Authenticate finds a user by their email and verifies their password. On
+// success it returns the user, which can be used to generate a token for
+// future authentication. Unknown emails, disabled users, and wrong passwords
+// all return ErrAuthenticationFailure so callers cannot distinguish between
+// them, and a dummy bcrypt comparison keeps the response time constant when
+// the email does not exist.
+func (b *Business) Authenticate(ctx context.Context, email mail.Address, password string) (User, error) {
+	usr, err := b.storer.QueryByEmail(ctx, email)
+	if err != nil {
+		if !errors.Is(err, ErrNotFound) {
+			return User{}, fmt.Errorf("query: email[%s]: %w", email, err)
+		}
+
+		// Run a bcrypt comparison against a dummy hash so the time taken
+		// does not reveal that the account does not exist.
+		_ = bcrypt.CompareHashAndPassword(dummyHash(), []byte(password))
+
+		return User{}, ErrAuthenticationFailure
+	}
+
+	if !usr.Enabled {
+		return User{}, fmt.Errorf("user disabled: %w", ErrAuthenticationFailure)
 	}
 
 	if err := bcrypt.CompareHashAndPassword(usr.PasswordHash, []byte(password)); err != nil {

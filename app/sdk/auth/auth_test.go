@@ -20,7 +20,17 @@ func Test_Auth(t *testing.T) {
 		Log:       log,
 		KeyLookup: &keyStore{},
 		Issuer:    "foodflow.test",
+		ActiveKID: "test-active-kid",
+		TokenTTL:  8 * time.Hour,
 	})
+
+	if got := ath.ActiveKID(); got != "test-active-kid" {
+		t.Errorf("ActiveKID() = %q, want %q", got, "test-active-kid")
+	}
+
+	if got := ath.TokenTTL(); got != 8*time.Hour {
+		t.Errorf("TokenTTL() = %s, want %s", got, 8*time.Hour)
+	}
 
 	t.Run("authorize admin", test1(ath))
 	t.Run("authorize user", test2(ath))
