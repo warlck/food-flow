@@ -279,10 +279,11 @@ func run(ctx context.Context, log *logger.Logger) error {
 	api := http.Server{
 		Addr: cfg.Web.APIHost,
 		Handler: mux.WebAPI(mux.Config{
-			Build:      cfg.Version.Build,
-			Log:        log,
-			AuthClient: authClient,
-			DB:         db,
+			Build:              cfg.Version.Build,
+			Log:                log,
+			AuthClient:         authClient,
+			DB:                 db,
+			CORSAllowedOrigins: cfg.Web.CORSAllowedOrigins,
 			BusConfig: mux.BusConfig{
 				UserBus:             userBus,
 				RestaurantBus:       restaurantBus,

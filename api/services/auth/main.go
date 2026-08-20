@@ -34,7 +34,10 @@ func main() {
 
 	events := logger.Events{
 		Error: func(ctx context.Context, r logger.Record) {
-			log.Info(ctx, "******* SEND ALERT *******")
+			// Stable marker for log-based alerting: wire a GCP log-based
+			// metric on jsonPayload.alert="true" for the auth service (see
+			// the production auth runbook in docs/).
+			log.Info(ctx, "SEND ALERT", "alert", true, "errorMessage", r.Message)
 		},
 	}
 
@@ -238,10 +241,11 @@ func run(ctx context.Context, log *logger.Logger) error {
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	cfgMux := mux.Config{
-		Build: build,
-		Log:   log,
-		Auth:  ath,
-		DB:    db,
+		Build:              build,
+		Log:                log,
+		Auth:               ath,
+		DB:                 db,
+		CORSAllowedOrigins: cfg.Web.CORSAllowedOrigins,
 		BusConfig: mux.BusConfig{
 			UserBus: userBus,
 		},

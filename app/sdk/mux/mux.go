@@ -34,11 +34,12 @@ type BusConfig struct {
 
 // Config contains all the mandatory systems required by handlers.
 type Config struct {
-	Build      string
-	Log        *logger.Logger
-	AuthClient *authclient.Client
-	DB         *sqlx.DB
-	Auth       *auth.Auth
+	Build              string
+	Log                *logger.Logger
+	AuthClient         *authclient.Client
+	DB                 *sqlx.DB
+	Auth               *auth.Auth
+	CORSAllowedOrigins []string
 	BusConfig
 }
 
@@ -51,8 +52,9 @@ type RouteAdder interface {
 // WebAPI constructs a http.Handler with all application routes bound.
 func WebAPI(cfg Config, routeAdder RouteAdder) *web.App {
 	// Start the span before any request logging or error handling so every
-	// request log contains the OpenTelemetry trace ID used by Tempo.
-	app := web.NewApp(cfg.Log.Info, mid.OTEL(), mid.Logger(cfg.Log), mid.Metrics(), mid.Errors(cfg.Log), mid.Panics())
+	// request log contains the OpenTelemetry trace ID used by Tempo. CORS runs
+	// first so preflights are answered without hitting downstream middleware.
+	app := web.NewApp(cfg.Log.Info, mid.CORS(cfg.CORSAllowedOrigins), mid.OTEL(), mid.Logger(cfg.Log), mid.Metrics(), mid.Errors(cfg.Log), mid.Panics())
 
 	routeAdder.Add(app, cfg)
 	return app
