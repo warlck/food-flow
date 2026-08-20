@@ -81,7 +81,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 		Auth struct {
 			KeysEnvVar    string        `conf:"mask"`
 			KeysFolder    string        `conf:"default:infra/keys/"`
-			ActiveKID     string        `conf:"default:54bb2165-71e1-41a6-af3e-7da4a0e1e2c1"`
+			ActiveKID     string        `conf:"default:local-dev"`
 			Issuer        string        `conf:"default:food-flow-auth"`
 			TokenTTL      time.Duration `conf:"default:8h"`
 			LoginMaxFails int           `conf:"default:15"`

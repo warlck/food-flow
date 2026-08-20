@@ -18,7 +18,6 @@ ARG BUILD_DATE
 ARG BUILD_REF
 RUN addgroup -g 1000 -S auth && \
     adduser -u 1000 -h /service -G auth -S auth
-COPY --from=build_auth --chown=auth:auth /service/infra/keys/. /service/infra/keys/.
 COPY --from=build_auth --chown=auth:auth /service/api/services/auth/auth /service/auth
 WORKDIR /service
 USER auth
