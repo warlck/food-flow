@@ -12,6 +12,7 @@ These rules apply to all agent interactions within this workspace.
 ## Git & Commits
 - **Branch Creation**: Always create and switch to a separate, appropriately named git branch (e.g., `feat/...`, `fix/...`) for any new task, feature, or bug fix before making code edits or commits. Never commit directly to `master`, and NEVER merge branches into `master` (merging to `master` must only be done by the user).
 - **Conventional Commits**: Use the Conventional Commits specification (e.g., `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`) for all commit messages.
+- **No Agent Attribution**: Never add `Co-authored-by` trailers or any other agent/AI attribution to commit messages.
 - **Atomic Commits**: Group edits logically. Do not mix refactoring, feature work, and configuration updates in a single commit.
 - **Self-Contained & Compilable Commits**: Every individual commit MUST be self-contained, fully compilable, and pass all relevant automated tests in isolation. Never leave test helpers, struct definitions, or dependent logic missing from the commit that introduces code requiring them.
 
