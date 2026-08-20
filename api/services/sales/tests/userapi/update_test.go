@@ -24,8 +24,8 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				Name:            dbtest.StringPointer("Alice mith"),
 				Email:           dbtest.StringPointer("alice@mith.com"),
 				Department:      dbtest.StringPointer("ITO"),
-				Password:        dbtest.StringPointer("123"),
-				PasswordConfirm: dbtest.StringPointer("123"),
+				Password:        dbtest.StringPointer("updated-password-1"),
+				PasswordConfirm: dbtest.StringPointer("updated-password-1"),
 			},
 			GotResp: &userapi.User{},
 			ExpResp: &userapi.User{
