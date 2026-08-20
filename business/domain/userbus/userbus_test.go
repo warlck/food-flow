@@ -2,6 +2,7 @@ package userbus_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/mail"
 	"sort"
@@ -36,6 +37,7 @@ func Test_User(t *testing.T) {
 	unittest.Run(t, create(db.BusDomain), "create")
 	unittest.Run(t, update(db.BusDomain, sd), "update")
 	unittest.Run(t, delete(db.BusDomain, sd), "delete")
+	unittest.Run(t, authenticate(db.BusDomain, sd), "authenticate")
 }
 
 // =============================================================================
@@ -272,6 +274,103 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 
 				return cmp.Diff(gotResp, expResp)
 			},
+		},
+	}
+
+	return table
+}
+
+func authenticate(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
+	// Seed users are created with the password "123" by userbus.TestSeedUsers.
+	authErrCmp := func(got any, exp any) string {
+		gotErr, ok := got.(error)
+		if !ok {
+			return "expected an error, got a user"
+		}
+
+		expErr, ok := exp.(error)
+		if !ok {
+			return "error occurred"
+		}
+
+		if !errors.Is(gotErr, expErr) {
+			return fmt.Sprintf("got error %q, want %q", gotErr, expErr)
+		}
+
+		return ""
+	}
+
+	table := []unittest.Table{
+		{
+			Name:    "valid credentials",
+			ExpResp: sd.Admins[0].User,
+			ExcFunc: func(ctx context.Context) any {
+				resp, err := busDomain.User.Authenticate(ctx, sd.Admins[0].Email, "123")
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(userbus.User)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(userbus.User)
+
+				if gotResp.DateCreated.Format(time.RFC3339) == expResp.DateCreated.Format(time.RFC3339) {
+					expResp.DateCreated = gotResp.DateCreated
+				}
+
+				if gotResp.DateUpdated.Format(time.RFC3339) == expResp.DateUpdated.Format(time.RFC3339) {
+					expResp.DateUpdated = gotResp.DateUpdated
+				}
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+		{
+			Name:    "wrong password",
+			ExpResp: userbus.ErrAuthenticationFailure,
+			ExcFunc: func(ctx context.Context) any {
+				_, err := busDomain.User.Authenticate(ctx, sd.Admins[0].Email, "wrong-password")
+				return err
+			},
+			CmpFunc: authErrCmp,
+		},
+		{
+			Name:    "unknown email",
+			ExpResp: userbus.ErrAuthenticationFailure,
+			ExcFunc: func(ctx context.Context) any {
+				_, err := busDomain.User.Authenticate(ctx, mail.Address{Address: "nobody@example.com"}, "123")
+				return err
+			},
+			CmpFunc: authErrCmp,
+		},
+		{
+			Name:    "disabled user",
+			ExpResp: userbus.ErrAuthenticationFailure,
+			ExcFunc: func(ctx context.Context) any {
+				usr, err := busDomain.User.Create(ctx, userbus.NewUser{
+					Name:     name.MustParse("Disabled Login"),
+					Email:    mail.Address{Address: "disabled-login@example.com"},
+					Roles:    []role.Role{role.Admin},
+					Password: password.MustParse("123"),
+				})
+				if err != nil {
+					return err
+				}
+
+				if _, err := busDomain.User.Update(ctx, usr, userbus.UpdateUser{Enabled: dbtest.BoolPointer(false)}); err != nil {
+					return err
+				}
+
+				_, err = busDomain.User.Authenticate(ctx, usr.Email, "123")
+				return err
+			},
+			CmpFunc: authErrCmp,
 		},
 	}
 
