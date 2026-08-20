@@ -1,7 +1,6 @@
+import { NotAuthenticatedError, getValidToken, logout as clearStoredToken } from '@/lib/auth';
+
 const SALES_API_BASE_URL = import.meta.env.VITE_SALES_API_URL || '';
-const AUTH_API_BASE_URL = import.meta.env.VITE_AUTH_API_URL || '';
-const AUTH_KID = import.meta.env.VITE_AUTH_KID || '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1';
-const TOKEN_STORAGE_KEY = 'foodflow.admin-token';
 
 export interface AdminRestaurant {
   id: string;
@@ -172,39 +171,37 @@ function readErrorMessage(payload: unknown, fallback: string) {
 }
 
 class AdminApi {
-  private token: string | null = import.meta.env.VITE_ADMIN_TOKEN || null;
+  private unauthorizedHandler: (() => void) | null = null;
 
-  private async getToken() {
-    if (this.token) return this.token;
+  // setUnauthorizedHandler registers the callback invoked whenever the
+  // session is gone or rejected (401). The AuthProvider uses it to drop the
+  // token from state, which renders the login page.
+  setUnauthorizedHandler(cb: () => void) {
+    this.unauthorizedHandler = cb;
+  }
 
-    const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
-    if (storedToken) {
-      this.token = storedToken;
-      return storedToken;
+  private getToken(): string {
+    const token = getValidToken();
+    if (!token) {
+      this.handleUnauthorized();
+      throw new NotAuthenticatedError();
     }
+    return token;
+  }
 
-    // The current auth service exposes a development token endpoint keyed by its
-    // public KID. This keeps local admin development aligned with the Go service.
-    const response = await fetch(`${AUTH_API_BASE_URL}/v1/auth/token/${AUTH_KID}`, {
-      headers: { Authorization: `Basic ${window.btoa('foodflow-admin:local')}` },
-    });
-    if (!response.ok) throw new Error('Admin authentication is unavailable. Start the auth service and try again.');
-
-    const payload = (await response.json()) as { token: string };
-    this.token = payload.token;
-    window.localStorage.setItem(TOKEN_STORAGE_KEY, payload.token);
-    return payload.token;
+  private handleUnauthorized() {
+    clearStoredToken();
+    this.unauthorizedHandler?.();
   }
 
   private async request<T>(path: string, init: RequestInit = {}, authenticated = true): Promise<T> {
     const headers = new Headers(init.headers);
     headers.set('Content-Type', 'application/json');
-    if (authenticated) headers.set('Authorization', `Bearer ${await this.getToken()}`);
+    if (authenticated) headers.set('Authorization', `Bearer ${this.getToken()}`);
 
     const response = await fetch(`${SALES_API_BASE_URL}${path}`, { ...init, headers });
     if (response.status === 401 && authenticated) {
-      this.token = null;
-      window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+      this.handleUnauthorized();
     }
     if (!response.ok) {
       let payload: unknown;
@@ -364,7 +361,7 @@ class AdminApi {
       // Same-origin URLs come from the local development backend, whose
       // endpoint still requires an admin token. GCS signed URLs must not
       // carry one.
-      headers.set('Authorization', `Bearer ${await this.getToken()}`);
+      headers.set('Authorization', `Bearer ${this.getToken()}`);
     }
     const response = await fetch(grant.uploadUrl, {
       method: grant.method || 'PUT',

@@ -3,7 +3,6 @@ FROM node:20-alpine AS build_admin_frontend
 ARG BUILD_REF
 ARG VITE_SALES_API_URL
 ARG VITE_AUTH_API_URL
-ARG VITE_AUTH_KID
 
 RUN apk update && apk upgrade --no-cache
 
@@ -16,7 +15,6 @@ COPY api/frontends/food-flow-admin-hub/ ./
 
 ENV VITE_SALES_API_URL=${VITE_SALES_API_URL}
 ENV VITE_AUTH_API_URL=${VITE_AUTH_API_URL}
-ENV VITE_AUTH_KID=${VITE_AUTH_KID}
 
 RUN npm run build
 
