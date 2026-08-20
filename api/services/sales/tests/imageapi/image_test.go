@@ -158,7 +158,7 @@ func uploadUrlTable(sd apitest.SeedData) []apitest.Table {
 			URL:        "/v1/images/upload-url",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			Input: &imageapp.NewUpload{
 				RestaurantID: restID,
 				EntityType:   "restaurant",
@@ -166,7 +166,7 @@ func uploadUrlTable(sd apitest.SeedData) []apitest.Table {
 				SizeBytes:    100,
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.Unauthenticated, ""),
+			ExpResp: errs.Newf(errs.PermissionDenied, ""),
 			CmpFunc: codeOnlyCmp,
 		},
 	}

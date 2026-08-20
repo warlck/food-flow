@@ -183,12 +183,12 @@ func updateStatus401(sd apitest.SeedData) []apitest.Table {
 			URL:        fmt.Sprintf("/v1/orders/%s/status", sd.Orders[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPatch,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			Input: &orderapp.UpdateOrderStatus{
 				OrderStatus: &orderStatus,
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_only]"),
+			ExpResp: errs.Newf(errs.PermissionDenied, "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_only]"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

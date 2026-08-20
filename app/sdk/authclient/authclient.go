@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/warlck/food-flow/app/sdk/errs"
@@ -22,6 +23,10 @@ import (
 // the WithClient function at the time a AuthAPI is constructed.
 // DualStack Deprecated: Fast Fallback is enabled by default. To disable, set FallbackDelay to a negative value.
 var defaultClient = http.Client{
+	// Overall request timeout: the sales service calls the auth service on
+	// every authenticated request, so a hung auth service must fail fast
+	// (fail-closed) instead of tying up sales handlers indefinitely.
+	Timeout: 5 * time.Second,
 	Transport: &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -45,10 +50,14 @@ type Client struct {
 
 // New constructs an Auth that can be used to talk with the auth service.
 func New(log *logger.Logger, url string, options ...func(cln *Client)) *Client {
+	// Copy the default client so per-client options never mutate the shared
+	// package-level value.
+	hc := defaultClient
+
 	cln := Client{
 		log:  log,
 		url:  url,
-		http: &defaultClient,
+		http: &hc,
 	}
 
 	for _, option := range options {
@@ -63,6 +72,13 @@ func New(log *logger.Logger, url string, options ...func(cln *Client)) *Client {
 func WithClient(hc *http.Client) func(cln *Client) {
 	return func(cln *Client) {
 		cln.http = hc
+	}
+}
+
+// WithTimeout overrides the overall request timeout of the default client.
+func WithTimeout(d time.Duration) func(cln *Client) {
+	return func(cln *Client) {
+		cln.http.Timeout = d
 	}
 }
 
@@ -129,7 +145,13 @@ func (cln *Client) do(ctx context.Context, method string, endpoint string, heade
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	for key, value := range headers {
-		cln.log.Info(ctx, "authclient: rawRequest", "key", key, "value", value)
+		// Never log credential material: the authorization header carries a
+		// bearer token, and tokens in logs are credential leakage.
+		logValue := value
+		if strings.EqualFold(key, "authorization") {
+			logValue = "[REDACTED]"
+		}
+		cln.log.Info(ctx, "authclient: rawRequest", "key", key, "value", logValue)
 		req.Header.Set(key, value)
 	}
 
@@ -160,7 +182,7 @@ func (cln *Client) do(ctx context.Context, method string, endpoint string, heade
 		}
 		return nil
 
-	case http.StatusUnauthorized:
+	case http.StatusUnauthorized, http.StatusForbidden:
 		var err *errs.Error
 		if err := json.Unmarshal(data, &err); err != nil {
 			return fmt.Errorf("failed: response: %s, decoding error: %w ", string(data), err)
