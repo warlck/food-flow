@@ -2,7 +2,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight, Banknote, BarChart3, Bike, BookOpen, Boxes, Building2, Check, ChevronDown, ChevronRight,
   ChefHat, CircleAlert, Clock3, Copy, CreditCard, Grid2X2, HelpCircle, ImageOff, LayoutDashboard, List,
-  Loader2, Mail, MapPin, Menu, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, ReceiptText,
+  Loader2, LogOut, Mail, MapPin, Menu, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, ReceiptText,
   Puzzle, RefreshCw, Search, Settings, ShoppingBag, Sparkles, Store, Tag, Trash2, UtensilsCrossed, XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { ImageField } from '@/components/ImageField';
+import { useAuth } from '@/context/AuthContext';
 import {
   AddonInput, AdminAddon, AdminCategory, AdminMenuItem, AdminOrder, AdminPromotion, AdminRestaurant, AdminWorkspace,
   CategoryInput, MenuItemInput, OrderStatus, OrderType, PaymentStatus, PromotionInput, RestaurantInput, adminApi,
@@ -135,6 +136,7 @@ const Field = ({ label, htmlFor, required, hint, children }: { label: string; ht
 );
 
 export default function Admin() {
+  const { logout } = useAuth();
   const [restaurants, setRestaurants] = useState<AdminRestaurant[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [workspace, setWorkspace] = useState<AdminWorkspace | null>(null);
@@ -494,6 +496,16 @@ export default function Admin() {
               <Plus size={14} className="text-[#FF4500]" />
               <span className="hidden sm:inline">Add Restaurant</span>
               <span className="sm:hidden">Add</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 w-9 rounded-xl px-0 text-[#6B7280] hover:bg-[#FFF7F3] hover:text-[#FF4500]"
+              onClick={logout}
+              title="Sign out"
+              aria-label="Sign out"
+            >
+              <LogOut size={15} />
             </Button>
           </div>
         </header>
