@@ -55,6 +55,14 @@
 {{- end }}
 {{- end }}
 
+{{- define "food-flow.authKeysSecretName" -}}
+{{- if .Values.auth.keysSecretName }}
+{{- .Values.auth.keysSecretName }}
+{{- else }}
+{{- include "food-flow.componentName" (dict "root" . "name" "auth-keys") }}
+{{- end }}
+{{- end }}
+
 {{- define "food-flow.labels" -}}
 app.kubernetes.io/name: {{ include "food-flow.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}

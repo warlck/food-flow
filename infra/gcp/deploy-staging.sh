@@ -13,6 +13,8 @@ WORKLOAD_SERVICE_ACCOUNT=${GCP_WORKLOAD_SERVICE_ACCOUNT:-staging-workload@${PROJ
 MIGRATION_JOB=${GCP_MIGRATION_JOB:-staging-db-migrate}
 IMAGE_PLATFORM=${GCP_IMAGE_PLATFORM:-linux/amd64}
 RUN_MIGRATION=${GCP_RUN_MIGRATION:-true}
+AUTH_SECRET_NAME=${GCP_AUTH_SECRET:-food-flow-auth-keys}
+AUTH_ACTIVE_KID=${GCP_AUTH_ACTIVE_KID:-}
 REGISTRY="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}"
 VERSION=$(git rev-parse --short HEAD 2>/dev/null || echo "latest")
 BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -30,6 +32,11 @@ done
 
 if ! docker info >/dev/null 2>&1; then
     echo "Docker is not running. Start Docker Desktop and retry." >&2
+    exit 1
+fi
+
+if [ -z "${AUTH_ACTIVE_KID}" ]; then
+    echo "GCP_AUTH_ACTIVE_KID is not set. Run infra/gcp/bootstrap-auth-secret.sh create and retry." >&2
     exit 1
 fi
 
@@ -101,7 +108,8 @@ gcloud run deploy staging-auth \
     --vpc-egress private-ranges-only \
     --service-account "${WORKLOAD_SERVICE_ACCOUNT}" \
     --remove-env-vars AUTH_DB_DISABLE_TLS \
-    --update-env-vars "AUTH_DB_HOST=${POSTGRES_HOST}" \
+    --update-env-vars "AUTH_DB_HOST=${POSTGRES_HOST},AUTH_AUTH_ACTIVE_KID=${AUTH_ACTIVE_KID}" \
+    --set-secrets "AUTH_AUTH_KEYS_ENV_VAR=${AUTH_SECRET_NAME}:latest" \
     --min-instances 0 \
     --max-instances 1 \
     --cpu-throttling \
