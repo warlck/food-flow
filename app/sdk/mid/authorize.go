@@ -44,6 +44,13 @@ func Authorize(client *authclient.Client, rule string) web.MidHandler {
 				Claims: claims,
 			}
 			if err := client.Authorize(ctx, ath); err != nil {
+				// Preserve the auth service's error code (403 for an
+				// authenticated-but-not-allowed caller); only transport
+				// failures collapse to 401 (fail-closed).
+				var appErr *errs.Error
+				if errors.As(err, &appErr) {
+					return appErr
+				}
 				return errs.New(errs.Unauthenticated, err)
 			}
 
@@ -97,6 +104,10 @@ func AuthorizeUser(client *authclient.Client, userBus *userbus.Business, rule st
 			}
 
 			if err := client.Authorize(ctx, auth); err != nil {
+				var appErr *errs.Error
+				if errors.As(err, &appErr) {
+					return appErr
+				}
 				return errs.New(errs.Unauthenticated, err)
 			}
 

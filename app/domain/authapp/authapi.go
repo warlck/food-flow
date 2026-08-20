@@ -147,7 +147,10 @@ func (a *api) authorize(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := a.auth.Authorize(ctx, auth.Claims, auth.UserID, auth.Rule); err != nil {
-		return errs.Newf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[%v] rule[%v]", auth.Claims.Roles, auth.Rule)
+		// The caller is authenticated (the bearer middleware already ran) but
+		// not allowed: 403, not 401, so frontends surface an error instead of
+		// dropping the user back to the login page.
+		return errs.Newf(errs.PermissionDenied, "authorize: you are not authorized for that action, claims[%v] rule[%v]", auth.Claims.Roles, auth.Rule)
 	}
 
 	return web.Respond(ctx, w, nil, http.StatusNoContent)

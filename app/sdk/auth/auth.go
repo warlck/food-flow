@@ -174,7 +174,9 @@ func (a *Auth) Authenticate(ctx context.Context, bearerToken string) (Claims, er
 	}
 
 	if err := a.opaPolicyEvaluation(ctx, regoAuthentication, RuleAuthenticate, input, ErrInvalidAuthOPA); err != nil {
-		a.log.Info(ctx, "**Authenticate-FAILED**", "token", jwtUnverified, "userID", claims.Subject)
+		// Never log the token itself: bearer tokens in logs are credential
+		// leakage. The subject and reason are enough to debug.
+		a.log.Info(ctx, "**Authenticate-FAILED**", "userID", claims.Subject, "err", err)
 		return Claims{}, fmt.Errorf("authentication failed: %w", err)
 	}
 

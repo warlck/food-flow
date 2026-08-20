@@ -124,13 +124,13 @@ func update401(sd apitest.SeedData) []apitest.Table {
 			URL:        "/v1/menuitems/" + sd.MenuItems[1].ID.String(),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			Input: &menuitemapp.UpdateMenuItem{
 				Name: dbtest.StringPointer("Updated Name"),
 			},
 			GotResp: &errs.Error{},
 			ExpResp: &errs.Error{
-				Code:    errs.Unauthenticated,
+				Code:    errs.PermissionDenied,
 				Message: "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_only]",
 			},
 			CmpFunc: func(got any, exp any) string {
