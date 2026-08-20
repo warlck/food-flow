@@ -14,11 +14,15 @@ import (
 var (
 	errInvalidCredentials = errors.New("invalid credentials")
 	errAdminRequired      = errors.New("admin role required")
+	errTooManyAttempts    = errors.New("too many attempts")
 )
 
 // LoginRequest represents the credentials submitted to the login endpoint.
+// The email is only checked for presence here: a malformed email is treated
+// as a failed login (401) rather than a validation error so the response
+// stays identical to every other credential failure.
 type LoginRequest struct {
-	Email    string `json:"email" validate:"required,email"`
+	Email    string `json:"email" validate:"required"`
 	Password string `json:"password" validate:"required"`
 }
 
