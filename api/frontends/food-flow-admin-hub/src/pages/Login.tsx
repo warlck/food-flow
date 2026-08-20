@@ -35,7 +35,7 @@ export default function Login() {
           <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]">
             <UtensilsCrossed size={20} />
           </div>
-          <CardTitle className="text-xl tracking-[-.025em]">Restaurant Studio</CardTitle>
+          <CardTitle className="text-xl tracking-[-.025em]">Food Flow Restaurant Studio</CardTitle>
           <CardDescription className="text-xs">Sign in with your operator account</CardDescription>
         </CardHeader>
         <CardContent>
