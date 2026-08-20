@@ -27,3 +27,6 @@ DEBUG.md
 
 # Specs
 docs/specs/
+
+# Local auth signing keys (never commit; see infra/gcp/bootstrap-auth-secret.sh)
+infra/keys/*.pem
