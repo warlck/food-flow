@@ -14,7 +14,8 @@ import (
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound = errors.New("menu item not found")
+	ErrNotFound     = errors.New("menu item not found")
+	ErrInvalidOrder = errors.New("invalid menu item order")
 )
 
 // Storer interface declares the behavior this package needs to persist and
@@ -160,7 +161,7 @@ func (b *Business) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs
 	}
 
 	if len(items) != len(orderedIDs) {
-		return errors.New("orderedIds must contain all menu items in the category exactly once")
+		return fmt.Errorf("%w: orderedIds must contain all menu items in the category exactly once", ErrInvalidOrder)
 	}
 
 	itemMap := make(map[uuid.UUID]bool, len(items))
@@ -170,7 +171,7 @@ func (b *Business) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs
 
 	for _, id := range orderedIDs {
 		if !itemMap[id] {
-			return errors.New("orderedIds contains invalid or duplicate menu item id")
+			return fmt.Errorf("%w: orderedIds contains invalid or duplicate menu item id", ErrInvalidOrder)
 		}
 		delete(itemMap, id)
 	}

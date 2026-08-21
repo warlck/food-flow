@@ -2,6 +2,7 @@ package menuitemapp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -224,7 +225,10 @@ func (a *app) reorder(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := a.menuItemBus.Reorder(ctx, categoryID, orderedIDs); err != nil {
-		return errs.New(errs.InvalidArgument, err)
+		if errors.Is(err, menuitembus.ErrInvalidOrder) {
+			return errs.New(errs.InvalidArgument, err)
+		}
+		return errs.Newf(errs.Internal, "reorder: %s", err)
 	}
 
 	items, err := a.menuItemBus.QueryByCategoryID(ctx, categoryID)

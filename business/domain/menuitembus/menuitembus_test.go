@@ -2,6 +2,7 @@ package menuitembus_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"sort"
@@ -399,7 +400,7 @@ func reorder(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table 
 	table := []unittest.Table{
 		{
 			Name:    "mismatch_length",
-			ExpResp: "orderedIds must contain all menu items in the category exactly once",
+			ExpResp: "invalid menu item order: orderedIds must contain all menu items in the category exactly once",
 			ExcFunc: func(ctx context.Context) any {
 				err := busDomain.MenuItem.Reorder(ctx, categoryID, []uuid.UUID{item1.ID})
 				if err != nil {
@@ -413,13 +414,35 @@ func reorder(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table 
 		},
 		{
 			Name:    "invalid_id",
-			ExpResp: "orderedIds contains invalid or duplicate menu item id",
+			ExpResp: "invalid menu item order: orderedIds contains invalid or duplicate menu item id",
 			ExcFunc: func(ctx context.Context) any {
 				err := busDomain.MenuItem.Reorder(ctx, categoryID, []uuid.UUID{item1.ID, uuid.New()})
 				if err != nil {
 					return err.Error()
 				}
 				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:    "invalid_order_sentinel",
+			ExpResp: true,
+			ExcFunc: func(ctx context.Context) any {
+				// Validation failures must wrap ErrInvalidOrder so the API
+				// layer can map them to 400 instead of 500.
+				mismatchErr := busDomain.MenuItem.Reorder(ctx, categoryID, []uuid.UUID{item1.ID})
+				if !errors.Is(mismatchErr, menuitembus.ErrInvalidOrder) {
+					return fmt.Sprintf("mismatch length: error %v does not match ErrInvalidOrder", mismatchErr)
+				}
+
+				unknownErr := busDomain.MenuItem.Reorder(ctx, categoryID, []uuid.UUID{item1.ID, uuid.New()})
+				if !errors.Is(unknownErr, menuitembus.ErrInvalidOrder) {
+					return fmt.Sprintf("invalid id: error %v does not match ErrInvalidOrder", unknownErr)
+				}
+
+				return true
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)

@@ -14,7 +14,8 @@ import (
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound = errors.New("addon not found")
+	ErrNotFound     = errors.New("addon not found")
+	ErrInvalidOrder = errors.New("invalid addon order")
 )
 
 // Storer interface declares the behavior this package needs to persist and
@@ -161,7 +162,7 @@ func (b *Business) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs
 	}
 
 	if len(addons) != len(orderedIDs) {
-		return errors.New("orderedIds must contain all addons in the category exactly once")
+		return fmt.Errorf("%w: orderedIds must contain all addons in the category exactly once", ErrInvalidOrder)
 	}
 
 	addonMap := make(map[uuid.UUID]bool, len(addons))
@@ -171,7 +172,7 @@ func (b *Business) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs
 
 	for _, id := range orderedIDs {
 		if !addonMap[id] {
-			return errors.New("orderedIds contains invalid or duplicate addon id")
+			return fmt.Errorf("%w: orderedIds contains invalid or duplicate addon id", ErrInvalidOrder)
 		}
 		delete(addonMap, id)
 	}
