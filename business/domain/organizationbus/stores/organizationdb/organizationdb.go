@@ -169,9 +169,6 @@ func (s *Store) QueryOrgsForUser(ctx context.Context, userID uuid.UUID) ([]organ
 
 	var dbs []dbOrganization
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbs); err != nil {
-		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 
@@ -196,9 +193,6 @@ func (s *Store) QueryUsersForOrg(ctx context.Context, organizationID uuid.UUID) 
 
 	var dbs []dbOrganizationUser
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbs); err != nil {
-		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 
