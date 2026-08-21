@@ -138,6 +138,27 @@ func processCommands(args conf.Args, log *logger.Logger, cfg config) error {
 			return fmt.Errorf("generating token: %w", err)
 		}
 
+	case "orgadd":
+		name := args.Num(1)
+		if err := commands.OrgAdd(log, dbConfig, name); err != nil {
+			return fmt.Errorf("adding organization: %w", err)
+		}
+
+	case "orgadduser":
+		orgID := args.Num(1)
+		userID := args.Num(2)
+		roleStr := args.Num(3)
+		if err := commands.OrgAddUser(log, dbConfig, orgID, userID, roleStr); err != nil {
+			return fmt.Errorf("adding user to organization: %w", err)
+		}
+
+	case "orgremoveuser":
+		orgID := args.Num(1)
+		userID := args.Num(2)
+		if err := commands.OrgRemoveUser(log, dbConfig, orgID, userID); err != nil {
+			return fmt.Errorf("removing user from organization: %w", err)
+		}
+
 	default:
 		fmt.Println("migrate:    create the schema in the database")
 		fmt.Println("seed:       add data to the database")
@@ -145,6 +166,9 @@ func processCommands(args conf.Args, log *logger.Logger, cfg config) error {
 		fmt.Println("users:      get a list of users from the database")
 		fmt.Println("genkey:     generate a set of private/public key files")
 		fmt.Println("gentoken:   generate a JWT for a user with claims")
+		fmt.Println("orgadd:     add a new organization to the database")
+		fmt.Println("orgadduser: add a user to an organization")
+		fmt.Println("orgremoveuser: remove a user from an organization")
 		fmt.Println("provide a command to get more help.")
 		return commands.ErrHelp
 	}
