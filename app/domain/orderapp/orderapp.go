@@ -212,7 +212,6 @@ func (a *app) cancel(ctx context.Context, w http.ResponseWriter, r *http.Request
 	}
 
 	claims := mid.GetClaims(ctx)
-	fmt.Printf("DEBUG: ordID=%s restID=%s rest.OrgID=%s claims.OrgIDs=%v\n", orderID, rest.ID, rest.OrganizationID, claims.OrganizationIDs)
 	if !claims.IsOrgAuthorized(rest.OrganizationID) {
 		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
 	}
