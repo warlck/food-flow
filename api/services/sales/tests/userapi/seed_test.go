@@ -49,7 +49,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		User:  usrs[2],
 		Token: apitest.Token(db.BusDomain, ath, usrs[2].Email.Address),
 	}
-	
+
 	sd := apitest.SeedData{
 		Users:  []apitest.User{tu3, tu4, tu5},
 		Admins: []apitest.User{tu1, tu2},

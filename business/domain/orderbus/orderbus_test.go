@@ -1,10 +1,10 @@
 package orderbus_test
 
 import (
-	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"context"
 	"errors"
 	"fmt"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"math"
 	"sort"
 	"testing"

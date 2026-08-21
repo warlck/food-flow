@@ -1,9 +1,9 @@
 package restaurantbus_test
 
 import (
-	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"context"
 	"fmt"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"sort"
 	"testing"
 	"time"
@@ -164,23 +164,23 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			Name: "basic",
 			ExpResp: restaurantbus.Restaurant{
 				OrganizationID: sd.Restaurants[0].OrganizationID,
-				Name:        name.MustParse("The Italian Place"),
-				Description: "Authentic Italian cuisine with traditional recipes",
-				Address:     "123 Pasta Lane",
-				Phone:       "+1-555-1234",
-				Email:       "info@italianplace.com",
-				ImageURL:    "italian.jpg",
-				Enabled:     true,
+				Name:           name.MustParse("The Italian Place"),
+				Description:    "Authentic Italian cuisine with traditional recipes",
+				Address:        "123 Pasta Lane",
+				Phone:          "+1-555-1234",
+				Email:          "info@italianplace.com",
+				ImageURL:       "italian.jpg",
+				Enabled:        true,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				nr := restaurantbus.NewRestaurant{
 					OrganizationID: sd.Restaurants[0].OrganizationID,
-					Name:        name.MustParse("The Italian Place"),
-					Description: "Authentic Italian cuisine with traditional recipes",
-					Address:     "123 Pasta Lane",
-					Phone:       "+1-555-1234",
-					Email:       "info@italianplace.com",
-					ImageURL:    "italian.jpg",
+					Name:           name.MustParse("The Italian Place"),
+					Description:    "Authentic Italian cuisine with traditional recipes",
+					Address:        "123 Pasta Lane",
+					Phone:          "+1-555-1234",
+					Email:          "info@italianplace.com",
+					ImageURL:       "italian.jpg",
 				}
 
 				resp, err := busDomain.Restaurant.Create(ctx, nr)

@@ -1,9 +1,9 @@
 package addonbus_test
 
 import (
-	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"context"
 	"fmt"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"sort"
 	"testing"
 	"time"

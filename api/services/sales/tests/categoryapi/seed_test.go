@@ -80,8 +80,6 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	// -------------------------------------------------------------------------
 
-	
-
 	tu1 := apitest.User{
 		User:  adminUsrs[0],
 		Token: apitest.Token(db.BusDomain, ath, adminUsrs[0].Email.Address),
