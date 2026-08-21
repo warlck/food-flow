@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ImageField } from '@/components/ImageField';
 import { useAuth } from '@/context/AuthContext';
 import {
-  AddonInput, AdminAddon, AdminCategory, AdminMenuItem, AdminOrder, AdminPromotion, AdminRestaurant, AdminWorkspace,
+  AddonInput, AdminAddon, AdminCategory, AdminMenuItem, AdminOrder, AdminOrganization, AdminPromotion, AdminRestaurant, AdminWorkspace,
   CategoryInput, MenuItemInput, OrderStatus, OrderType, PaymentStatus, PromotionInput, RestaurantInput, adminApi,
 } from '@/lib/admin-api';
 import './Admin.css';
@@ -32,10 +32,10 @@ type EditorState =
 
 const NAME_PATTERN = /^[\p{L}\p{N}' -]{3,100}$/u;
 
-type Section = 'menu' | 'orders' | 'promotions';
+type Section = 'overview' | 'menu' | 'orders' | 'promotions';
 
 const navItems: { icon: typeof LayoutDashboard; label: string; section?: Section; soon?: boolean }[] = [
-  { icon: LayoutDashboard, label: 'Overview' },
+  { icon: LayoutDashboard, label: 'Overview', section: 'overview' },
   { icon: BookOpen, label: 'Menu & inventory', section: 'menu' },
   { icon: ReceiptText, label: 'Orders', section: 'orders' },
   { icon: Tag, label: 'Promotions', section: 'promotions' },
@@ -143,12 +143,13 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [editor, setEditor] = useState<EditorState>(null);
+  const [organization, setOrganization] = useState<AdminOrganization | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [addonCategory, setAddonCategory] = useState('');
   const [availability, setAvailability] = useState('all');
   const [query, setQuery] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [section, setSection] = useState<Section>('menu');
+  const [section, setSection] = useState<Section>('overview');
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersLoaded, setOrdersLoaded] = useState(false);
@@ -234,8 +235,16 @@ export default function Admin() {
     let active = true;
     (async () => {
       try {
-        const page = await adminApi.listRestaurants();
+        const [orgs, page] = await Promise.all([
+          adminApi.listMyOrganizations(),
+          adminApi.listRestaurants()
+        ]);
         if (!active) return;
+        
+        if (orgs.length > 0) {
+          setOrganization(orgs[0]);
+        }
+        
         setRestaurants(page.items);
         if (page.items.length) {
           setSelectedId(page.items[0].id);
@@ -245,7 +254,7 @@ export default function Admin() {
         }
       } catch (error) {
         if (!active) return;
-        toast.error(error instanceof Error ? error.message : 'Could not load restaurants');
+        toast.error(error instanceof Error ? error.message : 'Could not load data');
         setLoading(false);
       }
     })();
@@ -413,8 +422,8 @@ export default function Admin() {
             <ChefHat size={22} strokeWidth={2.2} />
           </div>
           <div className="admin-sidebar-copy min-w-0">
-            <div className="text-[17px] font-bold tracking-[-.02em] text-[#FF4500]">FoodFlow</div>
-            <div className="text-[10px] font-semibold uppercase tracking-[.18em] text-[#9CA3AF]">Restaurant studio</div>
+            <div className="text-[17px] font-bold tracking-[-.02em] text-[#FF4500] truncate" title={organization?.name || 'FoodFlow'}>{organization?.name || 'FoodFlow'}</div>
+            <div className="text-[10px] font-semibold uppercase tracking-[.18em] text-[#9CA3AF]">Organization Profile</div>
           </div>
         </div>
 
@@ -510,7 +519,38 @@ export default function Admin() {
         </header>
 
         <div className="admin-content">
-          {section === 'menu' ? (
+          {section === 'overview' ? (
+            <div className="space-y-6">
+              <section className="mb-7">
+                <div className="mb-1.5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.14em] text-[#FF4500]"><Building2 size={13} /> Organization</div>
+                <h1 className="text-[28px] font-bold tracking-[-.035em] text-[#333333] sm:text-[32px]">{organization?.name || 'FoodFlow Organization'}</h1>
+                <p className="mt-1 max-w-2xl text-[13px] text-[#6B7280]">Manage your organization's restaurants and their respective workspaces.</p>
+              </section>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {restaurants.map((rest) => (
+                  <div key={rest.id} className="admin-stat-card rounded-xl p-5 cursor-pointer hover:border-[#FF4500] transition-colors border border-transparent" onClick={() => {
+                    handleRestaurantChange(rest.id);
+                    setSection('menu');
+                  }}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[16px] font-bold tracking-[-.02em] text-[#333333] truncate max-w-[200px]" title={rest.name}>{rest.name}</p>
+                        <p className="mt-1 text-[11px] text-[#6B7280] line-clamp-1" title={rest.address}>{rest.address}</p>
+                      </div>
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#FFF1EB] text-[#FF4500]"><Store size={18} /></div>
+                    </div>
+                    <div className="mt-6 flex items-center gap-2">
+                      <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.1em] ${rest.enabled ? 'bg-[#E8F5E9] text-[#2E7D32]' : 'bg-[#FFEBEE] text-[#C62828]'}`}>
+                        {rest.enabled ? 'Live' : 'Paused'}
+                      </span>
+                      <span className="text-[11px] font-semibold text-[#FF4500] flex items-center gap-1 ml-auto">Manage <ChevronRight size={12} /></span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : section === 'menu' ? (
             <>
               <section className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-end">
                 <div>

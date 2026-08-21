@@ -170,6 +170,13 @@ function readErrorMessage(payload: unknown, fallback: string) {
   return fallback;
 }
 
+export interface AdminOrganization {
+  id: string;
+  name: string;
+  dateCreated: string;
+  dateUpdated: string;
+}
+
 class AdminApi {
   private unauthorizedHandler: (() => void) | null = null;
 
@@ -214,6 +221,10 @@ class AdminApi {
     }
     if (response.status === 204) return undefined as T;
     return response.json() as Promise<T>;
+  }
+
+  listMyOrganizations() {
+    return this.request<AdminOrganization[]>('/v1/organizations/me');
   }
 
   listRestaurants() {
