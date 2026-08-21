@@ -306,5 +306,11 @@ ALTER TABLE restaurants
 
 CREATE INDEX idx_restaurants_organization_id ON restaurants(organization_id);
 
+-- Version: 1.22
+-- Description: Add rank columns for storefront display ordering
+ALTER TABLE menu_items ADD COLUMN rank INT;
+ALTER TABLE addons ADD COLUMN rank INT;
+
+
 
 
