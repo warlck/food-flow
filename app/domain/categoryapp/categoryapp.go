@@ -7,8 +7,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
+	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/app/sdk/query"
 	"github.com/warlck/food-flow/business/domain/categorybus"
+	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/order"
 	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/foundation/web"
@@ -16,13 +18,15 @@ import (
 
 // Handlers manages the set of category endpoints.
 type app struct {
-	categoryBus *categorybus.Business
+	categoryBus   *categorybus.Business
+	restaurantBus *restaurantbus.Business
 }
 
 // newApp constructs a handlers for route access.
-func newApp(categoryBus *categorybus.Business) *app {
+func newApp(categoryBus *categorybus.Business, restaurantBus *restaurantbus.Business) *app {
 	return &app{
-		categoryBus: categoryBus,
+		categoryBus:   categoryBus,
+		restaurantBus: restaurantBus,
 	}
 }
 
@@ -36,6 +40,16 @@ func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 	nc, err := toBusNewCategory(app)
 	if err != nil {
 		return errs.New(errs.InvalidArgument, err)
+	}
+
+	rest, err := a.restaurantBus.QueryByID(ctx, nc.RestaurantID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(rest.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
 	}
 
 	cat, err := a.categoryBus.Create(ctx, nc)
@@ -123,6 +137,16 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return fmt.Errorf("querybyid: categoryID[%s]: %w", categoryID, err)
 	}
 
+	rest, err := a.restaurantBus.QueryByID(ctx, cat.RestaurantID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(rest.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
+	}
+
 	updCat, err := a.categoryBus.Update(ctx, cat, uc)
 	if err != nil {
 		return errs.Newf(errs.Internal, "update: categoryID[%s] uc[%+v]: %s", categoryID, uc, err)
@@ -143,6 +167,16 @@ func (a *app) delete(ctx context.Context, w http.ResponseWriter, r *http.Request
 	cat, err := a.categoryBus.QueryByID(ctx, categoryID)
 	if err != nil {
 		return fmt.Errorf("querybyid: categoryID[%s]: %w", categoryID, err)
+	}
+
+	rest, err := a.restaurantBus.QueryByID(ctx, cat.RestaurantID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(rest.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
 	}
 
 	if err := a.categoryBus.Delete(ctx, cat); err != nil {

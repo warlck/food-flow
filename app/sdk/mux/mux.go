@@ -10,6 +10,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/imagebus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/promobus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
@@ -20,6 +21,7 @@ import (
 
 type BusConfig struct {
 	UserBus             *userbus.Business
+	OrgBus              *organizationbus.Business
 	RestaurantBus       *restaurantbus.Business
 	CategoryBus         *categorybus.Business
 	MenuItemBus         *menuitembus.Business

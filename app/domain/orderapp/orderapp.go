@@ -10,8 +10,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
+	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/app/sdk/query"
 	"github.com/warlck/food-flow/business/domain/orderbus"
+	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/order"
 	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/foundation/web"
@@ -19,13 +21,15 @@ import (
 
 // app manages the set of order endpoints.
 type app struct {
-	orderBus *orderbus.Business
+	orderBus      *orderbus.Business
+	restaurantBus *restaurantbus.Business
 }
 
 // newApp constructs a handlers for route access.
-func newApp(orderBus *orderbus.Business) *app {
+func newApp(orderBus *orderbus.Business, restaurantBus *restaurantbus.Business) *app {
 	return &app{
-		orderBus: orderBus,
+		orderBus:      orderBus,
+		restaurantBus: restaurantBus,
 	}
 }
 
@@ -120,6 +124,21 @@ func (a *app) updateStatus(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	ub := toBusUpdateOrderStatus(app)
 
+	ord, err := a.orderBus.QueryByID(ctx, orderID)
+	if err != nil {
+		return fmt.Errorf("querybyid: orderID[%s]: %w", orderID, err)
+	}
+
+	rest, err := a.restaurantBus.QueryByID(ctx, ord.RestaurantID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(rest.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
+	}
+
 	if err := a.orderBus.UpdateStatus(ctx, orderID, ub); err != nil {
 		if errors.Is(err, orderbus.ErrOutForDeliveryRequiresDelivery) {
 			return errs.New(errs.InvalidArgument, err)
@@ -128,7 +147,7 @@ func (a *app) updateStatus(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 
 	// Query the updated order to return it
-	ord, err := a.orderBus.QueryByID(ctx, orderID)
+	ord, err = a.orderBus.QueryByID(ctx, orderID)
 	if err != nil {
 		return fmt.Errorf("querybyid: orderID[%s]: %w", orderID, err)
 	}
@@ -180,6 +199,22 @@ func (a *app) cancel(ctx context.Context, w http.ResponseWriter, r *http.Request
 	orderID, err := uuid.Parse(orderIDStr)
 	if err != nil {
 		return errs.NewFieldErrors("order_id", err)
+	}
+
+	ord, err := a.orderBus.QueryByID(ctx, orderID)
+	if err != nil {
+		return fmt.Errorf("querybyid: orderID[%s]: %w", orderID, err)
+	}
+
+	rest, err := a.restaurantBus.QueryByID(ctx, ord.RestaurantID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+	}
+
+	claims := mid.GetClaims(ctx)
+	fmt.Printf("DEBUG: ordID=%s restID=%s rest.OrgID=%s claims.OrgIDs=%v\n", orderID, rest.ID, rest.OrganizationID, claims.OrganizationIDs)
+	if !claims.IsOrgAuthorized(rest.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
 	}
 
 	if err := a.orderBus.Cancel(ctx, orderID); err != nil {

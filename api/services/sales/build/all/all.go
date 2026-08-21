@@ -8,6 +8,7 @@ import (
 	imageapi "github.com/warlck/food-flow/app/domain/imageapp"
 	menuitemapi "github.com/warlck/food-flow/app/domain/menuitemapp"
 	orderapi "github.com/warlck/food-flow/app/domain/orderapp"
+	organizationapi "github.com/warlck/food-flow/app/domain/organizationapp"
 	promoapi "github.com/warlck/food-flow/app/domain/promoapp"
 	restaurantapi "github.com/warlck/food-flow/app/domain/restaurantapp"
 	userapi "github.com/warlck/food-flow/app/domain/userapp"
@@ -48,29 +49,39 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		Log:           cfg.Log,
 	})
 
+	organizationapi.Routes(app, organizationapi.Config{
+		AuthClient: cfg.AuthClient,
+		OrgBus:     cfg.OrgBus,
+		Log:        cfg.Log,
+	})
+
 	categoryapi.Routes(app, categoryapi.Config{
-		AuthClient:  cfg.AuthClient,
-		CategoryBus: cfg.CategoryBus,
-		Log:         cfg.Log,
+		AuthClient:    cfg.AuthClient,
+		CategoryBus:   cfg.CategoryBus,
+		RestaurantBus: cfg.RestaurantBus,
+		Log:           cfg.Log,
 	})
 
 	menuitemapi.Routes(app, menuitemapi.Config{
-		AuthClient:  cfg.AuthClient,
-		MenuItemBus: cfg.MenuItemBus,
-		Log:         cfg.Log,
+		AuthClient:    cfg.AuthClient,
+		MenuItemBus:   cfg.MenuItemBus,
+		RestaurantBus: cfg.RestaurantBus,
+		Log:           cfg.Log,
 	})
 
 	addonapi.Routes(app, addonapi.Config{
-		AuthClient: cfg.AuthClient,
-		AddonBus:   cfg.AddonBus,
-		Log:        cfg.Log,
+		AuthClient:    cfg.AuthClient,
+		AddonBus:      cfg.AddonBus,
+		RestaurantBus: cfg.RestaurantBus,
+		Log:           cfg.Log,
 	})
 
 	promoapi.Routes(app, promoapi.Config{
-		Build:      cfg.Build,
-		Log:        cfg.Log,
-		AuthClient: cfg.AuthClient,
-		PromoBus:   cfg.PromoBus,
+		Build:         cfg.Build,
+		Log:           cfg.Log,
+		AuthClient:    cfg.AuthClient,
+		PromoBus:      cfg.PromoBus,
+		RestaurantBus: cfg.RestaurantBus,
 	})
 
 	imageapi.Routes(app, imageapi.Config{
@@ -86,6 +97,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		Log:                 cfg.Log,
 		AuthClient:          cfg.AuthClient,
 		OrderBus:            cfg.OrderBus,
+		RestaurantBus:       cfg.RestaurantBus,
 		StripeSecretKey:     cfg.StripeSecretKey,
 		StripeWebhookSecret: cfg.StripeWebhookSecret,
 	})

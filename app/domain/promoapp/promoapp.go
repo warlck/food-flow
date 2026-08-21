@@ -8,20 +8,24 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
+	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/app/sdk/query"
 	"github.com/warlck/food-flow/business/domain/promobus"
+	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/order"
 	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
 type app struct {
-	promoBus *promobus.Business
+	promoBus      *promobus.Business
+	restaurantBus *restaurantbus.Business
 }
 
-func newApp(promoBus *promobus.Business) *app {
+func newApp(promoBus *promobus.Business, restaurantBus *restaurantbus.Business) *app {
 	return &app{
-		promoBus: promoBus,
+		promoBus:      promoBus,
+		restaurantBus: restaurantBus,
 	}
 }
 
@@ -69,6 +73,18 @@ func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 	np, err := toBusNewPromotion(app)
 	if err != nil {
 		return errs.New(errs.InvalidArgument, err)
+	}
+
+	if np.RestaurantID != nil {
+		rest, err := a.restaurantBus.QueryByID(ctx, *np.RestaurantID)
+		if err != nil {
+			return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+		}
+
+		claims := mid.GetClaims(ctx)
+		if !claims.IsOrgAuthorized(rest.OrganizationID) {
+			return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
+		}
 	}
 
 	promo, err := a.promoBus.Create(ctx, np)
@@ -162,6 +178,18 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return fmt.Errorf("querybyid: promotionID[%s]: %w", promotionID, err)
 	}
 
+	if promo.RestaurantID != nil {
+		rest, err := a.restaurantBus.QueryByID(ctx, *promo.RestaurantID)
+		if err != nil {
+			return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+		}
+
+		claims := mid.GetClaims(ctx)
+		if !claims.IsOrgAuthorized(rest.OrganizationID) {
+			return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
+		}
+	}
+
 	updPromo, err := a.promoBus.Update(ctx, promo, up)
 	if err != nil {
 		return errs.Newf(errs.Internal, "update: promotionID[%s] up[%+v]: %s", promotionID, up, err)
@@ -185,6 +213,18 @@ func (a *app) delete(ctx context.Context, w http.ResponseWriter, r *http.Request
 			return errs.New(errs.NotFound, err)
 		}
 		return fmt.Errorf("querybyid: promotionID[%s]: %w", promotionID, err)
+	}
+
+	if promo.RestaurantID != nil {
+		rest, err := a.restaurantBus.QueryByID(ctx, *promo.RestaurantID)
+		if err != nil {
+			return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+		}
+
+		claims := mid.GetClaims(ctx)
+		if !claims.IsOrgAuthorized(rest.OrganizationID) {
+			return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
+		}
 	}
 
 	if err := a.promoBus.Delete(ctx, promo); err != nil {

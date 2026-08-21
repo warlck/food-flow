@@ -28,6 +28,8 @@ import (
 	"github.com/warlck/food-flow/business/domain/menuitembus/stores/menuitemdb"
 	"github.com/warlck/food-flow/business/domain/orderbus"
 	"github.com/warlck/food-flow/business/domain/orderbus/stores/orderdb"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
+	"github.com/warlck/food-flow/business/domain/organizationbus/stores/organizationdb"
 	"github.com/warlck/food-flow/business/domain/promobus"
 	"github.com/warlck/food-flow/business/domain/promobus/stores/promodb"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
@@ -111,7 +113,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 		}
 
 		Images struct {
-			Backend        string        `conf:"default:local"`
+			Backend        string `conf:"default:local"`
 			Bucket         string
 			ServiceAccount string
 			PublicBaseURL  string
@@ -198,6 +200,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 	// Create Business Packages
 	userstore := userdb.NewStore(log, db)
 	userBus := userbus.NewBusiness(log, userstore)
+
+	organizationstore := organizationdb.NewStore(log, db)
+	organizationBus := organizationbus.NewBusiness(log, organizationstore, userBus)
 
 	restaurantstore := restaurantdb.NewStore(log, db)
 	restaurantBus := restaurantbus.NewBusiness(log, restaurantstore)
@@ -286,6 +291,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 			CORSAllowedOrigins: cfg.Web.CORSAllowedOrigins,
 			BusConfig: mux.BusConfig{
 				UserBus:             userBus,
+				OrgBus:              organizationBus,
 				RestaurantBus:       restaurantBus,
 				CategoryBus:         categoryBus,
 				MenuItemBus:         menuitemBus,

@@ -60,6 +60,7 @@ func Test_Login(t *testing.T) {
 		authapi.Routes(app, authapi.Config{
 			Auth:    cfg.Auth,
 			UserBus: cfg.UserBus,
+			OrgBus:  db.BusDomain.Organization,
 		})
 	}))
 

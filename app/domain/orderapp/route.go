@@ -8,6 +8,7 @@ import (
 	"github.com/warlck/food-flow/app/sdk/authclient"
 	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/business/domain/orderbus"
+	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/web"
 )
@@ -18,6 +19,7 @@ type Config struct {
 	Log                 *logger.Logger
 	AuthClient          *authclient.Client
 	OrderBus            *orderbus.Business
+	RestaurantBus       *restaurantbus.Business
 	StripeSecretKey     string
 	StripeWebhookSecret string
 }
@@ -34,7 +36,7 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 	ruleAdmin := mid.Authorize(cfg.AuthClient, auth.RuleAdminOnly)
 
-	api := newApp(cfg.OrderBus)
+	api := newApp(cfg.OrderBus, cfg.RestaurantBus)
 
 	// Public order creation (customers can create orders)
 	// NOTE: This route is unauthenticated as the ordering needs to stay public
