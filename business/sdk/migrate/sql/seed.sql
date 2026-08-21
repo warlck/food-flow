@@ -82,7 +82,7 @@ INSERT INTO menu_items (menu_item_id, name, description, price, category_id, res
 	
 	-- KEBAB WITH CHIPS
 	('a1b2c3d4-0001-0000-0000-000000000016', 'Chicken Kebab With Fries', 'Chicken kebab served with crispy french fries', 16.50, 'c1000000-0000-0000-0000-000000000005', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/1662471778_50ChickenFries1.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00', NULL),
-	('a1b2c3d4-0001-0000-0000-0000000000017', 'Beef Kebab With Fries', 'Beef kebab served with crispy french fries', 17.50, 'c1000000-0000-0000-0000-000000000005', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/1299318997_51BeefFries1.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00', NULL),
+	('a1b2c3d4-0001-0000-0000-000000000017', 'Beef Kebab With Fries', 'Beef kebab served with crispy french fries', 17.50, 'c1000000-0000-0000-0000-000000000005', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/1299318997_51BeefFries1.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00', NULL),
 	('a1b2c3d4-0001-0000-0000-000000000018', 'Mix Kebab With Fries', 'Mixed kebab served with crispy french fries', 19.00, 'c1000000-0000-0000-0000-000000000005', 'a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/262990838_52MixFries1.jpg', true, '2025-10-27 00:00:00', '2025-10-27 00:00:00', NULL),
 	
 	-- ISKENDER
