@@ -11,6 +11,7 @@ import (
 
 type restaurant struct {
 	ID                    uuid.UUID `db:"restaurant_id"`
+	OrganizationID        uuid.UUID `db:"organization_id"`
 	Name                  string    `db:"name"`
 	Description           string    `db:"description"`
 	Address               string    `db:"address"`
@@ -30,6 +31,7 @@ type restaurant struct {
 func toDBRestaurant(bus restaurantbus.Restaurant) restaurant {
 	return restaurant{
 		ID:                    bus.ID,
+		OrganizationID:        bus.OrganizationID,
 		Name:                  bus.Name.String(),
 		Description:           bus.Description,
 		Address:               bus.Address,
@@ -55,6 +57,7 @@ func toBusRestaurant(db restaurant) (restaurantbus.Restaurant, error) {
 
 	bus := restaurantbus.Restaurant{
 		ID:                    db.ID,
+		OrganizationID:        db.OrganizationID,
 		Name:                  nme,
 		Description:           db.Description,
 		Address:               db.Address,

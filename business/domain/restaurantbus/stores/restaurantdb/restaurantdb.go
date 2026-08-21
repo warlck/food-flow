@@ -34,9 +34,9 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 func (s *Store) Create(ctx context.Context, rest restaurantbus.Restaurant) error {
 	const q = `
 	INSERT INTO restaurants
-		(restaurant_id, name, description, address, phone, email, image_url, enabled, latitude, longitude, max_delivery_distance_km, min_spend, tax_rate, date_created, date_updated)
+		(restaurant_id, organization_id, name, description, address, phone, email, image_url, enabled, latitude, longitude, max_delivery_distance_km, min_spend, tax_rate, date_created, date_updated)
 	VALUES
-		(:restaurant_id, :name, :description, :address, :phone, :email, :image_url, :enabled, :latitude, :longitude, :max_delivery_distance_km, :min_spend, :tax_rate, :date_created, :date_updated)`
+		(:restaurant_id, :organization_id, :name, :description, :address, :phone, :email, :image_url, :enabled, :latitude, :longitude, :max_delivery_distance_km, :min_spend, :tax_rate, :date_created, :date_updated)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBRestaurant(rest)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -104,7 +104,7 @@ func (s *Store) Query(ctx context.Context, filter restaurantbus.QueryFilter, ord
 
 	const q = `
 	SELECT
-		restaurant_id, name, description, address, phone, email, image_url, enabled, latitude, longitude, max_delivery_distance_km, min_spend, tax_rate, date_created, date_updated
+		restaurant_id, organization_id, name, description, address, phone, email, image_url, enabled, latitude, longitude, max_delivery_distance_km, min_spend, tax_rate, date_created, date_updated
 	FROM
 		restaurants`
 
@@ -160,7 +160,7 @@ func (s *Store) QueryByID(ctx context.Context, restaurantID uuid.UUID) (restaura
 
 	const q = `
 	SELECT
-		restaurant_id, name, description, address, phone, email, image_url, enabled, latitude, longitude, max_delivery_distance_km, min_spend, tax_rate, date_created, date_updated
+		restaurant_id, organization_id, name, description, address, phone, email, image_url, enabled, latitude, longitude, max_delivery_distance_km, min_spend, tax_rate, date_created, date_updated
 	FROM
 		restaurants
 	WHERE 
