@@ -1,6 +1,7 @@
 package orderbus_test
 
 import (
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"context"
 	"errors"
 	"fmt"
@@ -55,7 +56,11 @@ func insertSeedData(busDomain dbtest.BusDomain) (unittest.SeedData, error) {
 	ctx := context.Background()
 
 	// Seed restaurants
-	rests, err := restaurantbus.TestSeedRestaurants(ctx, 2, busDomain.Restaurant)
+	orgs, err := organizationbus.TestSeedOrganizations(ctx, 1, busDomain.Organization)
+	if err != nil {
+		return unittest.SeedData{}, fmt.Errorf("seeding organizations: %w", err)
+	}
+	rests, err := restaurantbus.TestSeedRestaurants(ctx, 2, busDomain.Restaurant, orgs[0].ID)
 	if err != nil {
 		return unittest.SeedData{}, fmt.Errorf("seeding restaurants : %w", err)
 	}
@@ -925,6 +930,7 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			ExcFunc: func(ctx context.Context) any {
 				// Create a restaurant with TaxRate = 0.0
 				nr := restaurantbus.NewRestaurant{
+					OrganizationID:        sd.Restaurants[0].OrganizationID,
 					Name:                  name.MustParse("Zero Tax Bistro"),
 					Description:           "Tax free dining",
 					Address:               "123 Free St",
