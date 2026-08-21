@@ -18,6 +18,8 @@ import (
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/app/sdk/debug"
 	"github.com/warlck/food-flow/app/sdk/mux"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
+	"github.com/warlck/food-flow/business/domain/organizationbus/stores/organizationdb"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/domain/userbus/stores/userdb"
 	"github.com/warlck/food-flow/business/sdk/sqldb"
@@ -210,6 +212,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 	userStore := userdb.NewStore(log, db)
 	userBus := userbus.NewBusiness(log, userStore)
 
+	orgStore := organizationdb.NewStore(log, db)
+	orgBus := organizationbus.NewBusiness(log, orgStore, userBus)
+
 	ath := auth.New(auth.Config{
 		Log:           log,
 		KeyLookup:     ks,
@@ -248,6 +253,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 		CORSAllowedOrigins: cfg.Web.CORSAllowedOrigins,
 		BusConfig: mux.BusConfig{
 			UserBus: userBus,
+			OrgBus:  orgBus,
 		},
 	}
 
