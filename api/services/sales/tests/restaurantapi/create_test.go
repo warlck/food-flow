@@ -18,6 +18,7 @@ func create201(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusCreated,
 			Input: &restaurantapi.NewRestaurant{
+				OrganizationID: sd.Restaurants[0].OrganizationID.String(),
 				Name:        "New Restaurant",
 				Description: "A wonderful new restaurant with great food",
 				Address:     "123 Main Street",
@@ -65,7 +66,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input:      &restaurantapi.NewRestaurant{},
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"name\",\"error\":\"name is a required field\"},{\"field\":\"address\",\"error\":\"address is a required field\"},{\"field\":\"phone\",\"error\":\"phone is a required field\"},{\"field\":\"email\",\"error\":\"email is a required field\"}]"),
+			ExpResp:    errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"organizationId\",\"error\":\"organizationId is a required field\"},{\"field\":\"name\",\"error\":\"name is a required field\"},{\"field\":\"address\",\"error\":\"address is a required field\"},{\"field\":\"phone\",\"error\":\"phone is a required field\"},{\"field\":\"email\",\"error\":\"email is a required field\"}]"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -77,6 +78,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &restaurantapi.NewRestaurant{
+				OrganizationID: sd.Restaurants[0].OrganizationID.String(),
 				Name:    "Test Restaurant",
 				Address: "123 Main St",
 				Phone:   "+1-555-0100",
