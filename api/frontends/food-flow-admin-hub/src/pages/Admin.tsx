@@ -1353,7 +1353,7 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
       if (kind === 'category' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), restaurantId: workspace.restaurant.id }, existing?.id);
       if (kind === 'item' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), price: Number(data.get('price')), categoryId: String(data.get('categoryId')), restaurantId: workspace.restaurant.id, imageUrl: String(data.get('imageUrl')) }, existing?.id);
       if (kind === 'addon' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), price: Number(data.get('price')), maxQuantity: Number(data.get('maxQuantity')), categoryId: String(data.get('categoryId')), restaurantId: workspace.restaurant.id }, existing?.id);
-      if (kind === 'promotion') {
+      if (kind === 'promotion' && workspace) {
         const code = String(data.get('code')).trim();
         const discountType = String(data.get('discountType')) as 'percentage' | 'fixed_amount';
         const discountVal = Number(data.get('discountValue'));
@@ -1368,6 +1368,7 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
         }
 
         await onSave(kind, {
+          restaurantId: workspace.restaurant.id,
           code,
           name: String(data.get('name')),
           description: String(data.get('description')),
