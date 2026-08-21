@@ -105,6 +105,64 @@ func update400(sd apitest.SeedData) []apitest.Table {
 				return ""
 			},
 		},
+		{
+			Name:       "rank-zero",
+			URL:        "/v1/menuitems/" + sd.MenuItems[1].ID.String(),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusBadRequest,
+			Input: &menuitemapp.UpdateMenuItem{
+				Rank: dbtest.IntPointer(0),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code:    errs.InvalidArgument,
+				Message: `validate: [{"field":"rank","error":"rank must be 1 or greater"}]`,
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr := got.(*errs.Error)
+				expErr := exp.(*errs.Error)
+
+				if gotErr.Code != expErr.Code {
+					return "error code mismatch"
+				}
+
+				if gotErr.Message != expErr.Message {
+					return "error message mismatch"
+				}
+
+				return ""
+			},
+		},
+		{
+			Name:       "rank-negative",
+			URL:        "/v1/menuitems/" + sd.MenuItems[1].ID.String(),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusBadRequest,
+			Input: &menuitemapp.UpdateMenuItem{
+				Rank: dbtest.IntPointer(-1),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code:    errs.InvalidArgument,
+				Message: `validate: [{"field":"rank","error":"rank must be 1 or greater"}]`,
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr := got.(*errs.Error)
+				expErr := exp.(*errs.Error)
+
+				if gotErr.Code != expErr.Code {
+					return "error code mismatch"
+				}
+
+				if gotErr.Message != expErr.Message {
+					return "error message mismatch"
+				}
+
+				return ""
+			},
+		},
 	}
 
 	return table

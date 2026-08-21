@@ -70,7 +70,7 @@ type NewMenuItem struct {
 	CategoryID   string  `json:"categoryId" validate:"required"`
 	RestaurantID string  `json:"restaurantId" validate:"required"`
 	ImageURL     string  `json:"imageUrl"`
-	Rank         *int    `json:"rank"`
+	Rank         *int    `json:"rank" validate:"omitempty,gte=1"`
 }
 
 // Decode implements the decoder interface.
@@ -131,7 +131,7 @@ type UpdateMenuItem struct {
 	CategoryID  *string  `json:"categoryId"`
 	ImageURL    *string  `json:"imageUrl"`
 	Available   *bool    `json:"available"`
-	Rank        *int     `json:"rank"`
+	Rank        *int     `json:"rank" validate:"omitempty,gte=1"`
 }
 
 // Decode implements the decoder interface.

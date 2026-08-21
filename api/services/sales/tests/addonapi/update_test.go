@@ -96,6 +96,42 @@ func update400(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(got, exp)
 			},
 		},
+		{
+			Name:       "rank-zero",
+			URL:        fmt.Sprintf("/v1/addons/%s", sd.Addons[0].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusBadRequest,
+			Input: &addonapp.UpdateAddon{
+				Rank: dbtest.IntPointer(0),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code:    errs.InvalidArgument,
+				Message: `validate: [{"field":"rank","error":"rank must be 1 or greater"}]`,
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "rank-negative",
+			URL:        fmt.Sprintf("/v1/addons/%s", sd.Addons[0].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusBadRequest,
+			Input: &addonapp.UpdateAddon{
+				Rank: dbtest.IntPointer(-1),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code:    errs.InvalidArgument,
+				Message: `validate: [{"field":"rank","error":"rank must be 1 or greater"}]`,
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
 	}
 
 	return table

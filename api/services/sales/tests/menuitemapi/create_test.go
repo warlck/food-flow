@@ -3,6 +3,7 @@ package menuitemapi_test
 import (
 	"net/http"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/warlck/food-flow/app/domain/menuitemapp"
 	"github.com/warlck/food-flow/app/sdk/apitest"
 	"github.com/warlck/food-flow/app/sdk/errs"
@@ -102,6 +103,50 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				}
 
 				return ""
+			},
+		},
+		{
+			Name:       "rank-zero",
+			URL:        "/v1/menuitems",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input: &menuitemapp.NewMenuItem{
+				CategoryID:   sd.Categories[0].ID.String(),
+				RestaurantID: sd.Restaurants[0].ID.String(),
+				Name:         "Test MenuItem",
+				Price:        19.99,
+				Rank:         dbtest.IntPointer(0),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code:    errs.InvalidArgument,
+				Message: `validate: [{"field":"rank","error":"rank must be 1 or greater"}]`,
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "rank-negative",
+			URL:        "/v1/menuitems",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input: &menuitemapp.NewMenuItem{
+				CategoryID:   sd.Categories[0].ID.String(),
+				RestaurantID: sd.Restaurants[0].ID.String(),
+				Name:         "Test MenuItem",
+				Price:        19.99,
+				Rank:         dbtest.IntPointer(-1),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code:    errs.InvalidArgument,
+				Message: `validate: [{"field":"rank","error":"rank must be 1 or greater"}]`,
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
 			},
 		},
 	}

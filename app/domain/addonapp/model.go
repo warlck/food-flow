@@ -70,7 +70,7 @@ type NewAddon struct {
 	Description  string  `json:"description"`
 	Price        float64 `json:"price" validate:"required"`
 	MaxQuantity  int     `json:"maxQuantity"`
-	Rank         *int    `json:"rank"`
+	Rank         *int    `json:"rank" validate:"omitempty,gte=1"`
 }
 
 // Decode implements the web.Decoder interface.
@@ -130,7 +130,7 @@ type UpdateAddon struct {
 	Price       *float64 `json:"price"`
 	Available   *bool    `json:"available"`
 	MaxQuantity *int     `json:"maxQuantity"`
-	Rank        *int     `json:"rank"`
+	Rank        *int     `json:"rank" validate:"omitempty,gte=1"`
 }
 
 // Decode implements the web.Decoder interface.
