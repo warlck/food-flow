@@ -5,6 +5,7 @@ import (
 
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/app/sdk/mid"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/foundation/web"
 )
@@ -13,6 +14,7 @@ import (
 type Config struct {
 	Auth    *auth.Auth
 	UserBus *userbus.Business
+	OrgBus  *organizationbus.Business
 }
 
 // Routes adds specific routes for this group.
@@ -21,7 +23,7 @@ func Routes(app *web.App, cfg Config) {
 
 	bearer := mid.Bearer(cfg.Auth)
 
-	api := newAPI(cfg.Auth, cfg.UserBus)
+	api := newAPI(cfg.Auth, cfg.UserBus, cfg.OrgBus)
 
 	app.HandleFunc(http.MethodPost, version, "/auth/login", api.login)
 	app.HandleFunc(http.MethodGet, version, "/auth/authenticate", api.authenticate, bearer)
