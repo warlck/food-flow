@@ -85,11 +85,12 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	imageapi.Routes(app, imageapi.Config{
-		Build:      cfg.Build,
-		Log:        cfg.Log,
-		AuthClient: cfg.AuthClient,
-		ImageBus:   cfg.ImageBus,
-		LocalStore: cfg.ImageLocalStore,
+		Build:         cfg.Build,
+		Log:           cfg.Log,
+		AuthClient:    cfg.AuthClient,
+		ImageBus:      cfg.ImageBus,
+		RestaurantBus: cfg.RestaurantBus,
+		LocalStore:    cfg.ImageLocalStore,
 	})
 
 	orderapi.Routes(app, orderapi.Config{

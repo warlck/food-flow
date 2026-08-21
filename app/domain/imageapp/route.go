@@ -7,6 +7,7 @@ import (
 	"github.com/warlck/food-flow/app/sdk/authclient"
 	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/business/domain/imagebus"
+	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/storage"
 	"github.com/warlck/food-flow/foundation/web"
@@ -14,10 +15,11 @@ import (
 
 // Config contains all the mandatory systems required by handlers.
 type Config struct {
-	Build      string
-	Log        *logger.Logger
-	AuthClient *authclient.Client
-	ImageBus   *imagebus.Business
+	Build         string
+	Log           *logger.Logger
+	AuthClient    *authclient.Client
+	ImageBus      *imagebus.Business
+	RestaurantBus *restaurantbus.Business
 	// LocalStore is set only when the local storage backend is active; it
 	// enables the development upload/download endpoints.
 	LocalStore storage.LocalStore
@@ -30,7 +32,7 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 	ruleAdmin := mid.Authorize(cfg.AuthClient, auth.RuleAdminOnly)
 
-	api := newApp(cfg.ImageBus, cfg.LocalStore)
+	api := newApp(cfg.ImageBus, cfg.RestaurantBus, cfg.LocalStore)
 
 	// Admin image management endpoints
 	app.HandleFunc(http.MethodPost, version, "/images/upload-url", api.createUpload, authen, ruleAdmin)
