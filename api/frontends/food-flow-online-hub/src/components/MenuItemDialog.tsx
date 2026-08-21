@@ -50,10 +50,16 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     return list;
   }, [categoryItems, item]);
 
-  // Backend sends category items sorted by price (cheapest first).
-  const cheapestItem = useMemo(() => {
+  // Backend sends category items rank-ordered (ranked first, then by price),
+  // so index 0 is the featured item, not necessarily the cheapest.
+  const representativeItem = useMemo(() => {
+    return itemsInCategory.length === 0 ? null : itemsInCategory[0];
+  }, [itemsInCategory]);
+
+  // Derive the cheapest price explicitly for the base price and deltas.
+  const cheapestPrice = useMemo(() => {
     if (itemsInCategory.length === 0) return null;
-    return itemsInCategory[0];
+    return Math.min(...itemsInCategory.map((mi) => mi.price));
   }, [itemsInCategory]);
 
   const activeItem = useMemo(() => {
@@ -163,7 +169,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
               src={
                 imageError
                   ? 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80'
-                  : cheapestItem?.image || getCategoryImage()
+                  : representativeItem?.image || getCategoryImage()
               }
               alt={item.category}
               className="w-full h-full object-cover"
@@ -176,9 +182,9 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
 
           <div className="flex items-baseline justify-between gap-3">
             <DialogTitle className="text-xl font-bold">{item.category}</DialogTitle>
-            {cheapestItem && (
+            {cheapestPrice !== null && (
               <div className="text-lg font-semibold text-food-primary">
-                ${cheapestItem.price.toFixed(2)}
+                ${cheapestPrice.toFixed(2)}
               </div>
             )}
           </div>
@@ -195,7 +201,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                 {itemsInCategory.map((mi) => {
                   const id = `menu-item-${mi.id}`;
                   const selected = mi.id === activeItem.id;
-                  const delta = cheapestItem ? mi.price - cheapestItem.price : 0;
+                  const delta = cheapestPrice !== null ? mi.price - cheapestPrice : 0;
                   const deltaLabel = !mi.available
                     ? 'Out of stock'
                     : delta > 0

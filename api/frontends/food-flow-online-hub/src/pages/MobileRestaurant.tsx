@@ -46,7 +46,7 @@ const MobileMenu: React.FC = () => {
 
   const categoriesWithAll = useMemo(() => ['All', ...categories], [categories]);
 
-  // Group items by category; backend provides items per category sorted by price (cheapest first).
+  // Group items by category; backend provides items per category rank-ordered (ranked first, then by price).
   const itemsByCategory = useMemo(() => {
     const map = new Map<string, MenuItemType[]>();
     menuItems.forEach((mi) => {

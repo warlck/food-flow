@@ -19,7 +19,7 @@ const MenuGrid: React.FC<MenuGridProps> = ({ items, categories, onCartUpdate }) 
   const categoriesWithAll = useMemo(() => ['All', ...categories], [categories]);
 
   // Group items by category.
-  // IMPORTANT: backend returns items within each category already sorted by price (cheapest first).
+  // IMPORTANT: backend returns items within each category rank-ordered (ranked first, then by price).
   const itemsByCategory = useMemo(() => {
     const map = new Map<string, MenuItemType[]>();
 
@@ -46,7 +46,7 @@ const MenuGrid: React.FC<MenuGridProps> = ({ items, categories, onCartUpdate }) 
       );
     };
 
-    // Category items are already sorted by price (cheapest first), so `find` yields the cheapest match.
+    // Category items are rank-ordered by the backend (ranked first, then by price), so index 0 / `find` yields the highest-ranked match.
     const pickForCategory = (categoryItems: MenuItemType[]) => {
       if (categoryItems.length === 0) return null;
       if (!query) return categoryItems[0];
