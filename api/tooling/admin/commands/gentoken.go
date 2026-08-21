@@ -10,6 +10,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/auth"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
+	"github.com/warlck/food-flow/business/domain/organizationbus/stores/organizationdb"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/domain/userbus/stores/userdb"
 	"github.com/warlck/food-flow/business/sdk/sqldb"
@@ -35,10 +37,21 @@ func GenToken(log *logger.Logger, dbConfig sqldb.Config, keyPath string, userID 
 	defer cancel()
 
 	userBus := userbus.NewBusiness(log, userdb.NewStore(log, db))
+	orgBus := organizationbus.NewBusiness(log, organizationdb.NewStore(log, db), userBus)
 
 	usr, err := userBus.QueryByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("retrieve user: %w", err)
+	}
+
+	orgs, err := orgBus.QueryOrgsForUser(ctx, usr.ID)
+	if err != nil {
+		return fmt.Errorf("retrieve user organizations: %w", err)
+	}
+
+	orgIDs := make([]string, len(orgs))
+	for i, org := range orgs {
+		orgIDs[i] = org.ID.String()
 	}
 
 	ks := keystore.New()
@@ -84,7 +97,8 @@ func GenToken(log *logger.Logger, dbConfig sqldb.Config, keyPath string, userID 
 			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(8760 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 		},
-		Roles: role.ParseToString(usr.Roles),
+		Roles:           role.ParseToString(usr.Roles),
+		OrganizationIDs: orgIDs,
 	}
 
 	// This will generate a JWT with the claims embedded in them. The database
