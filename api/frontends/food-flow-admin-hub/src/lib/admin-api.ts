@@ -291,7 +291,7 @@ class AdminApi {
   }
 
   reorderMenuItems(input: { categoryId: string; orderedIds: string[] }) {
-    return this.request<void>('/v1/menuitems/order', { method: 'PUT', body: JSON.stringify(input) });
+    return this.request<AdminMenuItem[]>('/v1/menuitems/order', { method: 'PUT', body: JSON.stringify(input) });
   }
 
   listAddons(restaurantId: string) {
@@ -317,7 +317,7 @@ class AdminApi {
   }
 
   reorderAddons(input: { categoryId: string; orderedIds: string[] }) {
-    return this.request<void>('/v1/addons/order', { method: 'PUT', body: JSON.stringify(input) });
+    return this.request<AdminAddon[]>('/v1/addons/order', { method: 'PUT', body: JSON.stringify(input) });
   }
 
   listOrders(restaurantId: string, filters: OrderFilters = {}) {

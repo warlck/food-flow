@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight, Banknote, BarChart3, Bike, BookOpen, Boxes, Building2, Check, ChevronDown, ChevronRight,
   ChefHat, CircleAlert, Clock3, Copy, CreditCard, Grid2X2, GripVertical, HelpCircle, ImageOff, LayoutDashboard, List,
@@ -328,9 +328,13 @@ export default function Admin() {
 
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
+  // Serializes drops: a new drop is ignored while a reorder request is in
+  // flight, preventing overlapping requests whose snapshot reverts would
+  // otherwise desync the workspace from the server.
+  const isReorderingRef = useRef(false);
 
   const handleReorderItems = async (categoryId: string, draggedId: string, targetId: string) => {
-    if (!workspace || draggedId === targetId) return;
+    if (!workspace || draggedId === targetId || isReorderingRef.current) return;
     const categoryItems = workspace.menuItems
       .filter((item) => item.categoryId === categoryId)
       .sort((a, b) => {
@@ -372,17 +376,27 @@ export default function Admin() {
       };
     });
 
+    isReorderingRef.current = true;
     try {
-      await adminApi.reorderMenuItems({ categoryId, orderedIds });
+      const updated = await adminApi.reorderMenuItems({ categoryId, orderedIds });
+      // Adopt the server-returned ranks as the source of truth.
+      const byId = new Map(updated.map((item) => [item.id, item]));
+      setWorkspace((current) => current ? {
+        ...current,
+        menuItems: current.menuItems.map((item) => byId.get(item.id) ?? item),
+      } : current);
       toast.success('Menu items reordered');
     } catch (error) {
       setWorkspace((current) => current ? { ...current, menuItems: previousMenuItems } : current);
       toast.error(error instanceof Error ? error.message : 'Failed to reorder menu items');
+      void loadWorkspace(selectedId, true);
+    } finally {
+      isReorderingRef.current = false;
     }
   };
 
   const handleReorderAddons = async (categoryId: string, draggedId: string, targetId: string) => {
-    if (!workspace || draggedId === targetId) return;
+    if (!workspace || draggedId === targetId || isReorderingRef.current) return;
     const categoryAddons = workspace.addons
       .filter((addon) => addon.categoryId === categoryId)
       .sort((a, b) => {
@@ -424,12 +438,22 @@ export default function Admin() {
       };
     });
 
+    isReorderingRef.current = true;
     try {
-      await adminApi.reorderAddons({ categoryId, orderedIds });
+      const updated = await adminApi.reorderAddons({ categoryId, orderedIds });
+      // Adopt the server-returned ranks as the source of truth.
+      const byId = new Map(updated.map((addon) => [addon.id, addon]));
+      setWorkspace((current) => current ? {
+        ...current,
+        addons: current.addons.map((addon) => byId.get(addon.id) ?? addon),
+      } : current);
       toast.success('Add-ons reordered');
     } catch (error) {
       setWorkspace((current) => current ? { ...current, addons: previousAddons } : current);
       toast.error(error instanceof Error ? error.message : 'Failed to reorder add-ons');
+      void loadWorkspace(selectedId, true);
+    } finally {
+      isReorderingRef.current = false;
     }
   };
 
