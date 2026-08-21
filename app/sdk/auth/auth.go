@@ -36,6 +36,16 @@ type Claims struct {
 	OrganizationIDs []string `json:"organization_ids"`
 }
 
+// IsOrgAuthorized checks if the user has access to the specified organization.
+func (c Claims) IsOrgAuthorized(orgID uuid.UUID) bool {
+	for _, id := range c.OrganizationIDs {
+		if id == orgID.String() {
+			return true
+		}
+	}
+	return false
+}
+
 // KeyLookup declares a method set of behavior for looking up
 // private and public keys for JWT use. The return could be a
 // PEM encoded string or a JWS based key.

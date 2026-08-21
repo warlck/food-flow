@@ -13,7 +13,6 @@ import (
 	"github.com/go-json-experiment/json"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/warlck/food-flow/app/sdk/auth"
-	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
 	"github.com/warlck/food-flow/business/types/role"
 )
@@ -84,12 +83,18 @@ func (at *Test) Run(t *testing.T, table []Table, testName string) {
 
 // =============================================================================
 // Token generates an authenticated token for a user.
-func Token(userBus *userbus.Business, ath *auth.Auth, email string) string {
+func Token(busDomain dbtest.BusDomain, ath *auth.Auth, email string) string {
 	addr, _ := mail.ParseAddress(email)
 
-	dbUsr, err := userBus.QueryByEmail(context.Background(), *addr)
+	dbUsr, err := busDomain.User.QueryByEmail(context.Background(), *addr)
 	if err != nil {
 		return ""
+	}
+
+	orgs, _ := busDomain.Organization.QueryOrgsForUser(context.Background(), dbUsr.ID)
+	orgIDs := make([]string, len(orgs))
+	for i, org := range orgs {
+		orgIDs[i] = org.ID.String()
 	}
 
 	claims := auth.Claims{
@@ -99,7 +104,8 @@ func Token(userBus *userbus.Business, ath *auth.Auth, email string) string {
 			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 		},
-		Roles: role.ParseToString(dbUsr.Roles),
+		Roles:           role.ParseToString(dbUsr.Roles),
+		OrganizationIDs: orgIDs,
 	}
 
 	token, err := ath.GenerateToken(kid, claims)

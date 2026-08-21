@@ -21,6 +21,8 @@ import (
 	"github.com/warlck/food-flow/business/domain/promobus/stores/promodb"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus/stores/restaurantdb"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
+	"github.com/warlck/food-flow/business/domain/organizationbus/stores/organizationdb"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/domain/userbus/stores/userdb"
 	"github.com/warlck/food-flow/foundation/logger"
@@ -30,6 +32,7 @@ import (
 // BusDomain represents all the business domain apis needed for testing.
 type BusDomain struct {
 	User            *userbus.Business
+	Organization    *organizationbus.Business
 	Restaurant      *restaurantbus.Business
 	Category        *categorybus.Business
 	MenuItem        *menuitembus.Business
@@ -44,6 +47,9 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) (BusDomain, error) {
 
 	userStorage := userdb.NewStore(log, db)
 	userBus := userbus.NewBusiness(log, userStorage)
+
+	orgStorage := organizationdb.NewStore(log, db)
+	orgBus := organizationbus.NewBusiness(log, orgStorage, userBus)
 
 	restaurantStorage := restaurantdb.NewStore(log, db)
 	restaurantBus := restaurantbus.NewBusiness(log, restaurantStorage)
@@ -83,6 +89,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) (BusDomain, error) {
 
 	return BusDomain{
 		User:            userBus,
+		Organization:    orgBus,
 		Restaurant:      restaurantBus,
 		Category:        categoryBus,
 		MenuItem:        menuItemBus,
