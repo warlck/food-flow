@@ -32,5 +32,5 @@ func (a *app) queryMyOrgs(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return errs.Newf(errs.Internal, "querymyorgs: %s", err)
 	}
 
-	return web.Respond(ctx, w, toAppOrganizations(orgs), http.StatusOK)
+	return web.Respond(ctx, w, ToAppOrganizations(orgs), http.StatusOK)
 }

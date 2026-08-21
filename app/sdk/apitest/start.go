@@ -31,6 +31,7 @@ func New(t *testing.T, testName string) *Test {
 		DB:  db.DB,
 		BusConfig: mux.BusConfig{
 			UserBus:       db.BusDomain.User,
+			OrgBus:        db.BusDomain.Organization,
 			RestaurantBus: db.BusDomain.Restaurant,
 			CategoryBus:   db.BusDomain.Category,
 			MenuItemBus:   db.BusDomain.MenuItem,
@@ -50,6 +51,7 @@ func New(t *testing.T, testName string) *Test {
 		DB:  db.DB,
 		BusConfig: mux.BusConfig{
 			UserBus:         db.BusDomain.User,
+			OrgBus:          db.BusDomain.Organization,
 			RestaurantBus:   db.BusDomain.Restaurant,
 			CategoryBus:     db.BusDomain.Category,
 			MenuItemBus:     db.BusDomain.MenuItem,

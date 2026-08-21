@@ -5,6 +5,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
 )
@@ -13,6 +14,11 @@ import (
 type User struct {
 	userbus.User
 	Token string
+}
+
+// Organization extends the organizationbus.Organization for api test support.
+type Organization struct {
+	organizationbus.Organization
 }
 
 // Restaurant extends the restaurantbus.Restaurant for api test support.
@@ -42,13 +48,14 @@ type Order struct {
 
 // SeedData represents data for api tests.
 type SeedData struct {
-	Users       []User
-	Admins      []User
-	Restaurants []Restaurant
-	Categories  []Category
-	MenuItems   []MenuItem
-	Addons      []Addon
-	Orders      []Order
+	Users         []User
+	Admins        []User
+	Organizations []Organization
+	Restaurants   []Restaurant
+	Categories    []Category
+	MenuItems     []MenuItem
+	Addons        []Addon
+	Orders        []Order
 }
 
 // Table represent fields needed for running an api test.

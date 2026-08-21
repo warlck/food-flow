@@ -7,25 +7,27 @@ import (
 )
 
 type Organization struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	DateCreated time.Time `json:"date_created"`
-	DateUpdated time.Time `json:"date_updated"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	DateCreated string `json:"dateCreated"`
+	DateUpdated string `json:"dateUpdated"`
 }
 
-func toAppOrganization(bus organizationbus.Organization) Organization {
+// ToAppOrganization converts a business organization to an app organization.
+func ToAppOrganization(bus organizationbus.Organization) Organization {
 	return Organization{
 		ID:          bus.ID.String(),
 		Name:        bus.Name.String(),
-		DateCreated: bus.DateCreated,
-		DateUpdated: bus.DateUpdated,
+		DateCreated: bus.DateCreated.Format(time.RFC3339),
+		DateUpdated: bus.DateUpdated.Format(time.RFC3339),
 	}
 }
 
-func toAppOrganizations(orgs []organizationbus.Organization) []Organization {
+// ToAppOrganizations converts a slice of business organizations to app organizations.
+func ToAppOrganizations(orgs []organizationbus.Organization) []Organization {
 	appOrgs := make([]Organization, len(orgs))
 	for i, org := range orgs {
-		appOrgs[i] = toAppOrganization(org)
+		appOrgs[i] = ToAppOrganization(org)
 	}
 	return appOrgs
 }

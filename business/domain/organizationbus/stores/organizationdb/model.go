@@ -35,8 +35,8 @@ func toBusOrganization(db dbOrganization) (organizationbus.Organization, error) 
 	bus := organizationbus.Organization{
 		ID:          db.ID,
 		Name:        nme,
-		DateCreated: db.DateCreated,
-		DateUpdated: db.DateUpdated,
+		DateCreated: db.DateCreated.In(time.Local),
+		DateUpdated: db.DateUpdated.In(time.Local),
 	}
 
 	return bus, nil
@@ -67,7 +67,7 @@ func toDBOrganizationUser(bus organizationbus.OrganizationUser) dbOrganizationUs
 		OrganizationID: bus.OrganizationID,
 		UserID:         bus.UserID,
 		Role:           bus.Role.String(),
-		DateCreated:    bus.DateCreated,
+		DateCreated:    bus.DateCreated.UTC(),
 	}
 }
 
@@ -81,7 +81,7 @@ func toBusOrganizationUser(db dbOrganizationUser) (organizationbus.OrganizationU
 		OrganizationID: db.OrganizationID,
 		UserID:         db.UserID,
 		Role:           r,
-		DateCreated:    db.DateCreated,
+		DateCreated:    db.DateCreated.In(time.Local),
 	}
 
 	return bus, nil
