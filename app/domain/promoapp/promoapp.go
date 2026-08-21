@@ -190,6 +190,18 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	if up.RestaurantID != nil && *up.RestaurantID != nil {
+		rest, err := a.restaurantBus.QueryByID(ctx, **up.RestaurantID)
+		if err != nil {
+			return errs.New(errs.InvalidArgument, fmt.Errorf("target restaurant lookup: %w", err))
+		}
+
+		claims := mid.GetClaims(ctx)
+		if !claims.IsOrgAuthorized(rest.OrganizationID) {
+			return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
+		}
+	}
+
 	updPromo, err := a.promoBus.Update(ctx, promo, up)
 	if err != nil {
 		return errs.Newf(errs.Internal, "update: promotionID[%s] up[%+v]: %s", promotionID, up, err)
