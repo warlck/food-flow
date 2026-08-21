@@ -7,6 +7,7 @@ const (
 	OrderByID      = "addon_id"
 	OrderByName    = "name"
 	OrderByPrice   = "price"
+	OrderByRank    = "rank"
 	OrderByCreated = "date_created"
 )
 

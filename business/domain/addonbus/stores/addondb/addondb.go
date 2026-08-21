@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -33,9 +34,9 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 func (s *Store) Create(ctx context.Context, addon addonbus.Addon) error {
 	const q = `
 	INSERT INTO addons
-		(addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated)
+		(addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated, rank)
 	VALUES
-		(:addon_id, :category_id, :restaurant_id, :name, :description, :price, :available, :max_quantity, :date_created, :date_updated)`
+		(:addon_id, :category_id, :restaurant_id, :name, :description, :price, :available, :max_quantity, :date_created, :date_updated, :rank)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAddon(addon)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -55,6 +56,7 @@ func (s *Store) Update(ctx context.Context, addon addonbus.Addon) error {
 		price = :price,
 		available = :available,
 		max_quantity = :max_quantity,
+		rank = :rank,
 		date_updated = :date_updated
 	WHERE
 		addon_id = :addon_id`
@@ -90,7 +92,7 @@ func (s *Store) Query(ctx context.Context, filter addonbus.QueryFilter, orderBy 
 
 	const q = `
 	SELECT
-		addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated
+		addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated, rank
 	FROM
 		addons`
 
@@ -146,7 +148,7 @@ func (s *Store) QueryByID(ctx context.Context, addonID uuid.UUID) (addonbus.Addo
 
 	const q = `
 	SELECT
-		addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated
+		addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated, rank
 	FROM
 		addons
 	WHERE 
@@ -173,13 +175,13 @@ func (s *Store) QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]
 
 	const q = `
 	SELECT
-		addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated
+		addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated, rank
 	FROM
 		addons
 	WHERE 
-		category_id = :category_id AND available = true
+		category_id = :category_id
 	ORDER BY
-		name ASC`
+		rank ASC, name ASC, addon_id ASC`
 
 	var dbAddons []dbAddon
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbAddons); err != nil {
@@ -189,9 +191,53 @@ func (s *Store) QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]
 	return toBusAddons(dbAddons)
 }
 
+// Reorder updates the rank of addons in a category transactionally in steps of 10.
+func (s *Store) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) error {
+	tx, err := s.db.(*sqlx.DB).BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	const q = `
+	UPDATE
+		addons
+	SET
+		"rank" = :rank,
+		"date_updated" = :date_updated
+	WHERE
+		addon_id = :addon_id AND category_id = :category_id`
+
+	now := time.Now().UTC()
+	for i, id := range orderedIDs {
+		rank := (i + 1) * 10
+		data := struct {
+			Rank        int       `db:"rank"`
+			DateUpdated time.Time `db:"date_updated"`
+			AddonID     uuid.UUID `db:"addon_id"`
+			CategoryID  uuid.UUID `db:"category_id"`
+		}{
+			Rank:        rank,
+			DateUpdated: now,
+			AddonID:     id,
+			CategoryID:  categoryID,
+		}
+
+		if err := sqldb.NamedExecContext(ctx, s.log, tx, q, data); err != nil {
+			return fmt.Errorf("namedexeccontext: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
+	}
+
+	return nil
+}
+
 // orderByClause validates the order by clause and returns the SQL string.
 func orderByClause(orderBy order.By) (string, error) {
-	const orderByFields = "addon_id, name, price, date_created"
+	const orderByFields = "addon_id, name, price, rank, date_created"
 
 	by, exists := orderByFields, true
 	_ = by

@@ -27,6 +27,7 @@ type Storer interface {
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, addonID uuid.UUID) (Addon, error)
 	QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]Addon, error)
+	Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) error
 }
 
 // Business manages the set of APIs for addon access.
@@ -61,6 +62,7 @@ func (b *Business) Create(ctx context.Context, na NewAddon) (Addon, error) {
 		Price:        na.Price,
 		Available:    true,
 		MaxQuantity:  maxQty,
+		Rank:         na.Rank,
 		DateCreated:  now,
 		DateUpdated:  now,
 	}
@@ -92,6 +94,10 @@ func (b *Business) Update(ctx context.Context, addon Addon, ua UpdateAddon) (Add
 
 	if ua.MaxQuantity != nil {
 		addon.MaxQuantity = *ua.MaxQuantity
+	}
+
+	if ua.Rank != nil {
+		addon.Rank = ua.Rank
 	}
 
 	addon.DateUpdated = time.Now()
@@ -145,4 +151,34 @@ func (b *Business) QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) 
 	}
 
 	return addons, nil
+}
+
+// Reorder updates the display rank of all addons in a category.
+func (b *Business) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) error {
+	addons, err := b.storer.QueryByCategoryID(ctx, categoryID)
+	if err != nil {
+		return fmt.Errorf("query category addons: %w", err)
+	}
+
+	if len(addons) != len(orderedIDs) {
+		return errors.New("orderedIds must contain all addons in the category exactly once")
+	}
+
+	addonMap := make(map[uuid.UUID]bool, len(addons))
+	for _, a := range addons {
+		addonMap[a.ID] = true
+	}
+
+	for _, id := range orderedIDs {
+		if !addonMap[id] {
+			return errors.New("orderedIds contains invalid or duplicate addon id")
+		}
+		delete(addonMap, id)
+	}
+
+	if err := b.storer.Reorder(ctx, categoryID, orderedIDs); err != nil {
+		return fmt.Errorf("reorder: %w", err)
+	}
+
+	return nil
 }

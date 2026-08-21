@@ -19,6 +19,7 @@ type dbAddon struct {
 	Price        float64   `db:"price"`
 	Available    bool      `db:"available"`
 	MaxQuantity  int       `db:"max_quantity"`
+	Rank         *int      `db:"rank"`
 	DateCreated  time.Time `db:"date_created"`
 	DateUpdated  time.Time `db:"date_updated"`
 }
@@ -33,6 +34,7 @@ func toDBAddon(bus addonbus.Addon) dbAddon {
 		Price:        bus.Price.Value(),
 		Available:    bus.Available,
 		MaxQuantity:  bus.MaxQuantity,
+		Rank:         bus.Rank,
 		DateCreated:  bus.DateCreated.UTC(),
 		DateUpdated:  bus.DateUpdated.UTC(),
 	}
@@ -58,6 +60,7 @@ func toBusAddon(dbo dbAddon) (addonbus.Addon, error) {
 		Price:        price,
 		Available:    dbo.Available,
 		MaxQuantity:  dbo.MaxQuantity,
+		Rank:         dbo.Rank,
 		DateCreated:  dbo.DateCreated.In(time.Local),
 		DateUpdated:  dbo.DateUpdated.In(time.Local),
 	}, nil

@@ -18,6 +18,7 @@ type Addon struct {
 	Price        money.Money
 	Available    bool
 	MaxQuantity  int
+	Rank         *int
 	DateCreated  time.Time
 	DateUpdated  time.Time
 }
@@ -30,6 +31,7 @@ type NewAddon struct {
 	Description  string
 	Price        money.Money
 	MaxQuantity  int
+	Rank         *int
 }
 
 // UpdateAddon contains information needed to update an addon.
@@ -39,4 +41,5 @@ type UpdateAddon struct {
 	Price       *money.Money
 	Available   *bool
 	MaxQuantity *int
+	Rank        *int
 }
