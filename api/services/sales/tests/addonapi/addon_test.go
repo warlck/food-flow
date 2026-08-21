@@ -29,6 +29,7 @@ func Test_Addon(t *testing.T) {
 
 	test.Run(t, update200(sd), "update-200")
 	test.Run(t, update400(sd), "update-400")
+	test.Run(t, update401(sd), "update-401")
 	test.Run(t, reorder200(sd), "reorder-200")
 	test.Run(t, reorder400(sd), "reorder-400")
 	test.Run(t, reorder401(sd), "reorder-401")
