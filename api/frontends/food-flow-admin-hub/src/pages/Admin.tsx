@@ -211,6 +211,7 @@ export default function Admin() {
         () => adminApi.updateRestaurant(workspace.restaurant.id, { enabled: newStatus }),
         newStatus ? 'Restaurant is now Live' : 'Restaurant is now Paused'
       );
+      setRestaurants((current) => current.map((r) => r.id === workspace.restaurant.id ? { ...r, enabled: newStatus } : r));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not update restaurant status');
     }
@@ -708,8 +709,13 @@ export default function Admin() {
           if (kind === 'restaurant') {
             const restaurantInput = input as RestaurantInput;
             validateName(restaurantInput.name);
-            if (existingId) await mutateWorkspace(() => adminApi.updateRestaurant(existingId, restaurantInput), 'Restaurant updated');
-            else {
+            if (existingId) {
+              await mutateWorkspace(async () => {
+                await adminApi.updateRestaurant(existingId, restaurantInput);
+                const page = await adminApi.listRestaurants();
+                setRestaurants(page.items);
+              }, 'Restaurant updated');
+            } else {
               await mutateWorkspace(async () => {
                 const created = await adminApi.createRestaurant(restaurantInput);
                 const page = await adminApi.listRestaurants();
