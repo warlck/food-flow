@@ -192,7 +192,11 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
 	}
 
-	if up.RestaurantID != nil && *up.RestaurantID != nil {
+	if up.RestaurantID != nil {
+		if *up.RestaurantID == nil {
+			return errs.Newf(errs.InvalidArgument, "promotion restaurantId cannot be cleared")
+		}
+
 		rest, err := a.restaurantBus.QueryByID(ctx, **up.RestaurantID)
 		if err != nil {
 			return errs.New(errs.InvalidArgument, fmt.Errorf("target restaurant lookup: %w", err))

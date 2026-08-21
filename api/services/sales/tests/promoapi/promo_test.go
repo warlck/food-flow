@@ -32,6 +32,7 @@ func Test_Promo(t *testing.T) {
 	test.Run(t, create400(sd), "create-400")
 	test.Run(t, create403(sd), "create-403")
 	test.Run(t, update200(sd), "update-200")
+	test.Run(t, update400(sd), "update-400")
 	test.Run(t, update403(sd), "update-403")
 	test.Run(t, update404(sd), "update-404")
 	test.Run(t, delete200(sd), "delete-200")
@@ -358,6 +359,44 @@ func update200(sd SeedData) []apitest.Table {
 				expResp.DateUpdated = gotResp.DateUpdated
 
 				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+
+	return table
+}
+
+func update400(sd SeedData) []apitest.Table {
+	table := []apitest.Table{
+		{
+			Name:       "update-clear-restaurant-id",
+			URL:        fmt.Sprintf("/v1/promotions/%s", sd.Promotions[4].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusBadRequest,
+			Input: &promoapp.UpdatePromotion{
+				RestaurantID: ptr(ptr("")),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.InvalidArgument, "promotion restaurantId cannot be cleared"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "update-invalid-percentage",
+			URL:        fmt.Sprintf("/v1/promotions/%s", sd.Promotions[4].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusBadRequest,
+			Input: &promoapp.UpdatePromotion{
+				DiscountType:  ptr("percentage"),
+				DiscountValue: ptr(150.0),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: percentage discount value cannot exceed 100"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
 			},
 		},
 	}
