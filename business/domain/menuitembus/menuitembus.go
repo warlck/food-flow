@@ -26,6 +26,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]MenuItem, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, menuItemID uuid.UUID) (MenuItem, error)
+	Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) error
 }
 
 // Business manages the set of APIs for menu item access.
@@ -55,6 +56,7 @@ func (b *Business) Create(ctx context.Context, ni NewMenuItem) (MenuItem, error)
 		RestaurantID: ni.RestaurantID,
 		ImageURL:     ni.ImageURL,
 		Available:    true,
+		Rank:         ni.Rank,
 		DateCreated:  now,
 		DateUpdated:  now,
 	}
@@ -90,6 +92,10 @@ func (b *Business) Update(ctx context.Context, item MenuItem, ui UpdateMenuItem)
 
 	if ui.Available != nil {
 		item.Available = *ui.Available
+	}
+
+	if ui.Rank != nil {
+		item.Rank = ui.Rank
 	}
 
 	item.DateUpdated = time.Now()
@@ -133,4 +139,34 @@ func (b *Business) QueryByID(ctx context.Context, menuItemID uuid.UUID) (MenuIte
 	}
 
 	return item, nil
+}
+
+// Reorder updates the display rank of all menu items in a category.
+func (b *Business) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) error {
+	items, err := b.storer.Query(ctx, QueryFilter{CategoryID: &categoryID}, order.NewBy(OrderByID, order.ASC), page.MustParse("1", "100"))
+	if err != nil {
+		return fmt.Errorf("query category menu items: %w", err)
+	}
+
+	if len(items) != len(orderedIDs) {
+		return errors.New("orderedIds must contain all menu items in the category exactly once")
+	}
+
+	itemMap := make(map[uuid.UUID]bool, len(items))
+	for _, itm := range items {
+		itemMap[itm.ID] = true
+	}
+
+	for _, id := range orderedIDs {
+		if !itemMap[id] {
+			return errors.New("orderedIds contains invalid or duplicate menu item id")
+		}
+		delete(itemMap, id)
+	}
+
+	if err := b.storer.Reorder(ctx, categoryID, orderedIDs); err != nil {
+		return fmt.Errorf("reorder: %w", err)
+	}
+
+	return nil
 }

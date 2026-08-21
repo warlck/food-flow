@@ -19,6 +19,7 @@ type menuItem struct {
 	RestaurantID uuid.UUID `db:"restaurant_id"`
 	ImageURL     string    `db:"image_url"`
 	Available    bool      `db:"available"`
+	Rank         *int      `db:"rank"`
 	DateCreated  time.Time `db:"date_created"`
 	DateUpdated  time.Time `db:"date_updated"`
 }
@@ -33,6 +34,7 @@ func toDBMenuItem(bus menuitembus.MenuItem) menuItem {
 		RestaurantID: bus.RestaurantID,
 		ImageURL:     bus.ImageURL,
 		Available:    bus.Available,
+		Rank:         bus.Rank,
 		DateCreated:  bus.DateCreated.UTC(),
 		DateUpdated:  bus.DateUpdated.UTC(),
 	}
@@ -58,6 +60,7 @@ func toBusMenuItem(db menuItem) (menuitembus.MenuItem, error) {
 		RestaurantID: db.RestaurantID,
 		ImageURL:     db.ImageURL,
 		Available:    db.Available,
+		Rank:         db.Rank,
 		DateCreated:  db.DateCreated.In(time.Local),
 		DateUpdated:  db.DateUpdated.In(time.Local),
 	}

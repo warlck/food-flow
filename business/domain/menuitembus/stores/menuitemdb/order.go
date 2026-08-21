@@ -12,6 +12,7 @@ var orderByFields = map[string]string{
 	menuitembus.OrderByName:      "name",
 	menuitembus.OrderByPrice:     "price",
 	menuitembus.OrderByAvailable: "available",
+	menuitembus.OrderByRank:      "rank",
 }
 
 func orderByClause(orderBy order.By) (string, error) {

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/uuid"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
@@ -35,6 +36,7 @@ func Test_MenuItem(t *testing.T) {
 	unittest.Run(t, create(db.BusDomain, sd), "create")
 	unittest.Run(t, update(db.BusDomain, sd), "update")
 	unittest.Run(t, delete(db.BusDomain, sd), "delete")
+	unittest.Run(t, reorder(db.BusDomain, sd), "reorder")
 }
 
 // =============================================================================
@@ -228,6 +230,51 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				return cmp.Diff(gotResp, expResp)
 			},
 		},
+		{
+			Name: "with_rank",
+			ExpResp: menuitembus.MenuItem{
+				Name:         name.MustParse("Pepperoni Pizza"),
+				Description:  "Spicy pepperoni with mozzarella",
+				Price:        money.MustParse(14.99),
+				CategoryID:   sd.Categories[0].ID,
+				RestaurantID: sd.Restaurants[0].ID,
+				ImageURL:     "pepperoni.jpg",
+				Available:    true,
+				Rank:         dbtest.IntPointer(10),
+			},
+			ExcFunc: func(ctx context.Context) any {
+				ni := menuitembus.NewMenuItem{
+					Name:         name.MustParse("Pepperoni Pizza"),
+					Description:  "Spicy pepperoni with mozzarella",
+					Price:        money.MustParse(14.99),
+					CategoryID:   sd.Categories[0].ID,
+					RestaurantID: sd.Restaurants[0].ID,
+					ImageURL:     "pepperoni.jpg",
+					Rank:         dbtest.IntPointer(10),
+				}
+
+				resp, err := busDomain.MenuItem.Create(ctx, ni)
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(menuitembus.MenuItem)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(menuitembus.MenuItem)
+
+				expResp.ID = gotResp.ID
+				expResp.DateCreated = gotResp.DateCreated
+				expResp.DateUpdated = gotResp.DateUpdated
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
 	}
 
 	return table
@@ -279,6 +326,44 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				return cmp.Diff(gotResp, expResp)
 			},
 		},
+		{
+			Name: "update_rank",
+			ExpResp: menuitembus.MenuItem{
+				ID:           sd.MenuItems[0].ID,
+				Name:         sd.MenuItems[0].Name,
+				Description:  sd.MenuItems[0].Description,
+				Price:        sd.MenuItems[0].Price,
+				CategoryID:   sd.MenuItems[0].CategoryID,
+				RestaurantID: sd.MenuItems[0].RestaurantID,
+				ImageURL:     sd.MenuItems[0].ImageURL,
+				Available:    sd.MenuItems[0].Available,
+				Rank:         dbtest.IntPointer(42),
+				DateCreated:  sd.MenuItems[0].DateCreated,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				ui := menuitembus.UpdateMenuItem{
+					Rank: dbtest.IntPointer(42),
+				}
+
+				resp, err := busDomain.MenuItem.Update(ctx, sd.MenuItems[0].MenuItem, ui)
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(menuitembus.MenuItem)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(menuitembus.MenuItem)
+				expResp.DateUpdated = gotResp.DateUpdated
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
 	}
 
 	return table
@@ -295,6 +380,75 @@ func delete(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				}
 
 				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+
+	return table
+}
+
+func reorder(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
+	categoryID := sd.Categories[1].ID
+	// In Category 1, items are items2[0] and items2[1], which correspond to sd.MenuItems[2] and sd.MenuItems[3]
+	item1 := sd.MenuItems[2]
+	item2 := sd.MenuItems[3]
+
+	table := []unittest.Table{
+		{
+			Name:    "mismatch_length",
+			ExpResp: "orderedIds must contain all menu items in the category exactly once",
+			ExcFunc: func(ctx context.Context) any {
+				err := busDomain.MenuItem.Reorder(ctx, categoryID, []uuid.UUID{item1.ID})
+				if err != nil {
+					return err.Error()
+				}
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:    "invalid_id",
+			ExpResp: "orderedIds contains invalid or duplicate menu item id",
+			ExcFunc: func(ctx context.Context) any {
+				err := busDomain.MenuItem.Reorder(ctx, categoryID, []uuid.UUID{item1.ID, uuid.New()})
+				if err != nil {
+					return err.Error()
+				}
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:    "success",
+			ExpResp: []int{10, 20},
+			ExcFunc: func(ctx context.Context) any {
+				// Reverse order: item2 first, then item1
+				err := busDomain.MenuItem.Reorder(ctx, categoryID, []uuid.UUID{item2.ID, item1.ID})
+				if err != nil {
+					return err
+				}
+
+				itm2Updated, err := busDomain.MenuItem.QueryByID(ctx, item2.ID)
+				if err != nil {
+					return err
+				}
+				itm1Updated, err := busDomain.MenuItem.QueryByID(ctx, item1.ID)
+				if err != nil {
+					return err
+				}
+
+				if itm2Updated.Rank == nil || itm1Updated.Rank == nil {
+					return "ranks are nil"
+				}
+
+				return []int{*itm2Updated.Rank, *itm1Updated.Rank}
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)

@@ -11,4 +11,5 @@ const (
 	OrderByName      = "name"
 	OrderByPrice     = "price"
 	OrderByAvailable = "available"
+	OrderByRank      = "rank"
 )

@@ -18,6 +18,7 @@ type MenuItem struct {
 	RestaurantID uuid.UUID
 	ImageURL     string
 	Available    bool
+	Rank         *int
 	DateCreated  time.Time
 	DateUpdated  time.Time
 }
@@ -30,6 +31,7 @@ type NewMenuItem struct {
 	CategoryID   uuid.UUID
 	RestaurantID uuid.UUID
 	ImageURL     string
+	Rank         *int
 }
 
 // UpdateMenuItem contains information needed to update a menu item.
@@ -40,4 +42,5 @@ type UpdateMenuItem struct {
 	CategoryID  *uuid.UUID
 	ImageURL    *string
 	Available   *bool
+	Rank        *int
 }

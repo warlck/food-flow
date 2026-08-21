@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -34,9 +35,9 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 func (s *Store) Create(ctx context.Context, item menuitembus.MenuItem) error {
 	const q = `
 	INSERT INTO menu_items
-		(menu_item_id, name, description, price, category_id, restaurant_id, image_url, available, date_created, date_updated)
+		(menu_item_id, name, description, price, category_id, restaurant_id, image_url, available, date_created, date_updated, rank)
 	VALUES
-		(:menu_item_id, :name, :description, :price, :category_id, :restaurant_id, :image_url, :available, :date_created, :date_updated)`
+		(:menu_item_id, :name, :description, :price, :category_id, :restaurant_id, :image_url, :available, :date_created, :date_updated, :rank)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBMenuItem(item)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -57,6 +58,7 @@ func (s *Store) Update(ctx context.Context, item menuitembus.MenuItem) error {
 		"category_id" = :category_id,
 		"image_url" = :image_url,
 		"available" = :available,
+		"rank" = :rank,
 		"date_updated" = :date_updated
 	WHERE
 		menu_item_id = :menu_item_id`
@@ -98,7 +100,7 @@ func (s *Store) Query(ctx context.Context, filter menuitembus.QueryFilter, order
 
 	const q = `
 	SELECT
-		menu_item_id, name, description, price, category_id, restaurant_id, image_url, available, date_created, date_updated
+		menu_item_id, name, description, price, category_id, restaurant_id, image_url, available, date_created, date_updated, rank
 	FROM
 		menu_items`
 
@@ -154,7 +156,7 @@ func (s *Store) QueryByID(ctx context.Context, menuItemID uuid.UUID) (menuitembu
 
 	const q = `
 	SELECT
-		menu_item_id, name, description, price, category_id, restaurant_id, image_url, available, date_created, date_updated
+		menu_item_id, name, description, price, category_id, restaurant_id, image_url, available, date_created, date_updated, rank
 	FROM
 		menu_items
 	WHERE 
@@ -169,4 +171,48 @@ func (s *Store) QueryByID(ctx context.Context, menuItemID uuid.UUID) (menuitembu
 	}
 
 	return toBusMenuItem(dbItem)
+}
+
+// Reorder updates the rank of menu items in a category transactionally in steps of 10.
+func (s *Store) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) error {
+	tx, err := s.db.(*sqlx.DB).BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	const q = `
+	UPDATE
+		menu_items
+	SET
+		"rank" = :rank,
+		"date_updated" = :date_updated
+	WHERE
+		menu_item_id = :menu_item_id AND category_id = :category_id`
+
+	now := time.Now().UTC()
+	for i, id := range orderedIDs {
+		rank := (i + 1) * 10
+		data := struct {
+			Rank        int       `db:"rank"`
+			DateUpdated time.Time `db:"date_updated"`
+			MenuItemID  uuid.UUID `db:"menu_item_id"`
+			CategoryID  uuid.UUID `db:"category_id"`
+		}{
+			Rank:        rank,
+			DateUpdated: now,
+			MenuItemID:  id,
+			CategoryID:  categoryID,
+		}
+
+		if err := sqldb.NamedExecContext(ctx, s.log, tx, q, data); err != nil {
+			return fmt.Errorf("namedexeccontext: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
+	}
+
+	return nil
 }
