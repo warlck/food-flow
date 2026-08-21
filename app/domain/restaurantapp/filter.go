@@ -16,6 +16,7 @@ type queryParams struct {
 	Rows             string
 	OrderBy          string
 	ID               string
+	OrganizationID   string
 	Name             string
 	Enabled          string
 	StartCreatedDate string
@@ -30,6 +31,7 @@ func parseQueryParams(r *http.Request) (queryParams, error) {
 		Rows:             values.Get("rows"),
 		OrderBy:          values.Get("orderBy"),
 		ID:               values.Get("restaurant_id"),
+		OrganizationID:   values.Get("organization_id"),
 		Name:             values.Get("name"),
 		Enabled:          values.Get("enabled"),
 		StartCreatedDate: values.Get("start_created_date"),
@@ -50,6 +52,16 @@ func parseFilter(qp queryParams) (restaurantbus.QueryFilter, error) {
 			filter.ID = &id
 		default:
 			fieldErrors.Add("restaurant_id", err)
+		}
+	}
+
+	if qp.OrganizationID != "" {
+		orgID, err := uuid.Parse(qp.OrganizationID)
+		switch err {
+		case nil:
+			filter.OrganizationID = &orgID
+		default:
+			fieldErrors.Add("organization_id", err)
 		}
 	}
 
