@@ -1860,7 +1860,7 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
             </>}
             {kind === 'item' && workspace && <>
               <div className="grid gap-4 sm:grid-cols-2"><Field label="Price" htmlFor="price" required><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">$</span><Input id="price" name="price" type="number" min="0.01" step="0.01" defaultValue={(existing as AdminMenuItem | undefined)?.price ?? ''} required placeholder="0.00" className="admin-input pl-7" /></div></Field><Field label="Category" htmlFor="categoryId" required><Select name="categoryId" defaultValue={itemCategoryId}><SelectTrigger className="admin-input"><SelectValue placeholder="Choose category" /></SelectTrigger><SelectContent>{workspace.categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}</SelectContent></Select></Field></div>
-              <Field label="Display Rank" htmlFor="rank" hint="Optional display priority (lower numbers appear first)"><Input id="rank" name="rank" type="number" min="0" step="1" defaultValue={(existing as AdminMenuItem | undefined)?.rank ?? ''} placeholder="e.g. 10" className="admin-input" /></Field>
+              <Field label="Display Rank" htmlFor="rank" hint="Optional display priority (lower numbers appear first)"><Input id="rank" name="rank" type="number" min="1" step="1" defaultValue={(existing as AdminMenuItem | undefined)?.rank ?? ''} placeholder="e.g. 10" className="admin-input" /></Field>
               <Field label="Dish image" htmlFor="imageUrl" hint="Optional — upload a file or paste a URL"><ImageField name="imageUrl" entityType="menu_item" restaurantId={workspace?.restaurant.id} defaultValue={(existing as AdminMenuItem | undefined)?.imageUrl ?? ''} /></Field>
             </>}
             {kind === 'addon' && workspace && <>
@@ -1875,7 +1875,7 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
               <div className="grid gap-4 sm:grid-cols-3">
                 <Field label="Additional price" htmlFor="price" required><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">$</span><Input id="price" name="price" type="number" min="0.01" step="0.01" defaultValue={(existing as AdminAddon | undefined)?.price ?? ''} required placeholder="0.00" className="admin-input pl-7" /></div></Field>
                 <Field label="Maximum quantity" htmlFor="maxQuantity" required hint="Per order item"><Input id="maxQuantity" name="maxQuantity" type="number" min="1" max="20" step="1" defaultValue={(existing as AdminAddon | undefined)?.maxQuantity ?? 1} required className="admin-input" /></Field>
-                <Field label="Display Rank" htmlFor="rank" hint="Lower appears first"><Input id="rank" name="rank" type="number" min="0" step="1" defaultValue={(existing as AdminAddon | undefined)?.rank ?? ''} placeholder="e.g. 10" className="admin-input" /></Field>
+                <Field label="Display Rank" htmlFor="rank" hint="Lower appears first"><Input id="rank" name="rank" type="number" min="1" step="1" defaultValue={(existing as AdminAddon | undefined)?.rank ?? ''} placeholder="e.g. 10" className="admin-input" /></Field>
               </div>
             </>}
             {kind === 'promotion' && (
