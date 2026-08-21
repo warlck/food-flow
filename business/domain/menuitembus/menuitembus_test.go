@@ -454,6 +454,53 @@ func reorder(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table 
 				return cmp.Diff(got, exp)
 			},
 		},
+		{
+			// Regression: the validation fetch must not be page-capped, or
+			// categories with more than 100 items could never be reordered.
+			Name:    "more_than_100_items",
+			ExpResp: true,
+			ExcFunc: func(ctx context.Context) any {
+				cats, err := categorybus.TestSeedCategories(ctx, 1, sd.Restaurants[0].ID, busDomain.Category)
+				if err != nil {
+					return err
+				}
+
+				items, err := menuitembus.TestSeedMenuItems(ctx, 101, cats[0].ID, sd.Restaurants[0].ID, busDomain.MenuItem)
+				if err != nil {
+					return err
+				}
+
+				// Reverse the seeded order.
+				orderedIDs := make([]uuid.UUID, len(items))
+				for i, itm := range items {
+					orderedIDs[len(items)-1-i] = itm.ID
+				}
+
+				if err := busDomain.MenuItem.Reorder(ctx, cats[0].ID, orderedIDs); err != nil {
+					return err
+				}
+
+				got, err := busDomain.MenuItem.QueryByCategoryID(ctx, cats[0].ID)
+				if err != nil {
+					return err
+				}
+
+				if len(got) != len(orderedIDs) {
+					return fmt.Sprintf("expected %d items, got %d", len(orderedIDs), len(got))
+				}
+
+				for i, itm := range got {
+					if itm.ID != orderedIDs[i] {
+						return fmt.Sprintf("position %d: expected item %s, got %s", i, orderedIDs[i], itm.ID)
+					}
+				}
+
+				return true
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
 	}
 
 	return table

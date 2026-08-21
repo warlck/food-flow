@@ -26,6 +26,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]MenuItem, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, menuItemID uuid.UUID) (MenuItem, error)
+	QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]MenuItem, error)
 	Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) error
 }
 
@@ -141,9 +142,19 @@ func (b *Business) QueryByID(ctx context.Context, menuItemID uuid.UUID) (MenuIte
 	return item, nil
 }
 
+// QueryByCategoryID finds all menu items for a specific category.
+func (b *Business) QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]MenuItem, error) {
+	items, err := b.storer.QueryByCategoryID(ctx, categoryID)
+	if err != nil {
+		return nil, fmt.Errorf("query: categoryID[%s]: %w", categoryID, err)
+	}
+
+	return items, nil
+}
+
 // Reorder updates the display rank of all menu items in a category.
 func (b *Business) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) error {
-	items, err := b.storer.Query(ctx, QueryFilter{CategoryID: &categoryID}, order.NewBy(OrderByID, order.ASC), page.MustParse("1", "100"))
+	items, err := b.storer.QueryByCategoryID(ctx, categoryID)
 	if err != nil {
 		return fmt.Errorf("query category menu items: %w", err)
 	}

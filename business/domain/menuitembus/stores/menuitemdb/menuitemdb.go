@@ -173,6 +173,32 @@ func (s *Store) QueryByID(ctx context.Context, menuItemID uuid.UUID) (menuitembu
 	return toBusMenuItem(dbItem)
 }
 
+// QueryByCategoryID gets all menu items for a specific category from the database.
+func (s *Store) QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]menuitembus.MenuItem, error) {
+	data := struct {
+		CategoryID uuid.UUID `db:"category_id"`
+	}{
+		CategoryID: categoryID,
+	}
+
+	const q = `
+	SELECT
+		menu_item_id, name, description, price, category_id, restaurant_id, image_url, available, date_created, date_updated, rank
+	FROM
+		menu_items
+	WHERE
+		category_id = :category_id
+	ORDER BY
+		rank ASC, price ASC, name ASC, menu_item_id ASC`
+
+	var dbItems []menuItem
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbItems); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusMenuItems(dbItems)
+}
+
 // Reorder updates the rank of menu items in a category transactionally in steps of 10.
 func (s *Store) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) error {
 	tx, err := s.db.(*sqlx.DB).BeginTxx(ctx, nil)
