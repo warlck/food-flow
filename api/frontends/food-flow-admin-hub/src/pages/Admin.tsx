@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight, Banknote, BarChart3, Bike, BookOpen, Boxes, Building2, Check, ChevronDown, ChevronRight,
-  ChefHat, CircleAlert, Clock3, Copy, CreditCard, Grid2X2, HelpCircle, ImageOff, LayoutDashboard, List,
+  ChefHat, CircleAlert, Clock3, Copy, CreditCard, Grid2X2, GripVertical, HelpCircle, ImageOff, LayoutDashboard, List,
   Loader2, LogOut, Mail, MapPin, Menu, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, ReceiptText,
   Puzzle, RefreshCw, Search, Settings, ShoppingBag, Sparkles, Store, Tag, Trash2, UtensilsCrossed, XCircle,
 } from 'lucide-react';
@@ -326,6 +326,113 @@ export default function Admin() {
     await loadWorkspace(id);
   };
 
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
+
+  const handleReorderItems = async (categoryId: string, draggedId: string, targetId: string) => {
+    if (!workspace || draggedId === targetId) return;
+    const categoryItems = workspace.menuItems
+      .filter((item) => item.categoryId === categoryId)
+      .sort((a, b) => {
+        const rA = a.rank != null ? a.rank : undefined;
+        const rB = b.rank != null ? b.rank : undefined;
+        if (rA !== undefined && rB === undefined) return -1;
+        if (rA === undefined && rB !== undefined) return 1;
+        if (rA !== undefined && rB !== undefined && rA !== rB) return rA - rB;
+        if (a.price !== b.price) return a.price - b.price;
+        if (a.name !== b.name) return a.name.localeCompare(b.name);
+        return a.id.localeCompare(b.id);
+      });
+
+    const fromIndex = categoryItems.findIndex((i) => i.id === draggedId);
+    const toIndex = categoryItems.findIndex((i) => i.id === targetId);
+    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
+
+    const reordered = [...categoryItems];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+
+    const orderedIds = reordered.map((i) => i.id);
+    const updatedRanks = new Map<string, number>();
+    orderedIds.forEach((id, index) => {
+      updatedRanks.set(id, (index + 1) * 10);
+    });
+
+    const previousMenuItems = workspace.menuItems;
+    setWorkspace((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        menuItems: current.menuItems.map((item) => {
+          if (updatedRanks.has(item.id)) {
+            return { ...item, rank: updatedRanks.get(item.id)! };
+          }
+          return item;
+        }),
+      };
+    });
+
+    try {
+      await adminApi.reorderMenuItems({ categoryId, orderedIds });
+      toast.success('Menu items reordered');
+    } catch (error) {
+      setWorkspace((current) => current ? { ...current, menuItems: previousMenuItems } : current);
+      toast.error(error instanceof Error ? error.message : 'Failed to reorder menu items');
+    }
+  };
+
+  const handleReorderAddons = async (categoryId: string, draggedId: string, targetId: string) => {
+    if (!workspace || draggedId === targetId) return;
+    const categoryAddons = workspace.addons
+      .filter((addon) => addon.categoryId === categoryId)
+      .sort((a, b) => {
+        const rA = a.rank != null ? a.rank : undefined;
+        const rB = b.rank != null ? b.rank : undefined;
+        if (rA !== undefined && rB === undefined) return -1;
+        if (rA === undefined && rB !== undefined) return 1;
+        if (rA !== undefined && rB !== undefined && rA !== rB) return rA - rB;
+        if (a.price !== b.price) return a.price - b.price;
+        if (a.name !== b.name) return a.name.localeCompare(b.name);
+        return a.id.localeCompare(b.id);
+      });
+
+    const fromIndex = categoryAddons.findIndex((a) => a.id === draggedId);
+    const toIndex = categoryAddons.findIndex((a) => a.id === targetId);
+    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
+
+    const reordered = [...categoryAddons];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+
+    const orderedIds = reordered.map((a) => a.id);
+    const updatedRanks = new Map<string, number>();
+    orderedIds.forEach((id, index) => {
+      updatedRanks.set(id, (index + 1) * 10);
+    });
+
+    const previousAddons = workspace.addons;
+    setWorkspace((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        addons: current.addons.map((addon) => {
+          if (updatedRanks.has(addon.id)) {
+            return { ...addon, rank: updatedRanks.get(addon.id)! };
+          }
+          return addon;
+        }),
+      };
+    });
+
+    try {
+      await adminApi.reorderAddons({ categoryId, orderedIds });
+      toast.success('Add-ons reordered');
+    } catch (error) {
+      setWorkspace((current) => current ? { ...current, addons: previousAddons } : current);
+      toast.error(error instanceof Error ? error.message : 'Failed to reorder add-ons');
+    }
+  };
+
   const deleteItem = async (item: AdminMenuItem) => {
     if (!window.confirm(`Delete ${item.name}? This cannot be undone.`)) return;
     await mutateWorkspace(() => adminApi.deleteMenuItem(item.id), 'Menu item deleted');
@@ -636,7 +743,43 @@ export default function Admin() {
                           {filteredItems.length ? (
                             <div className={view === 'grid' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3' : 'space-y-3'}>
                               {filteredItems.map((item) => (
-                                <MenuCard key={item.id} item={item} category={workspace.categories.find((category) => category.id === item.categoryId)} view={view} onEdit={() => setEditor({ kind: 'item', value: item })} onDelete={() => deleteItem(item)} onAvailability={(value) => toggleAvailability(item, value)} />
+                                <MenuCard
+                                  key={item.id}
+                                  item={item}
+                                  category={workspace.categories.find((category) => category.id === item.categoryId)}
+                                  view={view}
+                                  onEdit={() => setEditor({ kind: 'item', value: item })}
+                                  onDelete={() => deleteItem(item)}
+                                  onAvailability={(value) => toggleAvailability(item, value)}
+                                  draggable
+                                  onDragStart={(e) => {
+                                    setDraggedItemId(item.id);
+                                    e.dataTransfer.setData('text/plain', item.id);
+                                  }}
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    if (draggedItemId && draggedItemId !== item.id) {
+                                      setDragOverItemId(item.id);
+                                    }
+                                  }}
+                                  onDragLeave={() => {
+                                    setDragOverItemId(null);
+                                  }}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    setDragOverItemId(null);
+                                    if (draggedItemId && draggedItemId !== item.id) {
+                                      handleReorderItems(item.categoryId, draggedItemId, item.id);
+                                    }
+                                    setDraggedItemId(null);
+                                  }}
+                                  onDragEnd={() => {
+                                    setDraggedItemId(null);
+                                    setDragOverItemId(null);
+                                  }}
+                                  isDragging={draggedItemId === item.id}
+                                  isDragOver={dragOverItemId === item.id}
+                                />
                               ))}
                             </div>
                           ) : (
@@ -665,6 +808,7 @@ export default function Admin() {
                     onEdit={(addon) => setEditor({ kind: 'addon', value: addon })}
                     onDelete={deleteAddon}
                     onAvailability={toggleAddonAvailability}
+                    onReorder={handleReorderAddons}
                   />
                 </>
               )}
@@ -812,7 +956,7 @@ function SetupGuide({ restaurant, categoryCount, itemCount }: { restaurant: Admi
   );
 }
 
-function AddonManager({ categories, addons, selectedCategory, onCategoryChange, onCreate, onEdit, onDelete, onAvailability }: {
+function AddonManager({ categories, addons, selectedCategory, onCategoryChange, onCreate, onEdit, onDelete, onAvailability, onReorder }: {
   categories: AdminCategory[];
   addons: AdminAddon[];
   selectedCategory: string;
@@ -821,7 +965,11 @@ function AddonManager({ categories, addons, selectedCategory, onCategoryChange, 
   onEdit: (addon: AdminAddon) => void;
   onDelete: (addon: AdminAddon) => void;
   onAvailability: (addon: AdminAddon, value: boolean) => void;
+  onReorder?: (categoryId: string, draggedId: string, targetId: string) => void;
 }) {
+  const [draggedAddonId, setDraggedAddonId] = useState<string | null>(null);
+  const [dragOverAddonId, setDragOverAddonId] = useState<string | null>(null);
+
   const category = categories.find((entry) => entry.id === selectedCategory) ?? categories[0];
   const visibleAddons = useMemo(() => {
     if (!category) return [];
@@ -845,7 +993,7 @@ function AddonManager({ categories, addons, selectedCategory, onCategoryChange, 
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]"><Puzzle size={19} /></div>
           <div className="min-w-0">
             <h2 className="text-[17px] font-bold tracking-[-.02em]">Category add-ons</h2>
-            <p className="mt-0.5 text-[11px] text-[#6B7280]">Options are shared by every menu item in the selected category.</p>
+            <p className="mt-0.5 text-[11px] text-[#6B7280]">Options are shared by every menu item in the selected category. Drag to reorder.</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -870,14 +1018,50 @@ function AddonManager({ categories, addons, selectedCategory, onCategoryChange, 
       ) : visibleAddons.length ? (
         <div className="grid gap-3 bg-[#FAFAFA] p-4 sm:grid-cols-2 xl:grid-cols-3">
           {visibleAddons.map((addon) => (
-            <article key={addon.id} className="admin-addon-card rounded-xl border border-[#E5E7EB] bg-white p-4">
+            <article
+              key={addon.id}
+              draggable
+              onDragStart={(e) => {
+                setDraggedAddonId(addon.id);
+                e.dataTransfer.setData('text/plain', addon.id);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (draggedAddonId && draggedAddonId !== addon.id) {
+                  setDragOverAddonId(addon.id);
+                }
+              }}
+              onDragLeave={() => {
+                setDragOverAddonId(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOverAddonId(null);
+                if (draggedAddonId && draggedAddonId !== addon.id && onReorder && category) {
+                  onReorder(category.id, draggedAddonId, addon.id);
+                }
+                setDraggedAddonId(null);
+              }}
+              onDragEnd={() => {
+                setDraggedAddonId(null);
+                setDragOverAddonId(null);
+              }}
+              className={`admin-addon-card rounded-xl border border-[#E5E7EB] bg-white p-4 transition-all ${
+                dragOverAddonId === addon.id ? 'ring-2 ring-[#FF4500] border-[#FF4500] bg-[#FFF7F3]' : ''
+              } ${draggedAddonId === addon.id ? 'opacity-40' : ''}`}
+            >
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="truncate text-[13px] font-bold text-[#333333]">{addon.name}</h3>
-                    {addon.rank != null && <span className="rounded bg-[#FFF1EB] px-1.5 py-0.5 text-[9px] font-semibold text-[#FF4500]">#{addon.rank}</span>}
+                <div className="min-w-0 flex items-start gap-2">
+                  <div className="cursor-grab active:cursor-grabbing text-[#9CA3AF] hover:text-[#FF4500] shrink-0 mt-0.5" title="Drag to reorder">
+                    <GripVertical size={15} />
                   </div>
-                  <p className="mt-1 line-clamp-1 text-[10px] text-[#6B7280]">{addon.description || 'No description added yet.'}</p>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="truncate text-[13px] font-bold text-[#333333]">{addon.name}</h3>
+                      {addon.rank != null && <span className="rounded bg-[#FFF1EB] px-1.5 py-0.5 text-[9px] font-semibold text-[#FF4500]">#{addon.rank}</span>}
+                    </div>
+                    <p className="mt-1 line-clamp-1 text-[10px] text-[#6B7280]">{addon.description || 'No description added yet.'}</p>
+                  </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   <span className="text-[12px] font-bold text-[#FF4500]">+{formatCurrency(addon.price)}</span>
@@ -938,32 +1122,136 @@ function CategoryRail({ categories, counts, total, selected, onSelect, onAdd, on
   );
 }
 
-function MenuCard({ item, category, view, onEdit, onDelete, onAvailability }: { item: AdminMenuItem; category?: AdminCategory; view: 'grid' | 'list'; onEdit: () => void; onDelete: () => void; onAvailability: (value: boolean) => void }) {
+function MenuCard({
+  item,
+  category,
+  view,
+  onEdit,
+  onDelete,
+  onAvailability,
+  draggable,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+  isDragging,
+  isDragOver,
+}: {
+  item: AdminMenuItem;
+  category?: AdminCategory;
+  view: 'grid' | 'list';
+  onEdit: () => void;
+  onDelete: () => void;
+  onAvailability: (value: boolean) => void;
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragLeave?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  onDragEnd?: (e: React.DragEvent) => void;
+  isDragging?: boolean;
+  isDragOver?: boolean;
+}) {
   if (view === 'list') {
     return (
-      <article className="admin-menu-card flex items-center gap-3 rounded-xl p-3">
-        <div className="admin-menu-image relative h-16 w-20 shrink-0 overflow-hidden rounded-lg">{item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" /> : <ImageOff className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[#9CA3AF]" size={18} />}</div>
-        <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h3 className="truncate text-sm font-bold">{item.name}</h3>{item.rank != null && <span className="rounded bg-[#FFF1EB] px-1.5 py-0.5 text-[9px] font-semibold text-[#FF4500]">#{item.rank}</span>}{!item.available && <span className="rounded-full bg-[#FFEBEE] px-2 py-0.5 text-[9px] font-bold text-[#C62828]">Unavailable</span>}</div><p className="mt-1 line-clamp-1 text-[11px] text-[#6B7280]">{item.description}</p><div className="mt-1.5 flex items-center gap-2 text-[10px] text-[#6B7280]"><span>{category?.name}</span><span>•</span><strong className="text-[#FF4500]">{formatCurrency(item.price)}</strong></div></div>
+      <article
+        draggable={draggable}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        onDragEnd={onDragEnd}
+        className={`admin-menu-card flex items-center gap-3 rounded-xl p-3 transition-all ${
+          isDragOver ? 'ring-2 ring-[#FF4500] border-[#FF4500] bg-[#FFF7F3]' : ''
+        } ${isDragging ? 'opacity-40' : ''}`}
+      >
+        <div className="cursor-grab active:cursor-grabbing text-[#9CA3AF] hover:text-[#FF4500] shrink-0" title="Drag to reorder">
+          <GripVertical size={16} />
+        </div>
+        <div className="admin-menu-image relative h-16 w-20 shrink-0 overflow-hidden rounded-lg">
+          {item.imageUrl ? (
+            <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <ImageOff className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[#9CA3AF]" size={18} />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="truncate text-sm font-bold">{item.name}</h3>
+            {item.rank != null && (
+              <span className="rounded bg-[#FFF1EB] px-1.5 py-0.5 text-[9px] font-semibold text-[#FF4500]">#{item.rank}</span>
+            )}
+            {!item.available && (
+              <span className="rounded-full bg-[#FFEBEE] px-2 py-0.5 text-[9px] font-bold text-[#C62828]">Unavailable</span>
+            )}
+          </div>
+          <p className="mt-1 line-clamp-1 text-[11px] text-[#6B7280]">{item.description}</p>
+          <div className="mt-1.5 flex items-center gap-2 text-[10px] text-[#6B7280]">
+            <span>{category?.name}</span>
+            <span>•</span>
+            <strong className="text-[#FF4500]">{formatCurrency(item.price)}</strong>
+          </div>
+        </div>
         <Switch checked={item.available} onCheckedChange={onAvailability} aria-label={`Toggle ${item.name} availability`} />
         <ItemMenu onEdit={onEdit} onDelete={onDelete} />
       </article>
     );
   }
   return (
-    <article className="admin-menu-card rounded-xl">
+    <article
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      className={`admin-menu-card rounded-xl transition-all ${
+        isDragOver ? 'ring-2 ring-[#FF4500] border-[#FF4500] bg-[#FFF7F3]' : ''
+      } ${isDragging ? 'opacity-40' : ''}`}
+    >
       <div className="admin-menu-image relative aspect-[16/9] overflow-hidden">
-        {item.imageUrl ? <img src={item.imageUrl} alt={item.name} className={`h-full w-full object-cover transition duration-500 hover:scale-[1.03] ${item.available ? '' : 'grayscale-[45%] opacity-80'}`} /> : <ImageOff className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[#9CA3AF]" size={25} />}
+        {item.imageUrl ? (
+          <img
+            src={item.imageUrl}
+            alt={item.name}
+            className={`h-full w-full object-cover transition duration-500 hover:scale-[1.03] ${
+              item.available ? '' : 'grayscale-[45%] opacity-80'
+            }`}
+          />
+        ) : (
+          <ImageOff className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[#9CA3AF]" size={25} />
+        )}
         <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5">
-          <div className="rounded-full bg-[#FF4500] px-2.5 py-1 text-[9px] font-bold text-white shadow-sm">{category?.name ?? 'Uncategorised'}</div>
-          {item.rank != null && <div className="rounded-full bg-white/90 backdrop-blur-sm px-2 py-1 text-[9px] font-bold text-[#374151] shadow-sm">#{item.rank}</div>}
+          <div className="cursor-grab active:cursor-grabbing rounded-full bg-white/90 backdrop-blur-sm p-1 text-[#6B7280] shadow-sm hover:text-[#FF4500]" title="Drag to reorder">
+            <GripVertical size={13} />
+          </div>
+          <div className="rounded-full bg-[#FF4500] px-2.5 py-1 text-[9px] font-bold text-white shadow-sm">
+            {category?.name ?? 'Uncategorised'}
+          </div>
+          {item.rank != null && (
+            <div className="rounded-full bg-white/90 backdrop-blur-sm px-2 py-1 text-[9px] font-bold text-[#374151] shadow-sm">
+              #{item.rank}
+            </div>
+          )}
         </div>
-        <div className="absolute right-2.5 top-2.5 z-10"><ItemMenu onEdit={onEdit} onDelete={onDelete} contrast /></div>
+        <div className="absolute right-2.5 top-2.5 z-10">
+          <ItemMenu onEdit={onEdit} onDelete={onDelete} contrast />
+        </div>
       </div>
       <div className="p-3.5">
-        <div className="flex items-start justify-between gap-3"><h3 className="line-clamp-1 text-[14px] font-bold tracking-[-.01em]">{item.name}</h3><span className="shrink-0 text-[13px] font-bold text-[#FF4500]">{formatCurrency(item.price)}</span></div>
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="line-clamp-1 text-[14px] font-bold tracking-[-.01em]">{item.name}</h3>
+          <span className="shrink-0 text-[13px] font-bold text-[#FF4500]">{formatCurrency(item.price)}</span>
+        </div>
         <p className="mt-1.5 line-clamp-2 min-h-8 text-[10px] leading-4 text-[#6B7280]">{item.description || 'No description added yet.'}</p>
         <div className="mt-3 flex items-center justify-between border-t border-[#F3F4F6] pt-3">
-          <div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${item.available ? 'bg-[#4CAF50]' : 'bg-[#F44336]'}`} /><span className={`text-[10px] font-semibold ${item.available ? 'text-[#2E7D32]' : 'text-[#C62828]'}`}>{item.available ? 'Available' : 'Unavailable'}</span></div>
+          <div className="flex items-center gap-2">
+            <span className={`h-2 w-2 rounded-full ${item.available ? 'bg-[#4CAF50]' : 'bg-[#F44336]'}`} />
+            <span className={`text-[10px] font-semibold ${item.available ? 'text-[#2E7D32]' : 'text-[#C62828]'}`}>
+              {item.available ? 'Available' : 'Unavailable'}
+            </span>
+          </div>
           <Switch checked={item.available} onCheckedChange={onAvailability} aria-label={`Toggle ${item.name} availability`} />
         </div>
       </div>
