@@ -11,4 +11,5 @@ var orderByFields = map[string]string{
 	"name":         addonbus.OrderByName,
 	"price":        addonbus.OrderByPrice,
 	"date_created": addonbus.OrderByCreated,
+	"rank":         addonbus.OrderByRank,
 }
