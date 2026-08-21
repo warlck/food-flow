@@ -39,6 +39,7 @@ export interface AdminMenuItem {
   restaurantId: string;
   imageUrl: string;
   available: boolean;
+  rank?: number | null;
   dateCreated?: string;
   dateUpdated?: string;
 }
@@ -52,6 +53,7 @@ export interface AdminAddon {
   price: number;
   available: boolean;
   maxQuantity: number;
+  rank?: number | null;
   dateCreated?: string;
   dateUpdated?: string;
 }
@@ -138,8 +140,8 @@ export type RestaurantInput = Pick<AdminRestaurant, 'name' | 'description' | 'ad
   organizationId?: string;
 };
 export type CategoryInput = Pick<AdminCategory, 'name' | 'description' | 'restaurantId'>;
-export type MenuItemInput = Pick<AdminMenuItem, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'imageUrl'>;
-export type AddonInput = Pick<AdminAddon, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'maxQuantity'>;
+export type MenuItemInput = Pick<AdminMenuItem, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'imageUrl' | 'rank'>;
+export type AddonInput = Pick<AdminAddon, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'maxQuantity' | 'rank'>;
 
 interface ApiPage<T> {
   items: T[];
@@ -288,6 +290,10 @@ class AdminApi {
     return this.request<void>(`/v1/menuitems/${id}`, { method: 'DELETE' });
   }
 
+  reorderMenuItems(input: { categoryId: string; orderedIds: string[] }) {
+    return this.request<void>('/v1/menuitems/order', { method: 'PUT', body: JSON.stringify(input) });
+  }
+
   listAddons(restaurantId: string) {
     const params = new URLSearchParams({
       page: '1',
@@ -308,6 +314,10 @@ class AdminApi {
 
   deleteAddon(id: string) {
     return this.request<void>(`/v1/addons/${id}`, { method: 'DELETE' });
+  }
+
+  reorderAddons(input: { categoryId: string; orderedIds: string[] }) {
+    return this.request<void>('/v1/addons/order', { method: 'PUT', body: JSON.stringify(input) });
   }
 
   listOrders(restaurantId: string, filters: OrderFilters = {}) {

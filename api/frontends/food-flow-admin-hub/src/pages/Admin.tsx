@@ -271,11 +271,22 @@ export default function Admin() {
   const filteredItems = useMemo(() => {
     if (!workspace) return [];
     const normalizedQuery = query.trim().toLowerCase();
-    return workspace.menuItems.filter((item) => {
+    const items = workspace.menuItems.filter((item) => {
       const matchesCategory = selectedCategory === 'all' || item.categoryId === selectedCategory;
       const matchesAvailability = availability === 'all' || (availability === 'available' ? item.available : !item.available);
       const matchesQuery = !normalizedQuery || `${item.name} ${item.description}`.toLowerCase().includes(normalizedQuery);
       return matchesCategory && matchesAvailability && matchesQuery;
+    });
+
+    return [...items].sort((a, b) => {
+      const rA = a.rank != null ? a.rank : undefined;
+      const rB = b.rank != null ? b.rank : undefined;
+      if (rA !== undefined && rB === undefined) return -1;
+      if (rA === undefined && rB !== undefined) return 1;
+      if (rA !== undefined && rB !== undefined && rA !== rB) return rA - rB;
+      if (a.price !== b.price) return a.price - b.price;
+      if (a.name !== b.name) return a.name.localeCompare(b.name);
+      return a.id.localeCompare(b.id);
     });
   }, [availability, query, selectedCategory, workspace]);
 
@@ -743,7 +754,7 @@ export default function Admin() {
           if (kind === 'addon' && workspace) {
             const addonInput = input as AddonInput;
             validateName(addonInput.name);
-            await mutateWorkspace(() => existingId ? adminApi.updateAddon(existingId, { name: addonInput.name, description: addonInput.description, price: addonInput.price, maxQuantity: addonInput.maxQuantity }) : adminApi.createAddon(addonInput), existingId ? 'Add-on updated' : 'Add-on created');
+            await mutateWorkspace(() => existingId ? adminApi.updateAddon(existingId, { name: addonInput.name, description: addonInput.description, price: addonInput.price, maxQuantity: addonInput.maxQuantity, rank: addonInput.rank }) : adminApi.createAddon(addonInput), existingId ? 'Add-on updated' : 'Add-on created');
             setAddonCategory(addonInput.categoryId);
           }
         }}
@@ -812,7 +823,20 @@ function AddonManager({ categories, addons, selectedCategory, onCategoryChange, 
   onAvailability: (addon: AdminAddon, value: boolean) => void;
 }) {
   const category = categories.find((entry) => entry.id === selectedCategory) ?? categories[0];
-  const visibleAddons = category ? addons.filter((addon) => addon.categoryId === category.id) : [];
+  const visibleAddons = useMemo(() => {
+    if (!category) return [];
+    const list = addons.filter((addon) => addon.categoryId === category.id);
+    return [...list].sort((a, b) => {
+      const rA = a.rank != null ? a.rank : undefined;
+      const rB = b.rank != null ? b.rank : undefined;
+      if (rA !== undefined && rB === undefined) return -1;
+      if (rA === undefined && rB !== undefined) return 1;
+      if (rA !== undefined && rB !== undefined && rA !== rB) return rA - rB;
+      if (a.price !== b.price) return a.price - b.price;
+      if (a.name !== b.name) return a.name.localeCompare(b.name);
+      return a.id.localeCompare(b.id);
+    });
+  }, [addons, category]);
 
   return (
     <section className="admin-panel mt-6 overflow-hidden rounded-2xl">
@@ -849,7 +873,10 @@ function AddonManager({ categories, addons, selectedCategory, onCategoryChange, 
             <article key={addon.id} className="admin-addon-card rounded-xl border border-[#E5E7EB] bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className="truncate text-[13px] font-bold text-[#333333]">{addon.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="truncate text-[13px] font-bold text-[#333333]">{addon.name}</h3>
+                    {addon.rank != null && <span className="rounded bg-[#FFF1EB] px-1.5 py-0.5 text-[9px] font-semibold text-[#FF4500]">#{addon.rank}</span>}
+                  </div>
                   <p className="mt-1 line-clamp-1 text-[10px] text-[#6B7280]">{addon.description || 'No description added yet.'}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
@@ -916,7 +943,7 @@ function MenuCard({ item, category, view, onEdit, onDelete, onAvailability }: { 
     return (
       <article className="admin-menu-card flex items-center gap-3 rounded-xl p-3">
         <div className="admin-menu-image relative h-16 w-20 shrink-0 overflow-hidden rounded-lg">{item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" /> : <ImageOff className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[#9CA3AF]" size={18} />}</div>
-        <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h3 className="truncate text-sm font-bold">{item.name}</h3>{!item.available && <span className="rounded-full bg-[#FFEBEE] px-2 py-0.5 text-[9px] font-bold text-[#C62828]">Unavailable</span>}</div><p className="mt-1 line-clamp-1 text-[11px] text-[#6B7280]">{item.description}</p><div className="mt-1.5 flex items-center gap-2 text-[10px] text-[#6B7280]"><span>{category?.name}</span><span>•</span><strong className="text-[#FF4500]">{formatCurrency(item.price)}</strong></div></div>
+        <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h3 className="truncate text-sm font-bold">{item.name}</h3>{item.rank != null && <span className="rounded bg-[#FFF1EB] px-1.5 py-0.5 text-[9px] font-semibold text-[#FF4500]">#{item.rank}</span>}{!item.available && <span className="rounded-full bg-[#FFEBEE] px-2 py-0.5 text-[9px] font-bold text-[#C62828]">Unavailable</span>}</div><p className="mt-1 line-clamp-1 text-[11px] text-[#6B7280]">{item.description}</p><div className="mt-1.5 flex items-center gap-2 text-[10px] text-[#6B7280]"><span>{category?.name}</span><span>•</span><strong className="text-[#FF4500]">{formatCurrency(item.price)}</strong></div></div>
         <Switch checked={item.available} onCheckedChange={onAvailability} aria-label={`Toggle ${item.name} availability`} />
         <ItemMenu onEdit={onEdit} onDelete={onDelete} />
       </article>
@@ -926,7 +953,10 @@ function MenuCard({ item, category, view, onEdit, onDelete, onAvailability }: { 
     <article className="admin-menu-card rounded-xl">
       <div className="admin-menu-image relative aspect-[16/9] overflow-hidden">
         {item.imageUrl ? <img src={item.imageUrl} alt={item.name} className={`h-full w-full object-cover transition duration-500 hover:scale-[1.03] ${item.available ? '' : 'grayscale-[45%] opacity-80'}`} /> : <ImageOff className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[#9CA3AF]" size={25} />}
-        <div className="absolute left-3 top-3 z-10 rounded-full bg-[#FF4500] px-2.5 py-1 text-[9px] font-bold text-white shadow-sm">{category?.name ?? 'Uncategorised'}</div>
+        <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5">
+          <div className="rounded-full bg-[#FF4500] px-2.5 py-1 text-[9px] font-bold text-white shadow-sm">{category?.name ?? 'Uncategorised'}</div>
+          {item.rank != null && <div className="rounded-full bg-white/90 backdrop-blur-sm px-2 py-1 text-[9px] font-bold text-[#374151] shadow-sm">#{item.rank}</div>}
+        </div>
         <div className="absolute right-2.5 top-2.5 z-10"><ItemMenu onEdit={onEdit} onDelete={onDelete} contrast /></div>
       </div>
       <div className="p-3.5">
@@ -1358,8 +1388,16 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
         }, existing?.id);
       }
       if (kind === 'category' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), restaurantId: workspace.restaurant.id }, existing?.id);
-      if (kind === 'item' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), price: Number(data.get('price')), categoryId: String(data.get('categoryId')), restaurantId: workspace.restaurant.id, imageUrl: String(data.get('imageUrl')) }, existing?.id);
-      if (kind === 'addon' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), price: Number(data.get('price')), maxQuantity: Number(data.get('maxQuantity')), categoryId: String(data.get('categoryId')), restaurantId: workspace.restaurant.id }, existing?.id);
+      if (kind === 'item' && workspace) {
+        const rankStr = String(data.get('rank') ?? '').trim();
+        const rankVal = rankStr !== '' ? Number(rankStr) : undefined;
+        await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), price: Number(data.get('price')), categoryId: String(data.get('categoryId')), restaurantId: workspace.restaurant.id, imageUrl: String(data.get('imageUrl')), rank: rankVal }, existing?.id);
+      }
+      if (kind === 'addon' && workspace) {
+        const rankStr = String(data.get('rank') ?? '').trim();
+        const rankVal = rankStr !== '' ? Number(rankStr) : undefined;
+        await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), price: Number(data.get('price')), maxQuantity: Number(data.get('maxQuantity')), categoryId: String(data.get('categoryId')), restaurantId: workspace.restaurant.id, rank: rankVal }, existing?.id);
+      }
       if (kind === 'promotion' && workspace) {
         const code = String(data.get('code')).trim();
         const discountType = String(data.get('discountType')) as 'percentage' | 'fixed_amount';
@@ -1534,6 +1572,7 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
             </>}
             {kind === 'item' && workspace && <>
               <div className="grid gap-4 sm:grid-cols-2"><Field label="Price" htmlFor="price" required><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">$</span><Input id="price" name="price" type="number" min="0.01" step="0.01" defaultValue={(existing as AdminMenuItem | undefined)?.price ?? ''} required placeholder="0.00" className="admin-input pl-7" /></div></Field><Field label="Category" htmlFor="categoryId" required><Select name="categoryId" defaultValue={itemCategoryId}><SelectTrigger className="admin-input"><SelectValue placeholder="Choose category" /></SelectTrigger><SelectContent>{workspace.categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}</SelectContent></Select></Field></div>
+              <Field label="Display Rank" htmlFor="rank" hint="Optional display priority (lower numbers appear first)"><Input id="rank" name="rank" type="number" min="0" step="1" defaultValue={(existing as AdminMenuItem | undefined)?.rank ?? ''} placeholder="e.g. 10" className="admin-input" /></Field>
               <Field label="Dish image" htmlFor="imageUrl" hint="Optional — upload a file or paste a URL"><ImageField name="imageUrl" entityType="menu_item" restaurantId={workspace?.restaurant.id} defaultValue={(existing as AdminMenuItem | undefined)?.imageUrl ?? ''} /></Field>
             </>}
             {kind === 'addon' && workspace && <>
@@ -1545,9 +1584,10 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
               ) : (
                 <Field label="Category" htmlFor="categoryId" required><Select name="categoryId" defaultValue={addonCategoryId}><SelectTrigger className="admin-input"><SelectValue placeholder="Choose category" /></SelectTrigger><SelectContent>{workspace.categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}</SelectContent></Select></Field>
               )}
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
                 <Field label="Additional price" htmlFor="price" required><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">$</span><Input id="price" name="price" type="number" min="0.01" step="0.01" defaultValue={(existing as AdminAddon | undefined)?.price ?? ''} required placeholder="0.00" className="admin-input pl-7" /></div></Field>
                 <Field label="Maximum quantity" htmlFor="maxQuantity" required hint="Per order item"><Input id="maxQuantity" name="maxQuantity" type="number" min="1" max="20" step="1" defaultValue={(existing as AdminAddon | undefined)?.maxQuantity ?? 1} required className="admin-input" /></Field>
+                <Field label="Display Rank" htmlFor="rank" hint="Lower appears first"><Input id="rank" name="rank" type="number" min="0" step="1" defaultValue={(existing as AdminAddon | undefined)?.rank ?? ''} placeholder="e.g. 10" className="admin-input" /></Field>
               </div>
             </>}
             {kind === 'promotion' && (
