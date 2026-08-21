@@ -1,13 +1,13 @@
 package categoryapi_test
 
 import (
-	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"context"
 	"fmt"
 
 	"github.com/warlck/food-flow/app/sdk/apitest"
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/business/domain/categorybus"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"

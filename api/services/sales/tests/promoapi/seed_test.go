@@ -3,10 +3,10 @@ package promoapi_test
 import (
 	"context"
 	"fmt"
-	"github.com/warlck/food-flow/business/domain/organizationbus"
 
 	"github.com/warlck/food-flow/app/sdk/apitest"
 	"github.com/warlck/food-flow/app/sdk/auth"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/promobus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"

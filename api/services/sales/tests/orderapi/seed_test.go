@@ -1,7 +1,6 @@
 package orderapi_test
 
 import (
-	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"context"
 	"fmt"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/promobus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"

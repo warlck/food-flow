@@ -1,7 +1,6 @@
 package addonapi_test
 
 import (
-	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"context"
 	"fmt"
 
@@ -9,6 +8,7 @@ import (
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/categorybus"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"

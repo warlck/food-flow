@@ -1,11 +1,11 @@
 package promobus_test
 
 import (
-	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"context"
 	"testing"
 	"time"
 
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/promobus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
@@ -311,8 +311,4 @@ func Test_ValidatePromoCode_UnhappyPaths(t *testing.T) {
 
 func ptr[T any](v T) *T {
 	return &v
-}
-
-func ptrTime(t time.Time) *time.Time {
-	return &t
 }
