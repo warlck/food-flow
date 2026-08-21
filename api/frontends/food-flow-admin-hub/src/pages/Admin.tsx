@@ -717,7 +717,14 @@ export default function Admin() {
               }, 'Restaurant updated');
             } else {
               await mutateWorkspace(async () => {
-                const created = await adminApi.createRestaurant(restaurantInput);
+                const orgId = restaurantInput.organizationId || organization?.id;
+                if (!orgId) {
+                  throw new Error('Organization context is missing. Please reload the page.');
+                }
+                const created = await adminApi.createRestaurant({
+                  ...restaurantInput,
+                  organizationId: orgId,
+                });
                 const page = await adminApi.listRestaurants();
                 setRestaurants(page.items); setSelectedId(created.id); await loadWorkspace(created.id);
               }, 'Restaurant created');

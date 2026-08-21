@@ -134,7 +134,9 @@ export interface OrderStatusInput {
   paymentStatus?: PaymentStatus;
 }
 
-export type RestaurantInput = Pick<AdminRestaurant, 'name' | 'description' | 'address' | 'phone' | 'email' | 'imageUrl' | 'enabled' | 'latitude' | 'longitude' | 'maxDeliveryDistanceKm' | 'minSpend' | 'taxRate'>;
+export type RestaurantInput = Pick<AdminRestaurant, 'name' | 'description' | 'address' | 'phone' | 'email' | 'imageUrl' | 'enabled' | 'latitude' | 'longitude' | 'maxDeliveryDistanceKm' | 'minSpend' | 'taxRate'> & {
+  organizationId?: string;
+};
 export type CategoryInput = Pick<AdminCategory, 'name' | 'description' | 'restaurantId'>;
 export type MenuItemInput = Pick<AdminMenuItem, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'imageUrl'>;
 export type AddonInput = Pick<AdminAddon, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'maxQuantity'>;
