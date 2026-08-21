@@ -8,6 +8,7 @@ export interface MenuItem {
   available: boolean;
   preparationTime: number; // in minutes
   restaurantId: string;
+  rank?: number | null;
   tags?: string[];
   addons?: Addon[];
 }
@@ -19,6 +20,7 @@ export interface Addon {
   price: number;
   available: boolean;
   maxQuantity: number;
+  rank?: number | null;
 }
 
 export interface SelectedAddon {

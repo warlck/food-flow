@@ -11,6 +11,7 @@ export interface ApiAddon {
   price: number;
   available: boolean;
   maxQuantity: number;
+  rank?: number | null;
 }
 
 export interface ApiMenuItem {
@@ -20,6 +21,7 @@ export interface ApiMenuItem {
   price: number;
   imageUrl: string;
   available: boolean;
+  rank?: number | null;
   addons: ApiAddon[];
 }
 
