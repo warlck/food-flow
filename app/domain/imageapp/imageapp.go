@@ -80,7 +80,25 @@ func (a *app) complete(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return errs.NewFieldErrors("image_id", err)
 	}
 
-	img, err := a.imageBus.ConfirmUpload(ctx, imageID)
+	img, err := a.imageBus.QueryByID(ctx, imageID)
+	if err != nil {
+		if errors.Is(err, imagebus.ErrNotFound) {
+			return errs.New(errs.NotFound, err)
+		}
+		return fmt.Errorf("query by id: %w", err)
+	}
+
+	rest, err := a.restaurantBus.QueryByID(ctx, img.RestaurantID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(rest.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
+	}
+
+	img, err = a.imageBus.ConfirmUpload(ctx, imageID)
 	if err != nil {
 		switch {
 		case errors.Is(err, imagebus.ErrNotFound):
