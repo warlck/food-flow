@@ -178,16 +178,18 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return fmt.Errorf("querybyid: promotionID[%s]: %w", promotionID, err)
 	}
 
-	if promo.RestaurantID != nil {
-		rest, err := a.restaurantBus.QueryByID(ctx, *promo.RestaurantID)
-		if err != nil {
-			return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
-		}
+	if promo.RestaurantID == nil {
+		return errs.Newf(errs.PermissionDenied, "promotion %s is global; global promotions are managed by admin tooling", promotionID)
+	}
 
-		claims := mid.GetClaims(ctx)
-		if !claims.IsOrgAuthorized(rest.OrganizationID) {
-			return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
-		}
+	rest, err := a.restaurantBus.QueryByID(ctx, *promo.RestaurantID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(rest.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
 	}
 
 	if up.RestaurantID != nil && *up.RestaurantID != nil {
@@ -227,16 +229,18 @@ func (a *app) delete(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return fmt.Errorf("querybyid: promotionID[%s]: %w", promotionID, err)
 	}
 
-	if promo.RestaurantID != nil {
-		rest, err := a.restaurantBus.QueryByID(ctx, *promo.RestaurantID)
-		if err != nil {
-			return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
-		}
+	if promo.RestaurantID == nil {
+		return errs.Newf(errs.PermissionDenied, "promotion %s is global; global promotions are managed by admin tooling", promotionID)
+	}
 
-		claims := mid.GetClaims(ctx)
-		if !claims.IsOrgAuthorized(rest.OrganizationID) {
-			return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
-		}
+	rest, err := a.restaurantBus.QueryByID(ctx, *promo.RestaurantID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(rest.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
 	}
 
 	if err := a.promoBus.Delete(ctx, promo); err != nil {

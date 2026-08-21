@@ -1,9 +1,9 @@
 package promoapi_test
 
 import (
-	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"context"
 	"fmt"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 
 	"github.com/warlck/food-flow/app/sdk/apitest"
 	"github.com/warlck/food-flow/app/sdk/auth"
@@ -17,6 +17,7 @@ import (
 
 type SeedData struct {
 	apitest.SeedData
+	Orgs       []organizationbus.Organization
 	Promotions []promobus.Promotion
 }
 
@@ -37,7 +38,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (SeedData, error) {
 	}
 
 	// Seed restaurants
-	orgs, err := organizationbus.TestSeedOrganizations(ctx, 1, busDomain.Organization)
+	orgs, err := organizationbus.TestSeedOrganizations(ctx, 2, busDomain.Organization)
 	if err != nil {
 		return SeedData{}, fmt.Errorf("seeding organizations: %w", err)
 	}
@@ -110,6 +111,43 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (SeedData, error) {
 	}
 	promos = append(promos, restPromo)
 
+	rest0ID := rests[0].ID
+	scopedPromo, err := busDomain.Promo.Create(ctx, promobus.NewPromotion{
+		Code:           "SCOPED10",
+		Name:           name.MustParse("Scoped Promotion"),
+		DiscountType:   promobus.DiscountTypePercentage,
+		DiscountValue:  10.0,
+		MinOrderAmount: 10.0,
+		RestaurantID:   &rest0ID,
+		Enabled:        true,
+	})
+	if err != nil {
+		return SeedData{}, fmt.Errorf("seeding scoped promo : %w", err)
+	}
+	promos = append(promos, scopedPromo)
+
+	// Seed a restaurant and promotion belonging to a second organization the
+	// admin users are NOT members of, for cross-organization authorization tests.
+	otherRests, err := restaurantbus.TestSeedRestaurants(ctx, 1, busDomain.Restaurant, orgs[1].ID)
+	if err != nil {
+		return SeedData{}, fmt.Errorf("seeding other org restaurants : %w", err)
+	}
+
+	otherRestID := otherRests[0].ID
+	otherOrgPromo, err := busDomain.Promo.Create(ctx, promobus.NewPromotion{
+		Code:           "OTHERORG20",
+		Name:           name.MustParse("Other Org Promotion"),
+		DiscountType:   promobus.DiscountTypePercentage,
+		DiscountValue:  20.0,
+		MinOrderAmount: 10.0,
+		RestaurantID:   &otherRestID,
+		Enabled:        true,
+	})
+	if err != nil {
+		return SeedData{}, fmt.Errorf("seeding other org promo : %w", err)
+	}
+	promos = append(promos, otherOrgPromo)
+
 	sd := SeedData{
 		SeedData: apitest.SeedData{
 			Users:  []apitest.User{tu3},
@@ -119,6 +157,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (SeedData, error) {
 				{Restaurant: rests[1]},
 			},
 		},
+		Orgs:       orgs,
 		Promotions: promos,
 	}
 
