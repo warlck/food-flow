@@ -10,6 +10,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/promobus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
@@ -30,11 +31,6 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding admin users: %w", err)
 	}
 
-	tu1 := apitest.User{
-		User:  admins[0],
-		Token: apitest.Token(db.BusDomain.User, ath, admins[0].Email.Address),
-	}
-
 	// -------------------------------------------------------------------------
 	// Create regular users
 
@@ -43,20 +39,22 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding users: %w", err)
 	}
 
-	tu2 := apitest.User{
-		User:  users[0],
-		Token: apitest.Token(db.BusDomain.User, ath, users[0].Email.Address),
-	}
-
-	tu3 := apitest.User{
-		User:  users[1],
-		Token: apitest.Token(db.BusDomain.User, ath, users[1].Email.Address),
-	}
-
 	// -------------------------------------------------------------------------
 	// Create restaurant
 
-	restaurants, err := restaurantbus.TestSeedRestaurants(ctx, 2, busDomain.Restaurant)
+	orgs, err := organizationbus.TestSeedOrganizations(ctx, 1, busDomain.Organization)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding organizations: %w", err)
+	}
+
+	if _, err := busDomain.Organization.AddUser(ctx, organizationbus.NewOrganizationUser{
+		OrganizationID: orgs[0].ID,
+		UserID:         admins[0].ID,
+		Role:           role.Admin,
+	}); err != nil {
+		return apitest.SeedData{}, fmt.Errorf("adding user to organization: %w", err)
+	}
+	restaurants, err := restaurantbus.TestSeedRestaurants(ctx, 2, busDomain.Restaurant, orgs[0].ID)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding restaurants: %w", err)
 	}
@@ -170,6 +168,20 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	// -------------------------------------------------------------------------
 
+	tu1 := apitest.User{
+		User:  admins[0],
+		Token: apitest.Token(db.BusDomain, ath, admins[0].Email.Address),
+	}
+
+	tu2 := apitest.User{
+		User:  users[0],
+		Token: apitest.Token(db.BusDomain, ath, users[0].Email.Address),
+	}
+
+	tu3 := apitest.User{
+		User:  users[1],
+		Token: apitest.Token(db.BusDomain, ath, users[1].Email.Address),
+	}
 	sd := apitest.SeedData{
 		Admins:      []apitest.User{tu1},
 		Users:       []apitest.User{tu2, tu3},

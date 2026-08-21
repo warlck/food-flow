@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/types/name"
@@ -70,6 +71,7 @@ func ToAppRestaurants(restaurants []restaurantbus.Restaurant) []Restaurant {
 
 // NewRestaurant defines the data needed to add a new restaurant.
 type NewRestaurant struct {
+	OrganizationID        string   `json:"organizationId" validate:"required,uuid"`
 	Name                  string   `json:"name" validate:"required"`
 	Description           string   `json:"description"`
 	Address               string   `json:"address" validate:"required"`
@@ -103,7 +105,13 @@ func toBusNewRestaurant(app NewRestaurant) (restaurantbus.NewRestaurant, error) 
 		return restaurantbus.NewRestaurant{}, fmt.Errorf("parse name: %w", err)
 	}
 
+	orgID, err := uuid.Parse(app.OrganizationID)
+	if err != nil {
+		return restaurantbus.NewRestaurant{}, fmt.Errorf("parse organization id: %w", err)
+	}
+
 	bus := restaurantbus.NewRestaurant{
+		OrganizationID:        orgID,
 		Name:                  nme,
 		Description:           app.Description,
 		Address:               app.Address,

@@ -32,7 +32,18 @@ var (
 // Claims represents the authorization claims transmitted via a JWT.
 type Claims struct {
 	jwt.RegisteredClaims
-	Roles []string `json:"roles"`
+	Roles           []string `json:"roles"`
+	OrganizationIDs []string `json:"organization_ids"`
+}
+
+// IsOrgAuthorized checks if the user has access to the specified organization.
+func (c Claims) IsOrgAuthorized(orgID uuid.UUID) bool {
+	for _, id := range c.OrganizationIDs {
+		if id == orgID.String() {
+			return true
+		}
+	}
+	return false
 }
 
 // KeyLookup declares a method set of behavior for looking up

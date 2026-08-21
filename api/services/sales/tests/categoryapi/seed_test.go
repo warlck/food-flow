@@ -7,6 +7,7 @@ import (
 	"github.com/warlck/food-flow/app/sdk/apitest"
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/business/domain/categorybus"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
@@ -18,48 +19,43 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	busDomain := db.BusDomain
 
 	// Create admin users for auth
-	usrs, err := userbus.TestSeedUsers(ctx, 2, role.Admin, busDomain.User)
+	adminUsrs, err := userbus.TestSeedUsers(ctx, 2, role.Admin, busDomain.User)
 	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
-	}
-
-	tu1 := apitest.User{
-		User:  usrs[0],
-		Token: apitest.Token(db.BusDomain.User, ath, usrs[0].Email.Address),
-	}
-
-	tu2 := apitest.User{
-		User:  usrs[1],
-		Token: apitest.Token(db.BusDomain.User, ath, usrs[1].Email.Address),
+		return apitest.SeedData{}, fmt.Errorf("seeding admin users : %w", err)
 	}
 
 	// -------------------------------------------------------------------------
 
 	// Create regular users
-	usrs, err = userbus.TestSeedUsers(ctx, 3, role.User, busDomain.User)
+	usrs, err := userbus.TestSeedUsers(ctx, 3, role.User, busDomain.User)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
-	}
-
-	tu3 := apitest.User{
-		User:  usrs[0],
-		Token: apitest.Token(db.BusDomain.User, ath, usrs[0].Email.Address),
-	}
-
-	tu4 := apitest.User{
-		User:  usrs[1],
-		Token: apitest.Token(db.BusDomain.User, ath, usrs[1].Email.Address),
-	}
-
-	tu5 := apitest.User{
-		User:  usrs[2],
-		Token: apitest.Token(db.BusDomain.User, ath, usrs[2].Email.Address),
 	}
 
 	// -------------------------------------------------------------------------
 
 	// Seed restaurants
-	rests, err := restaurantbus.TestSeedRestaurants(ctx, 3, busDomain.Restaurant)
+	orgs, err := organizationbus.TestSeedOrganizations(ctx, 1, busDomain.Organization)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding organizations: %w", err)
+	}
+
+	if _, err := busDomain.Organization.AddUser(ctx, organizationbus.NewOrganizationUser{
+		OrganizationID: orgs[0].ID,
+		UserID:         adminUsrs[0].ID,
+		Role:           role.Admin,
+	}); err != nil {
+		return apitest.SeedData{}, fmt.Errorf("adding user to organization: %w", err)
+	}
+	if _, err := busDomain.Organization.AddUser(ctx, organizationbus.NewOrganizationUser{
+		OrganizationID: orgs[0].ID,
+		UserID:         adminUsrs[1].ID,
+		Role:           role.Admin,
+	}); err != nil {
+		return apitest.SeedData{}, fmt.Errorf("adding user to organization: %w", err)
+	}
+
+	rests, err := restaurantbus.TestSeedRestaurants(ctx, 3, busDomain.Restaurant, orgs[0].ID)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding restaurants : %w", err)
 	}
@@ -84,6 +80,30 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	// -------------------------------------------------------------------------
 
+	tu1 := apitest.User{
+		User:  adminUsrs[0],
+		Token: apitest.Token(db.BusDomain, ath, adminUsrs[0].Email.Address),
+	}
+
+	tu2 := apitest.User{
+		User:  adminUsrs[1],
+		Token: apitest.Token(db.BusDomain, ath, adminUsrs[1].Email.Address),
+	}
+
+	tu3 := apitest.User{
+		User:  usrs[0],
+		Token: apitest.Token(db.BusDomain, ath, usrs[0].Email.Address),
+	}
+
+	tu4 := apitest.User{
+		User:  usrs[1],
+		Token: apitest.Token(db.BusDomain, ath, usrs[1].Email.Address),
+	}
+
+	tu5 := apitest.User{
+		User:  usrs[2],
+		Token: apitest.Token(db.BusDomain, ath, usrs[2].Email.Address),
+	}
 	sd := apitest.SeedData{
 		Users:  []apitest.User{tu3, tu4, tu5},
 		Admins: []apitest.User{tu1, tu2},

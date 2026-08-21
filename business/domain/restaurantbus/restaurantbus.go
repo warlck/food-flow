@@ -48,6 +48,7 @@ func (b *Business) Create(ctx context.Context, nr NewRestaurant) (Restaurant, er
 
 	res := Restaurant{
 		ID:                    uuid.New(),
+		OrganizationID:        nr.OrganizationID,
 		Name:                  nr.Name,
 		Description:           nr.Description,
 		Address:               nr.Address,

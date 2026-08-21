@@ -16,6 +16,11 @@ func applyFilter(filter restaurantbus.QueryFilter, data map[string]any, buf *byt
 		wc = append(wc, "restaurant_id = :restaurant_id")
 	}
 
+	if filter.OrganizationID != nil {
+		data["organization_id"] = *filter.OrganizationID
+		wc = append(wc, "organization_id = :organization_id")
+	}
+
 	if filter.Name != nil {
 		data["name"] = fmt.Sprintf("%%%s%%", *filter.Name)
 		wc = append(wc, "name LIKE :name")

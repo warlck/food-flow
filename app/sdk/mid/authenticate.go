@@ -20,6 +20,9 @@ func Authenticate(ac *authclient.Client) web.MidHandler {
 			if err != nil {
 				return errs.New(errs.Unauthenticated, err)
 			}
+			if subjectID, err := uuid.Parse(resp.Claims.Subject); err == nil {
+				ctx = setUserID(ctx, subjectID)
+			}
 			ctx = setClaims(ctx, resp.Claims)
 			return handler(ctx, w, r)
 		}

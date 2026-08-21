@@ -29,9 +29,14 @@ func Test_Promo(t *testing.T) {
 	test.Run(t, query200(sd), "query-200")
 	test.Run(t, queryByID404(sd), "querybyid-404")
 	test.Run(t, create201(sd), "create-201")
+	test.Run(t, create400(sd), "create-400")
+	test.Run(t, create403(sd), "create-403")
 	test.Run(t, update200(sd), "update-200")
+	test.Run(t, update400(sd), "update-400")
+	test.Run(t, update403(sd), "update-403")
 	test.Run(t, update404(sd), "update-404")
 	test.Run(t, delete200(sd), "delete-200")
+	test.Run(t, delete403(sd), "delete-403")
 	test.Run(t, delete404(sd), "delete-404")
 }
 
@@ -223,6 +228,7 @@ func create201(sd SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusCreated,
 			Input: &promoapp.NewPromotion{
+				RestaurantID:   ptr(sd.Restaurants[0].ID.String()),
 				Code:           "SUMMER50",
 				Name:           "Summer Sale 50",
 				Description:    "50 percent discount",
@@ -233,6 +239,7 @@ func create201(sd SeedData) []apitest.Table {
 			},
 			GotResp: &promoapp.Promotion{},
 			ExpResp: &promoapp.Promotion{
+				RestaurantID:   ptr(sd.Restaurants[0].ID.String()),
 				Code:           "SUMMER50",
 				Name:           "Summer Sale 50",
 				Description:    "50 percent discount",
@@ -260,11 +267,66 @@ func create201(sd SeedData) []apitest.Table {
 	return table
 }
 
+func create400(sd SeedData) []apitest.Table {
+	table := []apitest.Table{
+		{
+			Name:       "missing-restaurant-id",
+			URL:        "/v1/promotions",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input: &promoapp.NewPromotion{
+				Code:           "NOREST10",
+				Name:           "No Restaurant Promo",
+				DiscountType:   "percentage",
+				DiscountValue:  10.0,
+				MinOrderAmount: 10.0,
+				Enabled:        true,
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"restaurantId\",\"error\":\"restaurantId is a required field\"}]"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+
+	return table
+}
+
+func create403(sd SeedData) []apitest.Table {
+	table := []apitest.Table{
+		{
+			Name:       "create-promotion-other-org",
+			URL:        "/v1/promotions",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusForbidden,
+			Input: &promoapp.NewPromotion{
+				RestaurantID:   ptr(sd.Promotions[6].RestaurantID.String()),
+				Code:           "CROSSORG10",
+				Name:           "Cross Org Promo",
+				DiscountType:   "percentage",
+				DiscountValue:  10.0,
+				MinOrderAmount: 10.0,
+				Enabled:        true,
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.PermissionDenied, "user not in organization %s", sd.Orgs[1].ID),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+
+	return table
+}
+
 func update200(sd SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "admin-update-promotion",
-			URL:        fmt.Sprintf("/v1/promotions/%s", sd.Promotions[0].ID),
+			URL:        fmt.Sprintf("/v1/promotions/%s", sd.Promotions[4].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -273,8 +335,8 @@ func update200(sd SeedData) []apitest.Table {
 			},
 			GotResp: &promoapp.Promotion{},
 			ExpResp: &promoapp.Promotion{
-				ID:   sd.Promotions[0].ID.String(),
-				Code: sd.Promotions[0].Code,
+				ID:   sd.Promotions[4].ID.String(),
+				Code: sd.Promotions[4].Code,
 				Name: "Updated Promo Name",
 			},
 			CmpFunc: func(got any, exp any) string {
@@ -284,6 +346,7 @@ func update200(sd SeedData) []apitest.Table {
 				}
 				expResp := exp.(*promoapp.Promotion)
 
+				expResp.RestaurantID = gotResp.RestaurantID
 				expResp.Description = gotResp.Description
 				expResp.DiscountType = gotResp.DiscountType
 				expResp.DiscountValue = gotResp.DiscountValue
@@ -303,16 +366,122 @@ func update200(sd SeedData) []apitest.Table {
 	return table
 }
 
+func update400(sd SeedData) []apitest.Table {
+	table := []apitest.Table{
+		{
+			Name:       "update-clear-restaurant-id",
+			URL:        fmt.Sprintf("/v1/promotions/%s", sd.Promotions[4].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusBadRequest,
+			Input: &promoapp.UpdatePromotion{
+				RestaurantID: ptr(ptr("")),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.InvalidArgument, "promotion restaurantId cannot be cleared"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "update-invalid-percentage",
+			URL:        fmt.Sprintf("/v1/promotions/%s", sd.Promotions[4].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusBadRequest,
+			Input: &promoapp.UpdatePromotion{
+				DiscountType:  ptr("percentage"),
+				DiscountValue: ptr(150.0),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: percentage discount value cannot exceed 100"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+
+	return table
+}
+
+func update403(sd SeedData) []apitest.Table {
+	table := []apitest.Table{
+		{
+			Name:       "update-global-promotion",
+			URL:        fmt.Sprintf("/v1/promotions/%s", sd.Promotions[0].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusForbidden,
+			Input: &promoapp.UpdatePromotion{
+				Name: ptr("Updated Promo Name"),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.PermissionDenied, "promotion %s is global; global promotions are managed by admin tooling", sd.Promotions[0].ID),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "update-other-org-promotion",
+			URL:        fmt.Sprintf("/v1/promotions/%s", sd.Promotions[6].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusForbidden,
+			Input: &promoapp.UpdatePromotion{
+				Name: ptr("Updated Promo Name"),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.PermissionDenied, "user not in organization %s", sd.Orgs[1].ID),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+
+	return table
+}
+
 func delete200(sd SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "admin-delete-promotion",
-			URL:        fmt.Sprintf("/v1/promotions/%s", sd.Promotions[1].ID),
+			URL:        fmt.Sprintf("/v1/promotions/%s", sd.Promotions[5].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusNoContent,
 			CmpFunc: func(got any, exp any) string {
 				return ""
+			},
+		},
+	}
+
+	return table
+}
+
+func delete403(sd SeedData) []apitest.Table {
+	table := []apitest.Table{
+		{
+			Name:       "delete-global-promotion",
+			URL:        fmt.Sprintf("/v1/promotions/%s", sd.Promotions[1].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodDelete,
+			StatusCode: http.StatusForbidden,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Newf(errs.PermissionDenied, "promotion %s is global; global promotions are managed by admin tooling", sd.Promotions[1].ID),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "delete-other-org-promotion",
+			URL:        fmt.Sprintf("/v1/promotions/%s", sd.Promotions[6].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodDelete,
+			StatusCode: http.StatusForbidden,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Newf(errs.PermissionDenied, "user not in organization %s", sd.Orgs[1].ID),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
 			},
 		},
 	}

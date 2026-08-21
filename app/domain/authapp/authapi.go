@@ -13,6 +13,7 @@ import (
 	"github.com/warlck/food-flow/app/sdk/authclient"
 	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/app/sdk/mid"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/types/role"
 	"github.com/warlck/food-flow/foundation/web"
@@ -25,13 +26,15 @@ const maxLoginBodyBytes = 4096
 type api struct {
 	auth     *auth.Auth
 	userBus  *userbus.Business
+	orgBus   *organizationbus.Business
 	throttle *loginThrottle
 }
 
-func newAPI(a *auth.Auth, userBus *userbus.Business) *api {
+func newAPI(a *auth.Auth, userBus *userbus.Business, orgBus *organizationbus.Business) *api {
 	api := api{
 		auth:    a,
 		userBus: userBus,
+		orgBus:  orgBus,
 	}
 
 	if a.LoginMaxFails() > 0 {
@@ -80,6 +83,16 @@ func (a *api) login(ctx context.Context, w http.ResponseWriter, r *http.Request)
 	now := time.Now().UTC()
 	expiresAt := now.Add(a.auth.TokenTTL())
 
+	orgs, err := a.orgBus.QueryOrgsForUser(ctx, usr.ID)
+	if err != nil {
+		return errs.Newf(errs.Internal, "querying orgs for user: %s", err)
+	}
+
+	orgIDs := make([]string, len(orgs))
+	for i, org := range orgs {
+		orgIDs[i] = org.ID.String()
+	}
+
 	claims := auth.Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   usr.ID.String(),
@@ -87,7 +100,8 @@ func (a *api) login(ctx context.Context, w http.ResponseWriter, r *http.Request)
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(now),
 		},
-		Roles: role.ParseToString(usr.Roles),
+		Roles:           role.ParseToString(usr.Roles),
+		OrganizationIDs: orgIDs,
 	}
 
 	tkn, err := a.auth.GenerateToken(a.auth.ActiveKID(), claims)

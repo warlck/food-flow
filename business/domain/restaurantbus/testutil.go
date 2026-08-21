@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/google/uuid"
 	"github.com/warlck/food-flow/business/types/name"
 )
 
 // TestNewRestaurants is a helper method for testing.
-func TestNewRestaurants(n int) []NewRestaurant {
+func TestNewRestaurants(n int, orgID uuid.UUID) []NewRestaurant {
 	newRests := make([]NewRestaurant, n)
 
 	idx := rand.Intn(10000)
@@ -20,6 +21,7 @@ func TestNewRestaurants(n int) []NewRestaurant {
 		lng := 103.86020 + float64(i)*0.001
 
 		nr := NewRestaurant{
+			OrganizationID:        orgID,
 			Name:                  name.MustParse(fmt.Sprintf("Rest%d", idx)),
 			Description:           fmt.Sprintf("Description for Restaurant%d", idx),
 			Address:               fmt.Sprintf("%d Main St", idx),
@@ -40,8 +42,8 @@ func TestNewRestaurants(n int) []NewRestaurant {
 }
 
 // TestSeedRestaurants is a helper method for testing.
-func TestSeedRestaurants(ctx context.Context, n int, bus *Business) ([]Restaurant, error) {
-	newRests := TestNewRestaurants(n)
+func TestSeedRestaurants(ctx context.Context, n int, bus *Business, orgID uuid.UUID) ([]Restaurant, error) {
+	newRests := TestNewRestaurants(n, orgID)
 
 	rests := make([]Restaurant, len(newRests))
 	for i, nr := range newRests {

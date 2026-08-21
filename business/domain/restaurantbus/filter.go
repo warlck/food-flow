@@ -10,6 +10,7 @@ import (
 // QueryFilter holds the available fields for filtering Restaurant queries.
 type QueryFilter struct {
 	ID               *uuid.UUID
+	OrganizationID   *uuid.UUID
 	Name             *name.Name
 	Enabled          *bool
 	StartCreatedDate *time.Time

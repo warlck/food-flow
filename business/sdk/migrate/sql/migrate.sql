@@ -273,5 +273,38 @@ CREATE TABLE images (
 CREATE INDEX idx_images_restaurant_id ON images(restaurant_id);
 CREATE INDEX idx_images_status ON images(status);
 
+-- Version: 1.19
+-- Description: Create table organizations
+CREATE TABLE organizations (
+    organization_id UUID      NOT NULL,
+    name            TEXT      NOT NULL,
+    date_created    TIMESTAMP NOT NULL,
+    date_updated    TIMESTAMP NOT NULL,
+
+    PRIMARY KEY (organization_id)
+);
+
+-- Version: 1.20
+-- Description: Create table organization_users
+CREATE TABLE organization_users (
+    organization_id UUID      NOT NULL,
+    user_id         UUID      NOT NULL,
+    role            TEXT      NOT NULL,
+    date_created    TIMESTAMP NOT NULL,
+
+    PRIMARY KEY (organization_id, user_id),
+    FOREIGN KEY (organization_id) REFERENCES organizations(organization_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_organization_users_user_id ON organization_users(user_id);
+
+-- Version: 1.21
+-- Description: Add organization_id column to restaurants table
+ALTER TABLE restaurants
+    ADD COLUMN organization_id UUID REFERENCES organizations(organization_id) ON DELETE CASCADE;
+
+CREATE INDEX idx_restaurants_organization_id ON restaurants(organization_id);
+
 
 

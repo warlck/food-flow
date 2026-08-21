@@ -13,6 +13,7 @@ import (
 	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/app/sdk/query"
 	"github.com/warlck/food-flow/business/domain/imagebus"
+	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/order"
 	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/foundation/storage"
@@ -20,14 +21,16 @@ import (
 )
 
 type app struct {
-	imageBus   *imagebus.Business
-	localStore storage.LocalStore
+	imageBus      *imagebus.Business
+	restaurantBus *restaurantbus.Business
+	localStore    storage.LocalStore
 }
 
-func newApp(imageBus *imagebus.Business, localStore storage.LocalStore) *app {
+func newApp(imageBus *imagebus.Business, restaurantBus *restaurantbus.Business, localStore storage.LocalStore) *app {
 	return &app{
-		imageBus:   imageBus,
-		localStore: localStore,
+		imageBus:      imageBus,
+		restaurantBus: restaurantBus,
+		localStore:    localStore,
 	}
 }
 
@@ -36,6 +39,16 @@ func (a *app) createUpload(ctx context.Context, w http.ResponseWriter, r *http.R
 	var req NewUpload
 	if err := web.Decode(r, &req); err != nil {
 		return errs.New(errs.InvalidArgument, err)
+	}
+
+	rest, err := a.restaurantBus.QueryByID(ctx, req.RestaurantID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(rest.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
 	}
 
 	var uploadedBy *uuid.UUID
@@ -67,7 +80,25 @@ func (a *app) complete(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return errs.NewFieldErrors("image_id", err)
 	}
 
-	img, err := a.imageBus.ConfirmUpload(ctx, imageID)
+	img, err := a.imageBus.QueryByID(ctx, imageID)
+	if err != nil {
+		if errors.Is(err, imagebus.ErrNotFound) {
+			return errs.New(errs.NotFound, err)
+		}
+		return fmt.Errorf("query by id: %w", err)
+	}
+
+	rest, err := a.restaurantBus.QueryByID(ctx, img.RestaurantID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(rest.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
+	}
+
+	img, err = a.imageBus.ConfirmUpload(ctx, imageID)
 	if err != nil {
 		switch {
 		case errors.Is(err, imagebus.ErrNotFound):
@@ -87,6 +118,24 @@ func (a *app) delete(ctx context.Context, w http.ResponseWriter, r *http.Request
 	imageID, err := uuid.Parse(web.Param(r, "image_id"))
 	if err != nil {
 		return errs.NewFieldErrors("image_id", err)
+	}
+
+	img, err := a.imageBus.QueryByID(ctx, imageID)
+	if err != nil {
+		if errors.Is(err, imagebus.ErrNotFound) {
+			return errs.New(errs.NotFound, err)
+		}
+		return fmt.Errorf("query by id: %w", err)
+	}
+
+	rest, err := a.restaurantBus.QueryByID(ctx, img.RestaurantID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(rest.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
 	}
 
 	if err := a.imageBus.Delete(ctx, imageID); err != nil {

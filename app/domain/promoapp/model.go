@@ -129,7 +129,7 @@ func ToAppPromotions(promos []promobus.Promotion) []Promotion {
 
 // NewPromotion defines data needed to create a promotion.
 type NewPromotion struct {
-	RestaurantID      *string  `json:"restaurantId"`
+	RestaurantID      *string  `json:"restaurantId" validate:"required,uuid"`
 	Code              string   `json:"code" validate:"required"`
 	Name              string   `json:"name" validate:"required"`
 	Description       string   `json:"description"`

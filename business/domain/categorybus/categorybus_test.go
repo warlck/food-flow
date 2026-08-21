@@ -3,6 +3,7 @@ package categorybus_test
 import (
 	"context"
 	"fmt"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"sort"
 	"testing"
 	"time"
@@ -40,7 +41,11 @@ func insertSeedData(busDomain dbtest.BusDomain) (unittest.SeedData, error) {
 	ctx := context.Background()
 
 	// Seed restaurants first
-	rests, err := restaurantbus.TestSeedRestaurants(ctx, 2, busDomain.Restaurant)
+	orgs, err := organizationbus.TestSeedOrganizations(ctx, 1, busDomain.Organization)
+	if err != nil {
+		return unittest.SeedData{}, fmt.Errorf("seeding organizations: %w", err)
+	}
+	rests, err := restaurantbus.TestSeedRestaurants(ctx, 2, busDomain.Restaurant, orgs[0].ID)
 	if err != nil {
 		return unittest.SeedData{}, fmt.Errorf("seeding restaurants : %w", err)
 	}

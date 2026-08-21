@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
+	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/app/sdk/query"
 	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/categorybus"
@@ -46,6 +47,11 @@ func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 	nr, err := toBusNewRestaurant(app)
 	if err != nil {
 		return errs.New(errs.InvalidArgument, err)
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(nr.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", nr.OrganizationID)
 	}
 
 	res, err := a.restaurantBus.Create(ctx, nr)
@@ -254,6 +260,11 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return fmt.Errorf("querybyid: restaurantID[%s]: %w", restaurantID, err)
 	}
 
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(res.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", res.OrganizationID)
+	}
+
 	updRes, err := a.restaurantBus.Update(ctx, res, ur)
 	if err != nil {
 		return errs.Newf(errs.Internal, "update: restaurantID[%s] ur[%+v]: %s", restaurantID, ur, err)
@@ -274,6 +285,11 @@ func (a *app) delete(ctx context.Context, w http.ResponseWriter, r *http.Request
 	res, err := a.restaurantBus.QueryByID(ctx, restaurantID)
 	if err != nil {
 		return fmt.Errorf("querybyid: restaurantID[%s]: %w", restaurantID, err)
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(res.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", res.OrganizationID)
 	}
 
 	if err := a.restaurantBus.Delete(ctx, res); err != nil {

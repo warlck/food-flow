@@ -10,6 +10,7 @@ import (
 // Restaurant represents information about a restaurant.
 type Restaurant struct {
 	ID                    uuid.UUID
+	OrganizationID        uuid.UUID
 	Name                  name.Name
 	Description           string
 	Address               string
@@ -28,6 +29,7 @@ type Restaurant struct {
 
 // NewRestaurant contains information needed to create a new restaurant.
 type NewRestaurant struct {
+	OrganizationID        uuid.UUID
 	Name                  name.Name
 	Description           string
 	Address               string

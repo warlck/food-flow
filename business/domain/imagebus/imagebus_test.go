@@ -3,6 +3,7 @@ package imagebus_test
 import (
 	"context"
 	"errors"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"strings"
 	"testing"
 	"time"
@@ -51,7 +52,11 @@ func (f *fakeSigner) Delete(_ context.Context, objectPath string) error {
 
 // seedRestaurant creates a restaurant so the images FK is satisfied.
 func seedRestaurant(ctx context.Context, db *dbtest.Database) uuid.UUID {
-	rests, err := restaurantbus.TestSeedRestaurants(ctx, 1, db.BusDomain.Restaurant)
+	orgs, err := organizationbus.TestSeedOrganizations(ctx, 1, db.BusDomain.Organization)
+	if err != nil {
+		panic(err)
+	}
+	rests, err := restaurantbus.TestSeedRestaurants(ctx, 1, db.BusDomain.Restaurant, orgs[0].ID)
 	if err != nil {
 		panic(err)
 	}

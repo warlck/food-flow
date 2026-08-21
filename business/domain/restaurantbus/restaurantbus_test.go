@@ -3,6 +3,7 @@ package restaurantbus_test
 import (
 	"context"
 	"fmt"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"sort"
 	"testing"
 	"time"
@@ -28,7 +29,7 @@ func Test_Restaurant(t *testing.T) {
 	// -------------------------------------------------------------------------
 
 	unittest.Run(t, query(db.BusDomain, sd), "query")
-	unittest.Run(t, create(db.BusDomain), "create")
+	unittest.Run(t, create(db.BusDomain, sd), "create")
 	unittest.Run(t, update(db.BusDomain, sd), "update")
 	unittest.Run(t, delete(db.BusDomain, sd), "delete")
 }
@@ -38,7 +39,11 @@ func Test_Restaurant(t *testing.T) {
 func insertSeedData(busDomain dbtest.BusDomain) (unittest.SeedData, error) {
 	ctx := context.Background()
 
-	rests, err := restaurantbus.TestSeedRestaurants(ctx, 4, busDomain.Restaurant)
+	orgs, err := organizationbus.TestSeedOrganizations(ctx, 1, busDomain.Organization)
+	if err != nil {
+		return unittest.SeedData{}, fmt.Errorf("seeding organizations: %w", err)
+	}
+	rests, err := restaurantbus.TestSeedRestaurants(ctx, 4, busDomain.Restaurant, orgs[0].ID)
 	if err != nil {
 		return unittest.SeedData{}, fmt.Errorf("seeding restaurants : %w", err)
 	}
@@ -153,27 +158,29 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 	return table
 }
 
-func create(busDomain dbtest.BusDomain) []unittest.Table {
+func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 	table := []unittest.Table{
 		{
 			Name: "basic",
 			ExpResp: restaurantbus.Restaurant{
-				Name:        name.MustParse("The Italian Place"),
-				Description: "Authentic Italian cuisine with traditional recipes",
-				Address:     "123 Pasta Lane",
-				Phone:       "+1-555-1234",
-				Email:       "info@italianplace.com",
-				ImageURL:    "italian.jpg",
-				Enabled:     true,
+				OrganizationID: sd.Restaurants[0].OrganizationID,
+				Name:           name.MustParse("The Italian Place"),
+				Description:    "Authentic Italian cuisine with traditional recipes",
+				Address:        "123 Pasta Lane",
+				Phone:          "+1-555-1234",
+				Email:          "info@italianplace.com",
+				ImageURL:       "italian.jpg",
+				Enabled:        true,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				nr := restaurantbus.NewRestaurant{
-					Name:        name.MustParse("The Italian Place"),
-					Description: "Authentic Italian cuisine with traditional recipes",
-					Address:     "123 Pasta Lane",
-					Phone:       "+1-555-1234",
-					Email:       "info@italianplace.com",
-					ImageURL:    "italian.jpg",
+					OrganizationID: sd.Restaurants[0].OrganizationID,
+					Name:           name.MustParse("The Italian Place"),
+					Description:    "Authentic Italian cuisine with traditional recipes",
+					Address:        "123 Pasta Lane",
+					Phone:          "+1-555-1234",
+					Email:          "info@italianplace.com",
+					ImageURL:       "italian.jpg",
 				}
 
 				resp, err := busDomain.Restaurant.Create(ctx, nr)
@@ -209,6 +216,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			Name: "basic",
 			ExpResp: restaurantbus.Restaurant{
 				ID:                    sd.Restaurants[0].ID,
+				OrganizationID:        sd.Restaurants[0].OrganizationID,
 				Name:                  name.MustParse("Updated Rest Name"),
 				Description:           "Updated description for this restaurant",
 				Address:               "456 New Street",
@@ -258,6 +266,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			Name: "min-spend-update",
 			ExpResp: restaurantbus.Restaurant{
 				ID:                    sd.Restaurants[1].ID,
+				OrganizationID:        sd.Restaurants[1].OrganizationID,
 				Name:                  sd.Restaurants[1].Name,
 				Description:           sd.Restaurants[1].Description,
 				Address:               sd.Restaurants[1].Address,

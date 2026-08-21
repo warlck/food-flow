@@ -40,11 +40,16 @@ func setUserID(ctx context.Context, userID uuid.UUID) context.Context {
 // GetUserID returns the user id from the context.
 func GetUserID(ctx context.Context) (uuid.UUID, error) {
 	v, ok := ctx.Value(userIDKey).(uuid.UUID)
-	if !ok {
-		return uuid.UUID{}, errors.New("user id not found in context")
+	if ok && v != uuid.Nil {
+		return v, nil
 	}
 
-	return v, nil
+	claims := GetClaims(ctx)
+	if claims.Subject != "" {
+		return uuid.Parse(claims.Subject)
+	}
+
+	return uuid.UUID{}, errors.New("user id not found in context")
 }
 
 func setUser(ctx context.Context, usr userbus.User) context.Context {

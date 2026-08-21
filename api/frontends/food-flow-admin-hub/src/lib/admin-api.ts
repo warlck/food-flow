@@ -134,7 +134,9 @@ export interface OrderStatusInput {
   paymentStatus?: PaymentStatus;
 }
 
-export type RestaurantInput = Pick<AdminRestaurant, 'name' | 'description' | 'address' | 'phone' | 'email' | 'imageUrl' | 'enabled' | 'latitude' | 'longitude' | 'maxDeliveryDistanceKm' | 'minSpend' | 'taxRate'>;
+export type RestaurantInput = Pick<AdminRestaurant, 'name' | 'description' | 'address' | 'phone' | 'email' | 'imageUrl' | 'enabled' | 'latitude' | 'longitude' | 'maxDeliveryDistanceKm' | 'minSpend' | 'taxRate'> & {
+  organizationId?: string;
+};
 export type CategoryInput = Pick<AdminCategory, 'name' | 'description' | 'restaurantId'>;
 export type MenuItemInput = Pick<AdminMenuItem, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'imageUrl'>;
 export type AddonInput = Pick<AdminAddon, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'maxQuantity'>;
@@ -168,6 +170,13 @@ function readErrorMessage(payload: unknown, fallback: string) {
     if (typeof message === 'string') return message;
   }
   return fallback;
+}
+
+export interface AdminOrganization {
+  id: string;
+  name: string;
+  dateCreated: string;
+  dateUpdated: string;
 }
 
 class AdminApi {
@@ -214,6 +223,10 @@ class AdminApi {
     }
     if (response.status === 204) return undefined as T;
     return response.json() as Promise<T>;
+  }
+
+  listMyOrganizations() {
+    return this.request<AdminOrganization[]>('/v1/organizations/me');
   }
 
   listRestaurants() {

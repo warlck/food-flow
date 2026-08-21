@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/promobus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
@@ -264,7 +265,11 @@ func Test_ValidatePromoCode_UnhappyPaths(t *testing.T) {
 	}
 
 	// 7. Restaurant mismatch
-	rests, err := restaurantbus.TestSeedRestaurants(ctx, 2, db.BusDomain.Restaurant)
+	orgs, err := organizationbus.TestSeedOrganizations(ctx, 1, db.BusDomain.Organization)
+	if err != nil {
+		t.Fatalf("seeding organizations: %v", err)
+	}
+	rests, err := restaurantbus.TestSeedRestaurants(ctx, 2, db.BusDomain.Restaurant, orgs[0].ID)
 	if err != nil {
 		t.Fatalf("Seed restaurants: %s", err)
 	}
@@ -306,8 +311,4 @@ func Test_ValidatePromoCode_UnhappyPaths(t *testing.T) {
 
 func ptr[T any](v T) *T {
 	return &v
-}
-
-func ptrTime(t time.Time) *time.Time {
-	return &t
 }
