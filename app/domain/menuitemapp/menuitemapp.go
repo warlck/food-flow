@@ -227,5 +227,10 @@ func (a *app) reorder(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	return web.Respond(ctx, w, nil, http.StatusNoContent)
+	items, err := a.menuItemBus.QueryByCategoryID(ctx, categoryID)
+	if err != nil {
+		return errs.Newf(errs.Internal, "query reordered menu items: categoryID[%s]: %s", categoryID, err)
+	}
+
+	return web.Respond(ctx, w, ToAppMenuItems(items), http.StatusOK)
 }

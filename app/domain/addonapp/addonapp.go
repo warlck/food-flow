@@ -237,5 +237,10 @@ func (a *app) reorder(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	return web.Respond(ctx, w, nil, http.StatusNoContent)
+	addons, err := a.addonBus.QueryByCategoryID(ctx, categoryID)
+	if err != nil {
+		return errs.Newf(errs.Internal, "query reordered addons: categoryID[%s]: %s", categoryID, err)
+	}
+
+	return web.Respond(ctx, w, ToAppAddons(addons), http.StatusOK)
 }

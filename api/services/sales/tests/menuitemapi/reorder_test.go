@@ -1,6 +1,7 @@
 package menuitemapi_test
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -16,7 +17,7 @@ func reorder200(sd apitest.SeedData) []apitest.Table {
 			URL:        "/v1/menuitems/order",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
-			StatusCode: http.StatusNoContent,
+			StatusCode: http.StatusOK,
 			Input: &menuitemapp.ReorderMenuItems{
 				CategoryID: sd.Categories[1].ID.String(),
 				OrderedIDs: []string{
@@ -24,9 +25,31 @@ func reorder200(sd apitest.SeedData) []apitest.Table {
 					sd.MenuItems[2].ID.String(),
 				},
 			},
-			GotResp: nil,
-			ExpResp: nil,
+			GotResp: &[]menuitemapp.MenuItem{},
+			ExpResp: &[]menuitemapp.MenuItem{},
 			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*[]menuitemapp.MenuItem)
+				if !exists {
+					return "got is not *[]menuitemapp.MenuItem"
+				}
+
+				items := *gotResp
+				if len(items) != 2 {
+					return fmt.Sprintf("expected 2 items, got %d", len(items))
+				}
+
+				if items[0].ID != sd.MenuItems[3].ID.String() || items[1].ID != sd.MenuItems[2].ID.String() {
+					return fmt.Sprintf("unexpected order: %s, %s", items[0].ID, items[1].ID)
+				}
+
+				if items[0].Rank == nil || *items[0].Rank != 10 {
+					return "first item rank is not 10"
+				}
+
+				if items[1].Rank == nil || *items[1].Rank != 20 {
+					return "second item rank is not 20"
+				}
+
 				return ""
 			},
 		},
@@ -72,6 +95,32 @@ func reorder400(sd apitest.SeedData) []apitest.Table {
 				OrderedIDs: []string{
 					sd.MenuItems[2].ID.String(),
 					uuid.New().String(),
+				},
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code: errs.InvalidArgument,
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr := got.(*errs.Error)
+				if gotErr.Code != errs.InvalidArgument {
+					return "error code mismatch"
+				}
+				return ""
+			},
+		},
+		{
+			Name:       "wrong-category-id",
+			URL:        "/v1/menuitems/order",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusBadRequest,
+			Input: &menuitemapp.ReorderMenuItems{
+				CategoryID: sd.Categories[1].ID.String(),
+				OrderedIDs: []string{
+					sd.MenuItems[3].ID.String(),
+					// Belongs to Categories[0]; same length but fails membership.
+					sd.MenuItems[0].ID.String(),
 				},
 			},
 			GotResp: &errs.Error{},
