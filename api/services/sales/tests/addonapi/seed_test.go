@@ -71,14 +71,21 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	// -------------------------------------------------------------------------
 
-	// Seed addons for category
-	addons, err := addonbus.TestSeedAddons(ctx, 2, cats[0].ID, rests[0].ID, busDomain.Addon)
+	// Seed addons for category 0
+	addons1, err := addonbus.TestSeedAddons(ctx, 2, cats[0].ID, rests[0].ID, busDomain.Addon)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
 	}
 
-	appAddons := make([]apitest.Addon, len(addons))
-	for i, a := range addons {
+	// Seed addons for category 1
+	addons2, err := addonbus.TestSeedAddons(ctx, 2, cats[1].ID, rests[0].ID, busDomain.Addon)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
+	}
+
+	allAddons := append(addons1, addons2...)
+	appAddons := make([]apitest.Addon, len(allAddons))
+	for i, a := range allAddons {
 		appAddons[i] = apitest.Addon{Addon: a}
 	}
 

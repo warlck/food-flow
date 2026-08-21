@@ -176,9 +176,9 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 		menuItemFilter := menuitembus.QueryFilter{
 			CategoryID: &cat.ID,
 		}
-		// Sort menu items by price (cheapest first) so the frontend can render the default
-		// item per category without client-side sorting.
-		menuItemOrderBy := order.NewBy(menuitembus.OrderByPrice, order.ASC)
+		// Sort menu items by display rank (ranked items first, then unranked) so the frontend
+		// can render storefront ordering without client-side sorting.
+		menuItemOrderBy := order.NewBy(menuitembus.OrderByRank, order.ASC)
 		menuItems, err := a.menuItemBus.Query(ctx, menuItemFilter, menuItemOrderBy, pg)
 		if err != nil {
 			return fmt.Errorf("query menu items: categoryID[%s]: %w", cat.ID, err)
@@ -201,6 +201,7 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 					Price:       addon.Price.Value(),
 					Available:   addon.Available,
 					MaxQuantity: addon.MaxQuantity,
+					Rank:        addon.Rank,
 				})
 			}
 		}
@@ -214,13 +215,25 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 				Price:       item.Price.Value(),
 				ImageURL:    item.ImageURL,
 				Available:   item.Available,
+				Rank:        item.Rank,
 				Addons:      appAddons,
 			}
 			appCategory.MenuItems = append(appCategory.MenuItems, appMenuItem)
 		}
 
-		// Make ordering deterministic (price asc, then name, then id).
-		sort.Slice(appCategory.MenuItems, func(i, j int) bool {
+		// Make ordering deterministic (rank asc with non-nil first, then price asc, name asc, id asc).
+		sort.SliceStable(appCategory.MenuItems, func(i, j int) bool {
+			r1 := appCategory.MenuItems[i].Rank
+			r2 := appCategory.MenuItems[j].Rank
+			if r1 != nil && r2 == nil {
+				return true
+			}
+			if r1 == nil && r2 != nil {
+				return false
+			}
+			if r1 != nil && r2 != nil && *r1 != *r2 {
+				return *r1 < *r2
+			}
 			if appCategory.MenuItems[i].Price != appCategory.MenuItems[j].Price {
 				return appCategory.MenuItems[i].Price < appCategory.MenuItems[j].Price
 			}

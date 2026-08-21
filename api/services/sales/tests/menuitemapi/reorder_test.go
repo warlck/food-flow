@@ -3,66 +3,30 @@ package menuitemapi_test
 import (
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/domain/menuitemapp"
 	"github.com/warlck/food-flow/app/sdk/apitest"
 	"github.com/warlck/food-flow/app/sdk/errs"
-	"github.com/warlck/food-flow/business/sdk/dbtest"
 )
 
-func update200(sd apitest.SeedData) []apitest.Table {
-	updName := "Updated MenuItem"
-	updDesc := "Updated Description"
-	updPrice := 29.99
-	updAvail := false
-
+func reorder200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/menuitems/" + sd.MenuItems[1].ID.String(),
+			URL:        "/v1/menuitems/order",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
-			StatusCode: http.StatusOK,
-			Input: &menuitemapp.UpdateMenuItem{
-				Name:        &updName,
-				Description: &updDesc,
-				Price:       &updPrice,
-				Available:   &updAvail,
+			StatusCode: http.StatusNoContent,
+			Input: &menuitemapp.ReorderMenuItems{
+				CategoryID: sd.Categories[1].ID.String(),
+				OrderedIDs: []string{
+					sd.MenuItems[3].ID.String(),
+					sd.MenuItems[2].ID.String(),
+				},
 			},
-			GotResp: &menuitemapp.MenuItem{},
-			ExpResp: &menuitemapp.MenuItem{},
+			GotResp: nil,
+			ExpResp: nil,
 			CmpFunc: func(got any, exp any) string {
-				gotResp := got.(*menuitemapp.MenuItem)
-				if gotResp.Name != "Updated MenuItem" {
-					return "name not updated"
-				}
-				if gotResp.Description != "Updated Description" {
-					return "description not updated"
-				}
-				if gotResp.Price != 29.99 {
-					return "price not updated"
-				}
-				if gotResp.Available != false {
-					return "available not updated"
-				}
-				return ""
-			},
-		},
-		{
-			Name:       "update-rank",
-			URL:        "/v1/menuitems/" + sd.MenuItems[1].ID.String(),
-			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPut,
-			StatusCode: http.StatusOK,
-			Input: &menuitemapp.UpdateMenuItem{
-				Rank: dbtest.IntPointer(42),
-			},
-			GotResp: &menuitemapp.MenuItem{},
-			ExpResp: &menuitemapp.MenuItem{},
-			CmpFunc: func(got any, exp any) string {
-				gotResp := got.(*menuitemapp.MenuItem)
-				if gotResp.Rank == nil || *gotResp.Rank != 42 {
-					return "rank not updated"
-				}
 				return ""
 			},
 		},
@@ -71,37 +35,54 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	return table
 }
 
-func update400(sd apitest.SeedData) []apitest.Table {
-	invalidPrice := -1.0
-
+func reorder400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
-			Name:       "invalid-price",
-			URL:        "/v1/menuitems/" + sd.MenuItems[1].ID.String(),
+			Name:       "mismatch-length",
+			URL:        "/v1/menuitems/order",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
-			Input: &menuitemapp.UpdateMenuItem{
-				Price: &invalidPrice,
+			Input: &menuitemapp.ReorderMenuItems{
+				CategoryID: sd.Categories[1].ID.String(),
+				OrderedIDs: []string{
+					sd.MenuItems[2].ID.String(),
+				},
 			},
 			GotResp: &errs.Error{},
 			ExpResp: &errs.Error{
-				Code:    errs.InvalidArgument,
-				Message: "validation error",
+				Code: errs.InvalidArgument,
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotErr := got.(*errs.Error)
-				expErr := exp.(*errs.Error)
-
-				if gotErr.Code != expErr.Code {
+				if gotErr.Code != errs.InvalidArgument {
 					return "error code mismatch"
 				}
-
-				// Just check it contains validation error
-				if gotErr.Message == "" {
-					return "error message should not be empty"
+				return ""
+			},
+		},
+		{
+			Name:       "invalid-id",
+			URL:        "/v1/menuitems/order",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusBadRequest,
+			Input: &menuitemapp.ReorderMenuItems{
+				CategoryID: sd.Categories[1].ID.String(),
+				OrderedIDs: []string{
+					sd.MenuItems[2].ID.String(),
+					uuid.New().String(),
+				},
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code: errs.InvalidArgument,
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr := got.(*errs.Error)
+				if gotErr.Code != errs.InvalidArgument {
+					return "error code mismatch"
 				}
-
 				return ""
 			},
 		},
@@ -110,11 +91,11 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	return table
 }
 
-func update401(sd apitest.SeedData) []apitest.Table {
+func reorder401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        "/v1/menuitems/" + sd.MenuItems[1].ID.String(),
+			URL:        "/v1/menuitems/order",
 			Token:      "",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -126,26 +107,27 @@ func update401(sd apitest.SeedData) []apitest.Table {
 			CmpFunc: func(got any, exp any) string {
 				gotErr := got.(*errs.Error)
 				expErr := exp.(*errs.Error)
-
 				if gotErr.Code != expErr.Code {
 					return "error code mismatch"
 				}
-
 				if gotErr.Message != expErr.Message {
 					return "error message mismatch"
 				}
-
 				return ""
 			},
 		},
 		{
 			Name:       "wronguser",
-			URL:        "/v1/menuitems/" + sd.MenuItems[1].ID.String(),
+			URL:        "/v1/menuitems/order",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusForbidden,
-			Input: &menuitemapp.UpdateMenuItem{
-				Name: dbtest.StringPointer("Updated Name"),
+			Input: &menuitemapp.ReorderMenuItems{
+				CategoryID: sd.Categories[1].ID.String(),
+				OrderedIDs: []string{
+					sd.MenuItems[2].ID.String(),
+					sd.MenuItems[3].ID.String(),
+				},
 			},
 			GotResp: &errs.Error{},
 			ExpResp: &errs.Error{
@@ -155,15 +137,12 @@ func update401(sd apitest.SeedData) []apitest.Table {
 			CmpFunc: func(got any, exp any) string {
 				gotErr := got.(*errs.Error)
 				expErr := exp.(*errs.Error)
-
 				if gotErr.Code != expErr.Code {
 					return "error code mismatch"
 				}
-
 				if gotErr.Message != expErr.Message {
 					return "error message mismatch"
 				}
-
 				return ""
 			},
 		},

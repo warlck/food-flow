@@ -6,6 +6,7 @@ import (
 	"github.com/warlck/food-flow/app/domain/menuitemapp"
 	"github.com/warlck/food-flow/app/sdk/apitest"
 	"github.com/warlck/food-flow/app/sdk/errs"
+	"github.com/warlck/food-flow/business/sdk/dbtest"
 )
 
 func create201(sd apitest.SeedData) []apitest.Table {
@@ -35,6 +36,30 @@ func create201(sd apitest.SeedData) []apitest.Table {
 				}
 				if gotResp.Price != 19.99 {
 					return "price mismatch"
+				}
+				return ""
+			},
+		},
+		{
+			Name:       "with-rank",
+			URL:        "/v1/menuitems",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusCreated,
+			Input: &menuitemapp.NewMenuItem{
+				CategoryID:   sd.Categories[0].ID.String(),
+				RestaurantID: sd.Restaurants[0].ID.String(),
+				Name:         "Test MenuItem Ranked",
+				Description:  "Test Description",
+				Price:        24.99,
+				Rank:         dbtest.IntPointer(5),
+			},
+			GotResp: &menuitemapp.MenuItem{},
+			ExpResp: &menuitemapp.MenuItem{},
+			CmpFunc: func(got any, exp any) string {
+				gotResp := got.(*menuitemapp.MenuItem)
+				if gotResp.Rank == nil || *gotResp.Rank != 5 {
+					return "rank mismatch"
 				}
 				return ""
 			},

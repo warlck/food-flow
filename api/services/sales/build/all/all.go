@@ -66,6 +66,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:    cfg.AuthClient,
 		MenuItemBus:   cfg.MenuItemBus,
 		RestaurantBus: cfg.RestaurantBus,
+		CategoryBus:   cfg.CategoryBus,
 		Log:           cfg.Log,
 	})
 
@@ -73,6 +74,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:    cfg.AuthClient,
 		AddonBus:      cfg.AddonBus,
 		RestaurantBus: cfg.RestaurantBus,
+		CategoryBus:   cfg.CategoryBus,
 		Log:           cfg.Log,
 	})
 

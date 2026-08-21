@@ -9,6 +9,7 @@ import (
 	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/app/sdk/query"
+	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/order"
@@ -20,13 +21,15 @@ import (
 type app struct {
 	menuItemBus   *menuitembus.Business
 	restaurantBus *restaurantbus.Business
+	categoryBus   *categorybus.Business
 }
 
 // newApp constructs a handlers for route access.
-func newApp(menuItemBus *menuitembus.Business, restaurantBus *restaurantbus.Business) *app {
+func newApp(menuItemBus *menuitembus.Business, restaurantBus *restaurantbus.Business, categoryBus *categorybus.Business) *app {
 	return &app{
 		menuItemBus:   menuItemBus,
 		restaurantBus: restaurantBus,
+		categoryBus:   categoryBus,
 	}
 }
 
@@ -179,6 +182,49 @@ func (a *app) delete(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	if err := a.menuItemBus.Delete(ctx, item); err != nil {
 		return errs.Newf(errs.Internal, "delete: menuItemID[%s]: %s", menuItemID, err)
+	}
+
+	return web.Respond(ctx, w, nil, http.StatusNoContent)
+}
+
+// reorder updates the display rank of menu items in a category.
+func (a *app) reorder(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	var app ReorderMenuItems
+	if err := web.Decode(r, &app); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	categoryID, err := uuid.Parse(app.CategoryID)
+	if err != nil {
+		return errs.NewFieldErrors("categoryId", err)
+	}
+
+	cat, err := a.categoryBus.QueryByID(ctx, categoryID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("category lookup: %w", err))
+	}
+
+	rest, err := a.restaurantBus.QueryByID(ctx, cat.RestaurantID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(rest.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
+	}
+
+	orderedIDs := make([]uuid.UUID, len(app.OrderedIDs))
+	for i, idStr := range app.OrderedIDs {
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			return errs.NewFieldErrors("orderedIds", err)
+		}
+		orderedIDs[i] = id
+	}
+
+	if err := a.menuItemBus.Reorder(ctx, categoryID, orderedIDs); err != nil {
+		return errs.New(errs.InvalidArgument, err)
 	}
 
 	return web.Respond(ctx, w, nil, http.StatusNoContent)

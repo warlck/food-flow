@@ -50,6 +50,34 @@ func create201(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(got, exp)
 			},
 		},
+		{
+			Name:       "with-rank",
+			URL:        "/v1/addons",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusCreated,
+			Input: &addonapp.NewAddon{
+				CategoryID:   sd.Categories[0].ID.String(),
+				RestaurantID: sd.Restaurants[0].ID.String(),
+				Name:         "Extra Pickles",
+				Description:  "Pickle slices",
+				Price:        1.00,
+				MaxQuantity:  3,
+				Rank:         func(i int) *int { return &i }(15),
+			},
+			GotResp: &addonapp.Addon{},
+			ExpResp: &addonapp.Addon{},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*addonapp.Addon)
+				if !exists {
+					return "got is not *addonapp.Addon"
+				}
+				if gotResp.Rank == nil || *gotResp.Rank != 15 {
+					return "rank mismatch"
+				}
+				return ""
+			},
+		},
 	}
 
 	return table

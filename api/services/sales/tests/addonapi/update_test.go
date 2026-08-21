@@ -49,6 +49,28 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(got, exp)
 			},
 		},
+		{
+			Name:       "update-rank",
+			URL:        fmt.Sprintf("/v1/addons/%s", sd.Addons[0].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusOK,
+			Input: &addonapp.UpdateAddon{
+				Rank: dbtest.IntPointer(25),
+			},
+			GotResp: &addonapp.Addon{},
+			ExpResp: &addonapp.Addon{},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*addonapp.Addon)
+				if !exists {
+					return "got is not *addonapp.Addon"
+				}
+				if gotResp.Rank == nil || *gotResp.Rank != 25 {
+					return "rank not updated"
+				}
+				return ""
+			},
+		},
 	}
 
 	return table
