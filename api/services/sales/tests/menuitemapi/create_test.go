@@ -38,6 +38,9 @@ func create201(sd apitest.SeedData) []apitest.Table {
 				if gotResp.Price != 19.99 {
 					return "price mismatch"
 				}
+				if gotResp.Rank != nil {
+					return "rank should be nil when not provided"
+				}
 				return ""
 			},
 		},
