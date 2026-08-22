@@ -22,6 +22,7 @@ type Addon struct {
 	Price        float64 `json:"price"`
 	Available    bool    `json:"available"`
 	MaxQuantity  int     `json:"maxQuantity"`
+	Rank         *int    `json:"rank"`
 	DateCreated  string  `json:"dateCreated"`
 	DateUpdated  string  `json:"dateUpdated"`
 }
@@ -43,6 +44,7 @@ func ToAppAddon(bus addonbus.Addon) Addon {
 		Price:        bus.Price.Value(),
 		Available:    bus.Available,
 		MaxQuantity:  bus.MaxQuantity,
+		Rank:         bus.Rank,
 		DateCreated:  bus.DateCreated.Format(time.RFC3339),
 		DateUpdated:  bus.DateUpdated.Format(time.RFC3339),
 	}
@@ -68,6 +70,7 @@ type NewAddon struct {
 	Description  string  `json:"description"`
 	Price        float64 `json:"price" validate:"required"`
 	MaxQuantity  int     `json:"maxQuantity"`
+	Rank         *int    `json:"rank" validate:"omitempty,gte=1"`
 }
 
 // Decode implements the web.Decoder interface.
@@ -112,6 +115,7 @@ func toBusNewAddon(app NewAddon) (addonbus.NewAddon, error) {
 		Description:  app.Description,
 		Price:        prc,
 		MaxQuantity:  app.MaxQuantity,
+		Rank:         app.Rank,
 	}
 
 	return bus, nil
@@ -126,6 +130,7 @@ type UpdateAddon struct {
 	Price       *float64 `json:"price"`
 	Available   *bool    `json:"available"`
 	MaxQuantity *int     `json:"maxQuantity"`
+	Rank        *int     `json:"rank" validate:"omitempty,gte=1"`
 }
 
 // Decode implements the web.Decoder interface.
@@ -167,7 +172,30 @@ func toBusUpdateAddon(app UpdateAddon) (addonbus.UpdateAddon, error) {
 		Price:       prc,
 		Available:   app.Available,
 		MaxQuantity: app.MaxQuantity,
+		Rank:        app.Rank,
 	}
 
 	return bus, nil
+}
+
+// =============================================================================
+
+// ReorderAddons defines the data needed to update addons order.
+type ReorderAddons struct {
+	CategoryID string   `json:"categoryId" validate:"required,uuid"`
+	OrderedIDs []string `json:"orderedIds" validate:"required,min=1,dive,uuid"`
+}
+
+// Decode implements the decoder interface.
+func (app *ReorderAddons) Decode(data []byte) error {
+	return json.Unmarshal(data, app)
+}
+
+// Validate checks the data in the model is considered clean.
+func (app ReorderAddons) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return fmt.Errorf("validate: %w", err)
+	}
+
+	return nil
 }

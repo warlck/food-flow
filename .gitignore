@@ -28,5 +28,14 @@ DEBUG.md
 # Specs
 docs/specs/
 
+# Local untracked notes (human review guides, scratch docs)
+docs/local/
+
+# Feature review reports (local-only review artifacts)
+docs/reviews/
+
+# Local agent MCP config (machine-specific paths)
+.agents/mcp_config.json
+
 # Local auth signing keys (never commit; see infra/gcp/bootstrap-auth-secret.sh)
 infra/keys/*.pem

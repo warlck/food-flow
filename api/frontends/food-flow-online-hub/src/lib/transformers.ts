@@ -43,7 +43,10 @@ export function transformApiRestaurant(apiData: ApiRestaurantDetails): Restauran
 }
 
 /**
- * Transform API menu items to frontend MenuItem type
+ * Transform API menu items to frontend MenuItem type.
+ * Note: The backend sales-service `/v1/restaurants/:id/details` orders menu items
+ * and addons by `rank` (ranked items first, then tiebreakers). Iterating in order
+ * preserves the display ordering on the storefront.
  */
 export function transformApiMenuItems(
   apiData: ApiRestaurantDetails
@@ -56,7 +59,7 @@ export function transformApiMenuItems(
       categoriesSet.add(category.name);
       
       category.mentuItems.forEach((apiItem: ApiMenuItem) => {
-        // Transform addons if they exist
+        // Transform addons if they exist (ordered by rank from backend)
         const addons: Addon[] = apiItem.addons?.map((apiAddon: ApiAddon) => ({
           id: apiAddon.id,
           name: apiAddon.name,
@@ -64,6 +67,7 @@ export function transformApiMenuItems(
           price: apiAddon.price,
           available: apiAddon.available,
           maxQuantity: apiAddon.maxQuantity,
+          rank: apiAddon.rank,
         })) || [];
 
         items.push({
@@ -76,6 +80,7 @@ export function transformApiMenuItems(
           available: apiItem.available,
           preparationTime: 15, // Default value since not in API
           restaurantId: apiData.id,
+          rank: apiItem.rank,
           tags: [],
           addons: addons.length > 0 ? addons : undefined,
         });
@@ -87,4 +92,15 @@ export function transformApiMenuItems(
     items,
     categories: Array.from(categoriesSet),
   };
+}
+
+/**
+ * Cheapest price among the *available* items in a category. Used so the
+ * category card and the dialog header quote the same base price, and so the
+ * "+$X" deltas are relative to a price the customer can actually pay.
+ * Returns null when the category has no available items.
+ */
+export function cheapestAvailablePrice(categoryItems: MenuItem[]): number | null {
+  const prices = categoryItems.filter((mi) => mi.available).map((mi) => mi.price);
+  return prices.length === 0 ? null : Math.min(...prices);
 }

@@ -23,6 +23,7 @@ func Test_Restaurant(t *testing.T) {
 	test.Run(t, query200(sd), "query-200")
 	test.Run(t, queryByID200(sd), "querybyid-200")
 	test.Run(t, queryByIDWithDetails200(sd), "querybyidwithdetails-200")
+	test.Run(t, queryByIDWithDetailsRanked200(sd), "querybyidwithdetailsranked-200")
 	test.Run(t, queryByIDWithDetails400(sd), "querybyidwithdetails-400")
 	// details endpoint is intentionally public for frontend access
 

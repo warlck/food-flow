@@ -199,6 +199,7 @@ type Addon struct {
 	Price       float64 `json:"price"`
 	Available   bool    `json:"available"`
 	MaxQuantity int     `json:"maxQuantity"`
+	Rank        *int    `json:"rank,omitempty"`
 }
 
 // MenuItem represents information about a menu items embedded with restaurant categories
@@ -210,6 +211,7 @@ type MenuItem struct {
 	Price       float64 `json:"price"`
 	ImageURL    string  `json:"imageUrl"`
 	Available   bool    `json:"available"`
+	Rank        *int    `json:"rank,omitempty"`
 	Addons      []Addon `json:"addons"`
 }
 

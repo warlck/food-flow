@@ -35,8 +35,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	// -------------------------------------------------------------------------
 
-	// Seed restaurants
-	orgs, err := organizationbus.TestSeedOrganizations(ctx, 1, busDomain.Organization)
+	// Seed organizations; the second org's resources are used for
+	// cross-organization authorization tests (admins are NOT members of it).
+	orgs, err := organizationbus.TestSeedOrganizations(ctx, 2, busDomain.Organization)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding organizations: %w", err)
 	}
@@ -92,6 +93,23 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding menu items : %w", err)
 	}
 
+	// Seed a restaurant, category, and items in the second organization,
+	// which the admin users are not members of.
+	otherRests, err := restaurantbus.TestSeedRestaurants(ctx, 1, busDomain.Restaurant, orgs[1].ID)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding other org restaurant : %w", err)
+	}
+
+	otherCats, err := categorybus.TestSeedCategories(ctx, 1, otherRests[0].ID, busDomain.Category)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding other org category : %w", err)
+	}
+
+	otherItems, err := menuitembus.TestSeedMenuItems(ctx, 2, otherCats[0].ID, otherRests[0].ID, busDomain.MenuItem)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding other org menu items : %w", err)
+	}
+
 	// -------------------------------------------------------------------------
 
 	tu1 := apitest.User{
@@ -119,16 +137,19 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Token: apitest.Token(db.BusDomain, ath, usrs[2].Email.Address),
 	}
 	sd := apitest.SeedData{
-		Users:  []apitest.User{tu3, tu4, tu5},
-		Admins: []apitest.User{tu1, tu2},
+		Users:         []apitest.User{tu3, tu4, tu5},
+		Admins:        []apitest.User{tu1, tu2},
+		Organizations: []apitest.Organization{{Organization: orgs[0]}, {Organization: orgs[1]}},
 		Restaurants: []apitest.Restaurant{
 			{Restaurant: rests[0]},
 			{Restaurant: rests[1]},
+			{Restaurant: otherRests[0]},
 		},
 		Categories: []apitest.Category{
 			{Category: cats[0]},
 			{Category: cats[1]},
 			{Category: cats2[0]},
+			{Category: otherCats[0]},
 		},
 		MenuItems: []apitest.MenuItem{
 			{MenuItem: items[0]},
@@ -137,6 +158,8 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 			{MenuItem: items2[1]},
 			{MenuItem: items3[0]},
 			{MenuItem: items3[1]},
+			{MenuItem: otherItems[0]},
+			{MenuItem: otherItems[1]},
 		},
 	}
 

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useCart } from '@/context/CartContext';
 import { useRestaurantDetails } from '@/hooks/useRestaurantDetails';
-import { transformApiRestaurant, transformApiMenuItems } from '@/lib/transformers';
+import { transformApiRestaurant, transformApiMenuItems, cheapestAvailablePrice } from '@/lib/transformers';
 import { MenuItem as MenuItemType } from '@/types';
 import { Plus, ShoppingCart, Clock, Star, ArrowUp, Loader2, AlertCircle } from 'lucide-react';
 import MenuItemDialog from '@/components/MenuItemDialog';
@@ -46,7 +46,7 @@ const MobileMenu: React.FC = () => {
 
   const categoriesWithAll = useMemo(() => ['All', ...categories], [categories]);
 
-  // Group items by category; backend provides items per category sorted by price (cheapest first).
+  // Group items by category; backend provides items per category rank-ordered (ranked first, then by price).
   const itemsByCategory = useMemo(() => {
     const map = new Map<string, MenuItemType[]>();
     menuItems.forEach((mi) => {
@@ -60,6 +60,9 @@ const MobileMenu: React.FC = () => {
     return map;
   }, [menuItems]);
 
+  // One card per category. We keep the rank-first item as the card's featured
+  // image/identity, but the quoted price is the category's cheapest *available*
+  // item so the card and the dialog header agree.
   const displayedItems = useMemo(() => {
     if (selectedCategory === 'All') {
       // Preserve backend category order.
@@ -71,6 +74,13 @@ const MobileMenu: React.FC = () => {
     const categoryItems = itemsByCategory.get(selectedCategory);
     return categoryItems && categoryItems.length > 0 ? [categoryItems[0]] : [];
   }, [categories, itemsByCategory, selectedCategory]);
+
+  // Base price shown on each category card: cheapest available item in that
+  // category (falls back to the featured item's price when none are available).
+  const cardPrice = (item: MenuItemType): number => {
+    const cheapest = cheapestAvailablePrice(itemsByCategory.get(item.category) ?? []);
+    return cheapest ?? item.price;
+  };
 
   // Check if restaurant ID is missing
   if (!restaurantId) {
@@ -249,7 +259,7 @@ const MobileMenu: React.FC = () => {
                       {/* Price and Controls */}
                       <div className="flex items-center justify-between">
                         <div className="text-food-primary font-bold text-xl">
-                          ${item.price.toFixed(2)}
+                          ${cardPrice(item).toFixed(2)}
                         </div>
 
                         <div className="flex items-center">

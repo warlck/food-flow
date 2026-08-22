@@ -12,13 +12,13 @@ import (
 )
 
 func query200(sd apitest.SeedData) []apitest.Table {
+	// Restaurant 0 holds MenuItems[0..3]; indices 4..5 belong to restaurant 1
+	// and 6..7 to the second organization (cross-org test fixtures).
 	items := toAppMenuItems([]menuitembus.MenuItem{
 		sd.MenuItems[0].MenuItem,
 		sd.MenuItems[1].MenuItem,
 		sd.MenuItems[2].MenuItem,
 		sd.MenuItems[3].MenuItem,
-		sd.MenuItems[4].MenuItem,
-		sd.MenuItems[5].MenuItem,
 	})
 
 	sort.Slice(items, func(i, j int) bool {
@@ -27,8 +27,11 @@ func query200(sd apitest.SeedData) []apitest.Table {
 
 	table := []apitest.Table{
 		{
-			Name:       "basic",
-			URL:        "/v1/menuitems?page=1&rows=20&orderBy=menu_item_id,ASC",
+			Name: "basic",
+			// Scoped to the first restaurant: the seed also creates menu items
+			// in a second organization (for cross-org authorization tests),
+			// and the list endpoint is intentionally not org-scoped.
+			URL:        "/v1/menuitems?page=1&rows=20&orderBy=menu_item_id,ASC&restaurant_id=" + sd.Restaurants[0].ID.String(),
 			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,

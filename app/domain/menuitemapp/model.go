@@ -22,6 +22,7 @@ type MenuItem struct {
 	RestaurantID string  `json:"restaurantId"`
 	ImageURL     string  `json:"imageUrl"`
 	Available    bool    `json:"available"`
+	Rank         *int    `json:"rank"`
 	DateCreated  string  `json:"dateCreated"`
 	DateUpdated  string  `json:"dateUpdated"`
 }
@@ -43,6 +44,7 @@ func ToAppMenuItem(bus menuitembus.MenuItem) MenuItem {
 		RestaurantID: bus.RestaurantID.String(),
 		ImageURL:     bus.ImageURL,
 		Available:    bus.Available,
+		Rank:         bus.Rank,
 		DateCreated:  bus.DateCreated.Format(time.RFC3339),
 		DateUpdated:  bus.DateUpdated.Format(time.RFC3339),
 	}
@@ -68,6 +70,7 @@ type NewMenuItem struct {
 	CategoryID   string  `json:"categoryId" validate:"required"`
 	RestaurantID string  `json:"restaurantId" validate:"required"`
 	ImageURL     string  `json:"imageUrl"`
+	Rank         *int    `json:"rank" validate:"omitempty,gte=1"`
 }
 
 // Decode implements the decoder interface.
@@ -112,6 +115,7 @@ func toBusNewMenuItem(app NewMenuItem) (menuitembus.NewMenuItem, error) {
 		CategoryID:   categoryID,
 		RestaurantID: restaurantID,
 		ImageURL:     app.ImageURL,
+		Rank:         app.Rank,
 	}
 
 	return bus, nil
@@ -127,6 +131,7 @@ type UpdateMenuItem struct {
 	CategoryID  *string  `json:"categoryId"`
 	ImageURL    *string  `json:"imageUrl"`
 	Available   *bool    `json:"available"`
+	Rank        *int     `json:"rank" validate:"omitempty,gte=1"`
 }
 
 // Decode implements the decoder interface.
@@ -178,7 +183,30 @@ func toBusUpdateMenuItem(app UpdateMenuItem) (menuitembus.UpdateMenuItem, error)
 		CategoryID:  categoryID,
 		ImageURL:    app.ImageURL,
 		Available:   app.Available,
+		Rank:        app.Rank,
 	}
 
 	return bus, nil
+}
+
+// =============================================================================
+
+// ReorderMenuItems defines the data needed to update menu items order.
+type ReorderMenuItems struct {
+	CategoryID string   `json:"categoryId" validate:"required,uuid"`
+	OrderedIDs []string `json:"orderedIds" validate:"required,min=1,dive,uuid"`
+}
+
+// Decode implements the decoder interface.
+func (app *ReorderMenuItems) Decode(data []byte) error {
+	return json.Unmarshal(data, app)
+}
+
+// Validate checks the data in the model is considered clean.
+func (app ReorderMenuItems) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return fmt.Errorf("validate: %w", err)
+	}
+
+	return nil
 }

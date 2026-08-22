@@ -12,4 +12,5 @@ var orderByFields = map[string]string{
 	"name":         menuitembus.OrderByName,
 	"price":        menuitembus.OrderByPrice,
 	"available":    menuitembus.OrderByAvailable,
+	"rank":         menuitembus.OrderByRank,
 }

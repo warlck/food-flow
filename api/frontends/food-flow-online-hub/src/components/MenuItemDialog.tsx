@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { MenuItem as MenuItemType, Addon, SelectedAddon } from '@/types';
+import { cheapestAvailablePrice } from '@/lib/transformers';
 import { useCart } from '@/context/CartContext';
 import { Plus, Minus, ShoppingCart } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -50,12 +51,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     return list;
   }, [categoryItems, item]);
 
-  // Backend sends category items sorted by price (cheapest first).
-  const cheapestItem = useMemo(() => {
-    if (itemsInCategory.length === 0) return null;
-    return itemsInCategory[0];
-  }, [itemsInCategory]);
-
+  // The active item is the one the customer tapped / currently has selected.
   const activeItem = useMemo(() => {
     if (!item) return null;
 
@@ -65,6 +61,11 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
 
     return itemsInCategory.find((mi) => mi.id === selectedItemId) ?? item;
   }, [item, itemsInCategory, selectedItemId]);
+
+  // Header photo follows the selected item. The base price is the cheapest
+  // *available* item in the category so the "+$X" deltas are relative to a
+  // price the customer can actually pay (unavailable items are excluded).
+  const cheapestPrice = useMemo(() => cheapestAvailablePrice(itemsInCategory), [itemsInCategory]);
 
   // Reset state when dialog opens with new item
   React.useEffect(() => {
@@ -163,7 +164,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
               src={
                 imageError
                   ? 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80'
-                  : cheapestItem?.image || getCategoryImage()
+                  : activeItem?.image || getCategoryImage()
               }
               alt={item.category}
               className="w-full h-full object-cover"
@@ -176,9 +177,9 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
 
           <div className="flex items-baseline justify-between gap-3">
             <DialogTitle className="text-xl font-bold">{item.category}</DialogTitle>
-            {cheapestItem && (
+            {cheapestPrice !== null && (
               <div className="text-lg font-semibold text-food-primary">
-                ${cheapestItem.price.toFixed(2)}
+                ${cheapestPrice.toFixed(2)}
               </div>
             )}
           </div>
@@ -195,7 +196,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                 {itemsInCategory.map((mi) => {
                   const id = `menu-item-${mi.id}`;
                   const selected = mi.id === activeItem.id;
-                  const delta = cheapestItem ? mi.price - cheapestItem.price : 0;
+                  const delta = cheapestPrice !== null ? mi.price - cheapestPrice : 0;
                   const deltaLabel = !mi.available
                     ? 'Out of stock'
                     : delta > 0
