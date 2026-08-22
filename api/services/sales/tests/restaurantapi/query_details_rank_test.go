@@ -10,9 +10,9 @@ import (
 
 // queryByIDWithDetailsRanked200 verifies the details endpoint orders ranked
 // entries first (ascending rank) and unranked entries last, for both menu
-// items and addons. The ranked fixtures live on Restaurants[1] /
-// Categories[2] so the unranked seeds on Restaurants[0] keep proving
-// backward compatibility.
+// items and addons. The ranked fixtures live on a dedicated restaurant,
+// Restaurants[4] / Categories[2], so the unranked seeds on Restaurants[0]
+// keep proving backward compatibility and no other test mutates them.
 //
 // Seed layout for the ranked category (see seed_test.go):
 //   - MenuItems[5] -> rank 20, MenuItems[6] -> rank 10, MenuItems[7] -> unranked
@@ -21,7 +21,7 @@ func queryByIDWithDetailsRanked200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "ranked-first-ordering",
-			URL:        fmt.Sprintf("/v1/restaurants/%s/details", sd.Restaurants[1].ID),
+			URL:        fmt.Sprintf("/v1/restaurants/%s/details", sd.Restaurants[4].ID),
 			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,

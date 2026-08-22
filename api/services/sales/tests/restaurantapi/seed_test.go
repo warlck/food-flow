@@ -58,7 +58,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("adding user to organization: %w", err)
 	}
 
-	rests, err := restaurantbus.TestSeedRestaurants(ctx, 4, busDomain.Restaurant, orgs[0].ID)
+	rests, err := restaurantbus.TestSeedRestaurants(ctx, 5, busDomain.Restaurant, orgs[0].ID)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding restaurants : %w", err)
 	}
@@ -86,15 +86,16 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	// -------------------------------------------------------------------------
 
-	// Seed a dedicated ranked category on the second restaurant so the
-	// details-endpoint rank ordering can be tested without disturbing the
-	// unranked seeds that assert backward compatibility on rests[0].
-	rankedCats, err := categorybus.TestSeedCategories(ctx, 1, rests[1].ID, busDomain.Category)
+	// Seed a dedicated ranked category on its own restaurant (rests[4]) so the
+	// details-endpoint rank ordering can be tested in isolation: the unranked
+	// seeds on rests[0] keep proving backward compatibility, and no other test
+	// (e.g. delete200 on rests[1]) mutates the ranked fixtures.
+	rankedCats, err := categorybus.TestSeedCategories(ctx, 1, rests[4].ID, busDomain.Category)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding ranked category : %w", err)
 	}
 
-	rankedItems, err := menuitembus.TestSeedMenuItems(ctx, 3, rankedCats[0].ID, rests[1].ID, busDomain.MenuItem)
+	rankedItems, err := menuitembus.TestSeedMenuItems(ctx, 3, rankedCats[0].ID, rests[4].ID, busDomain.MenuItem)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding ranked menu items : %w", err)
 	}
@@ -107,7 +108,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("ranking menu item 1 : %w", err)
 	}
 
-	rankedAddons, err := addonbus.TestSeedAddons(ctx, 3, rankedCats[0].ID, rests[1].ID, busDomain.Addon)
+	rankedAddons, err := addonbus.TestSeedAddons(ctx, 3, rankedCats[0].ID, rests[4].ID, busDomain.Addon)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding ranked addons : %w", err)
 	}
@@ -154,6 +155,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 			{Restaurant: rests[1]},
 			{Restaurant: rests[2]},
 			{Restaurant: rests[3]},
+			{Restaurant: rests[4]},
 		},
 		Categories: []apitest.Category{
 			{Category: cats[0]},
