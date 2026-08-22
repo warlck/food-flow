@@ -41,6 +41,7 @@ export interface ApiRestaurantDetails {
   phone: string;
   email: string;
   imageUrl: string;
+  logoUrl?: string;
   enabled: boolean;
   latitude?: number;
   longitude?: number;
