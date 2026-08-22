@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { MenuItem as MenuItemType, Addon, SelectedAddon } from '@/types';
+import { cheapestAvailablePrice } from '@/lib/transformers';
 import { useCart } from '@/context/CartContext';
 import { Plus, Minus, ShoppingCart } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -50,18 +51,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     return list;
   }, [categoryItems, item]);
 
-  // Backend sends category items rank-ordered (ranked first, then by price),
-  // so index 0 is the featured item, not necessarily the cheapest.
-  const representativeItem = useMemo(() => {
-    return itemsInCategory.length === 0 ? null : itemsInCategory[0];
-  }, [itemsInCategory]);
-
-  // Derive the cheapest price explicitly for the base price and deltas.
-  const cheapestPrice = useMemo(() => {
-    if (itemsInCategory.length === 0) return null;
-    return Math.min(...itemsInCategory.map((mi) => mi.price));
-  }, [itemsInCategory]);
-
+  // The active item is the one the customer tapped / currently has selected.
   const activeItem = useMemo(() => {
     if (!item) return null;
 
@@ -71,6 +61,11 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
 
     return itemsInCategory.find((mi) => mi.id === selectedItemId) ?? item;
   }, [item, itemsInCategory, selectedItemId]);
+
+  // Header photo follows the selected item. The base price is the cheapest
+  // *available* item in the category so the "+$X" deltas are relative to a
+  // price the customer can actually pay (unavailable items are excluded).
+  const cheapestPrice = useMemo(() => cheapestAvailablePrice(itemsInCategory), [itemsInCategory]);
 
   // Reset state when dialog opens with new item
   React.useEffect(() => {
@@ -169,7 +164,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
               src={
                 imageError
                   ? 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80'
-                  : representativeItem?.image || getCategoryImage()
+                  : activeItem?.image || getCategoryImage()
               }
               alt={item.category}
               className="w-full h-full object-cover"
