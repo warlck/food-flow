@@ -195,6 +195,36 @@ func reorder401(sd apitest.SeedData) []apitest.Table {
 				return ""
 			},
 		},
+		{
+			Name:       "other-org-category",
+			URL:        "/v1/addons/order",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusForbidden,
+			Input: &addonapp.ReorderAddons{
+				CategoryID: sd.Categories[2].ID.String(),
+				OrderedIDs: []string{
+					sd.Addons[4].ID.String(),
+					sd.Addons[5].ID.String(),
+				},
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code:    errs.PermissionDenied,
+				Message: fmt.Sprintf("user not in organization %s", sd.Organizations[1].ID),
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr := got.(*errs.Error)
+				expErr := exp.(*errs.Error)
+				if gotErr.Code != expErr.Code {
+					return "error code mismatch"
+				}
+				if gotErr.Message != expErr.Message {
+					return "error message mismatch"
+				}
+				return ""
+			},
+		},
 	}
 
 	return table
