@@ -40,4 +40,35 @@ These rules apply to all agent interactions within this workspace.
   - Every field in an `Update` model MUST have an explicit unit test verifying that updating the field via the business layer correctly mutates and persists the value in the database.
   - Include tests for edge cases (e.g. `0` / zero-values, `nil` optionals, boundary limits) as well as non-zero / active values.
 
+## Code Review Flow
+Finding problems and writing the report are two different jobs. Always do the finding first and the writing last. When asked to review a branch (and always before producing a Feature Review Report), follow these steps in order:
+
+1. **Freeze the Diff**: Record the merge-base and head SHA once (`git merge-base master HEAD`, `git rev-parse HEAD`). Every anchor, stat, and claim in the review refers to this exact range.
+2. **Findings Pass**: Fan out area-scoped passes over the diff (schema/seeds, store layer, business logic, API + tests, frontends), using parallel subagents when available. Collect *candidates only*: `file:line` plus the concrete trigger that makes it a bug. No severities, no prose, no report sections at this stage.
+3. **Validation Gate**: Prove every candidate against the actual code before believing it: open the code, confirm the trigger fires, and check provenance via git history (e.g. `git log -S`) before blaming the branch. Deduplicate mirrored-domain twins (e.g. a menuitem bug and its identical addon twin collapse into one finding). Kill anything you cannot demonstrate. Keep a list of the risks you checked and cleared — it becomes the Verified Non-Issues section for free.
+4. **Spec Compliance Pass** (spec-based features): Read the spec and map every requirement and design decision to the commit(s) implementing it. Flag anything unimplemented or implemented differently; intent-vs-implementation gaps are invisible to pure diff review.
+5. **Human Triage**: Present the validated findings as a compact ledger (one line per finding, grouped by severity) and wait for fix / skip / defer decisions. Never start fix work before triage — declined findings must cost zero engineering time.
+6. **Fix Commits**: One atomic conventional commit per approved finding, with its tests riding along, verified green (build + relevant tests) before committing. Reference the finding number in the commit body so the report's Resolved Findings mapping is trivial.
+7. **Final Verification**: Re-run the full gate: build, `go vet`, `gofmt`, affected test suites, and frontend typecheck/lint. The exact commands and outcomes feed the Verification Log.
+8. **Render the Report Last**: Generate the report from the validated ledger, never freehand. Split findings into Resolved (finding → fix commit SHA) and Open (accepted, deferred, declined). Compute line anchors once, against the final post-fix tree. `suggestion` blocks are only required for open findings — for resolved ones the fix diff is the suggestion.
+
+### Hard Rules
+- **No report prose before the validation gate.** The report is generated from verified evidence, never authored on speculation.
+- **No fixes before human triage.** Otherwise the report degenerates into a changelog of decisions the user was never asked about.
+- **Review only the branch diff.** Pre-existing issues are labeled as pre-existing and normally do not block the branch, but security-relevant ones must be called out in the Pre-Merge Checklist.
+- **Scale depth to the diff.** Small branches may use a lighter findings pass, but the validation gate and human triage are never skipped.
+
+## Feature Review Reports
+- **Trigger**: Once implementation of a feature based on a spec (`docs/specs/*.md`) has been completed (all planned commits made and tests green), and before declaring the branch done, you MUST create a CodeRabbit-style review report covering the full branch diff. The report is produced as the final step of the Code Review Flow above.
+- **Report Location**: Save the report to `docs/reviews/<feature-slug>-review.md` (e.g. `docs/reviews/menu-addon-rank-review.md`). This folder is gitignored: reports are local-only review artifacts and are never committed.
+- **Required Report Sections**:
+  1. **Header metadata**: base branch and merge-base SHA, head SHA, commit count, files changed, and diffstat (`git diff --stat $(git merge-base master HEAD)..HEAD`).
+  2. **Walkthrough**: a per-area table (schema, store, business, API, frontends, tests, docs) summarizing what changed and why.
+  3. **Spec Compliance**: map each spec requirement and design decision to the commit(s) implementing it; explicitly flag any spec item left unimplemented or implemented differently than specified.
+  4. **Findings**: actionable comments tagged by severity (🔴 Critical, 🟠 Major, 🔵 Minor, 🟡 Trivial), each anchored to `file:line` in the final branch state and including fenced `suggestion` blocks where a concrete fix exists. Every finding MUST be validated against the actual code before being reported; never report speculative or unverified issues. Distinguish branch-introduced issues from pre-existing ones (check provenance via git history before blaming the branch).
+  5. **Resolved Findings**: when review-driven fixes already landed mid-branch, a table mapping each finding to its fix commit for auditability.
+  6. **Verified Non-Issues**: notable risks that were checked and found safe, each with the reason it is safe.
+  7. **Verification Log**: the exact build, vet, format, lint, typecheck, and test commands run, with their outcomes.
+  8. **Pre-Merge Checklist**: remaining gates (declined suggestions, follow-up branches, reseed/deploy steps).
+
 
