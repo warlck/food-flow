@@ -76,21 +76,27 @@ func queryByIDWithDetailsRanked200(sd apitest.SeedData) []apitest.Table {
 					{sd.Addons[2].ID.String(), nil},
 				}
 
-				gotAddons := cat.MenuItems[0].Addons
-				if len(gotAddons) != len(wantAddons) {
-					return fmt.Sprintf("expected %d addons, got %d", len(wantAddons), len(gotAddons))
-				}
+				// The backend attaches the same shared addon list to every menu
+				// item in the category, so assert the ordering on all of them —
+				// a bug that ordered only the first item's addons would slip
+				// past a MenuItems[0]-only check.
+				for _, gotItem := range cat.MenuItems {
+					gotAddons := gotItem.Addons
+					if len(gotAddons) != len(wantAddons) {
+						return fmt.Sprintf("menu item %s: expected %d addons, got %d", gotItem.ID, len(wantAddons), len(gotAddons))
+					}
 
-				for i, want := range wantAddons {
-					gotAddon := gotAddons[i]
-					if gotAddon.ID != want.id {
-						return fmt.Sprintf("addon position %d: expected %s, got %s", i, want.id, gotAddon.ID)
-					}
-					if (gotAddon.Rank == nil) != (want.rank == nil) {
-						return fmt.Sprintf("addon position %d: rank nil mismatch (got %+v)", i, gotAddon.Rank)
-					}
-					if gotAddon.Rank != nil && *gotAddon.Rank != *want.rank {
-						return fmt.Sprintf("addon position %d: expected rank %d, got %d", i, *want.rank, *gotAddon.Rank)
+					for i, want := range wantAddons {
+						gotAddon := gotAddons[i]
+						if gotAddon.ID != want.id {
+							return fmt.Sprintf("menu item %s addon position %d: expected %s, got %s", gotItem.ID, i, want.id, gotAddon.ID)
+						}
+						if (gotAddon.Rank == nil) != (want.rank == nil) {
+							return fmt.Sprintf("menu item %s addon position %d: rank nil mismatch (got %+v)", gotItem.ID, i, gotAddon.Rank)
+						}
+						if gotAddon.Rank != nil && *gotAddon.Rank != *want.rank {
+							return fmt.Sprintf("menu item %s addon position %d: expected rank %d, got %d", gotItem.ID, i, *want.rank, *gotAddon.Rank)
+						}
 					}
 				}
 
