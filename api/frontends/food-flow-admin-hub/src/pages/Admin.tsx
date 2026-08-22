@@ -572,7 +572,15 @@ export default function Admin() {
 
         <div className="admin-sidebar-copy mx-1 mb-6 rounded-xl border border-white/10 bg-white/[.055] p-2.5">
           <div className="flex w-full items-center gap-2.5 text-left">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#FFF1EB] text-xs font-bold text-[#FF4500]">{workspace ? initials(workspace.restaurant.name) : 'FF'}</div>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#FFF1EB] text-xs font-bold text-[#FF4500] overflow-hidden">
+              {workspace?.restaurant.logoUrl ? (
+                <img src={workspace.restaurant.logoUrl} alt="" className="h-full w-full object-cover" />
+              ) : workspace ? (
+                initials(workspace.restaurant.name)
+              ) : (
+                'FF'
+              )}
+            </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-[12px] font-semibold text-white">{workspace?.restaurant.name ?? 'Choose restaurant'}</div>
               <div className="mt-0.5 flex items-center gap-1 text-[10px] text-[#D1D5DB]"><span className="h-1.5 w-1.5 rounded-full bg-[#FFB72B]" /> {workspace?.restaurant.enabled ? 'Open for business' : 'Paused'}</div>
@@ -1690,7 +1698,8 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
           address: addressStr,
           phone: String(data.get('phone')),
           email: String(data.get('email')),
-          imageUrl: String(data.get('imageUrl')),
+          imageUrl: String(data.get('imageUrl') ?? ''),
+          logoUrl: String(data.get('logoUrl') ?? ''),
           enabled: data.get('enabled') === 'true',
           latitude: latitudeVal,
           longitude: longitudeVal,
@@ -1860,7 +1869,24 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
               )}
 
               <div className="grid gap-4 sm:grid-cols-2"><Field label="Phone" htmlFor="phone" required><Input id="phone" name="phone" defaultValue={(existing as AdminRestaurant | undefined)?.phone ?? ''} required placeholder="+65 6123 4567" className="admin-input" /></Field><Field label="Email" htmlFor="email" required><Input id="email" name="email" type="email" defaultValue={(existing as AdminRestaurant | undefined)?.email ?? ''} required placeholder="hello@restaurant.com" className="admin-input" /></Field></div>
-              <Field label="Cover image" htmlFor="imageUrl" hint="Optional — upload a file or paste a URL"><ImageField name="imageUrl" entityType="restaurant" restaurantId={(existing as AdminRestaurant | undefined)?.id} defaultValue={(existing as AdminRestaurant | undefined)?.imageUrl ?? ''} /></Field>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Brand Logo / Avatar" htmlFor="logoUrl" hint="Optional — square icon for avatar & selector">
+                  <ImageField
+                    name="logoUrl"
+                    entityType="restaurant"
+                    restaurantId={(existing as AdminRestaurant | undefined)?.id}
+                    defaultValue={(existing as AdminRestaurant | undefined)?.logoUrl ?? ''}
+                  />
+                </Field>
+                <Field label="Cover image" htmlFor="imageUrl" hint="Optional — wide banner for storefront header">
+                  <ImageField
+                    name="imageUrl"
+                    entityType="restaurant"
+                    restaurantId={(existing as AdminRestaurant | undefined)?.id}
+                    defaultValue={(existing as AdminRestaurant | undefined)?.imageUrl ?? ''}
+                  />
+                </Field>
+              </div>
               <input type="hidden" name="latitude" value={lat ?? ''} />
               <input type="hidden" name="longitude" value={lon ?? ''} />
               <div className="grid gap-4 sm:grid-cols-3">

@@ -10,6 +10,7 @@ export interface AdminRestaurant {
   phone: string;
   email: string;
   imageUrl: string;
+  logoUrl?: string;
   enabled: boolean;
   latitude?: number | null;
   longitude?: number | null;
@@ -136,7 +137,7 @@ export interface OrderStatusInput {
   paymentStatus?: PaymentStatus;
 }
 
-export type RestaurantInput = Pick<AdminRestaurant, 'name' | 'description' | 'address' | 'phone' | 'email' | 'imageUrl' | 'enabled' | 'latitude' | 'longitude' | 'maxDeliveryDistanceKm' | 'minSpend' | 'taxRate'> & {
+export type RestaurantInput = Pick<AdminRestaurant, 'name' | 'description' | 'address' | 'phone' | 'email' | 'imageUrl' | 'logoUrl' | 'enabled' | 'latitude' | 'longitude' | 'maxDeliveryDistanceKm' | 'minSpend' | 'taxRate'> & {
   organizationId?: string;
 };
 export type CategoryInput = Pick<AdminCategory, 'name' | 'description' | 'restaurantId'>;
