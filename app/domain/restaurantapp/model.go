@@ -20,6 +20,7 @@ type Restaurant struct {
 	Phone                 string   `json:"phone"`
 	Email                 string   `json:"email"`
 	ImageURL              string   `json:"imageUrl"`
+	LogoURL               string   `json:"logoUrl"`
 	Enabled               bool     `json:"enabled"`
 	Latitude              *float64 `json:"latitude,omitempty"`
 	Longitude             *float64 `json:"longitude,omitempty"`
@@ -46,6 +47,7 @@ func ToAppRestaurant(bus restaurantbus.Restaurant) Restaurant {
 		Phone:                 bus.Phone,
 		Email:                 bus.Email,
 		ImageURL:              bus.ImageURL,
+		LogoURL:               bus.LogoURL,
 		Enabled:               bus.Enabled,
 		Latitude:              bus.Latitude,
 		Longitude:             bus.Longitude,
@@ -78,6 +80,7 @@ type NewRestaurant struct {
 	Phone                 string   `json:"phone" validate:"required"`
 	Email                 string   `json:"email" validate:"required,email"`
 	ImageURL              string   `json:"imageUrl"`
+	LogoURL               string   `json:"logoUrl"`
 	Latitude              *float64 `json:"latitude" validate:"omitempty,latitude"`
 	Longitude             *float64 `json:"longitude" validate:"omitempty,longitude"`
 	MaxDeliveryDistanceKm float64  `json:"maxDeliveryDistanceKm" validate:"gte=0"`
@@ -118,6 +121,7 @@ func toBusNewRestaurant(app NewRestaurant) (restaurantbus.NewRestaurant, error) 
 		Phone:                 app.Phone,
 		Email:                 app.Email,
 		ImageURL:              app.ImageURL,
+		LogoURL:               app.LogoURL,
 		Latitude:              app.Latitude,
 		Longitude:             app.Longitude,
 		MaxDeliveryDistanceKm: app.MaxDeliveryDistanceKm,
@@ -138,6 +142,7 @@ type UpdateRestaurant struct {
 	Phone                 *string  `json:"phone"`
 	Email                 *string  `json:"email" validate:"omitempty,email"`
 	ImageURL              *string  `json:"imageUrl"`
+	LogoURL               *string  `json:"logoUrl"`
 	Enabled               *bool    `json:"enabled"`
 	Latitude              *float64 `json:"latitude" validate:"omitempty,latitude"`
 	Longitude             *float64 `json:"longitude" validate:"omitempty,longitude"`
@@ -177,6 +182,7 @@ func toBusUpdateRestaurant(app UpdateRestaurant) (restaurantbus.UpdateRestaurant
 		Phone:                 app.Phone,
 		Email:                 app.Email,
 		ImageURL:              app.ImageURL,
+		LogoURL:               app.LogoURL,
 		Enabled:               app.Enabled,
 		Latitude:              app.Latitude,
 		Longitude:             app.Longitude,
@@ -235,6 +241,7 @@ type RestaurantWithMenuCategories struct {
 	Phone                 string     `json:"phone"`
 	Email                 string     `json:"email"`
 	ImageURL              string     `json:"imageUrl"`
+	LogoURL               string     `json:"logoUrl"`
 	Enabled               bool       `json:"enabled"`
 	Latitude              *float64   `json:"latitude,omitempty"`
 	Longitude             *float64   `json:"longitude,omitempty"`

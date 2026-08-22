@@ -25,6 +25,7 @@ func create201(sd apitest.SeedData) []apitest.Table {
 				Phone:          "+1-555-0100",
 				Email:          "info@newrestaurant.com",
 				ImageURL:       "restaurant.jpg",
+				LogoURL:        "restaurant_logo.jpg",
 			},
 			GotResp: &restaurantapi.Restaurant{},
 			ExpResp: &restaurantapi.Restaurant{
@@ -34,6 +35,7 @@ func create201(sd apitest.SeedData) []apitest.Table {
 				Phone:       "+1-555-0100",
 				Email:       "info@newrestaurant.com",
 				ImageURL:    "restaurant.jpg",
+				LogoURL:     "restaurant_logo.jpg",
 				Enabled:     true,
 			},
 			CmpFunc: func(got any, exp any) string {

@@ -27,6 +27,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				Phone:       dbtest.StringPointer("+1-555-9999"),
 				Email:       dbtest.StringPointer("updated@restaurant.com"),
 				ImageURL:    dbtest.StringPointer("updated.jpg"),
+				LogoURL:     dbtest.StringPointer("updated_logo.jpg"),
 				Enabled:     dbtest.BoolPointer(false),
 			},
 			GotResp: &restaurantapi.Restaurant{},
@@ -38,12 +39,51 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				Phone:                 "+1-555-9999",
 				Email:                 "updated@restaurant.com",
 				ImageURL:              "updated.jpg",
+				LogoURL:               "updated_logo.jpg",
 				Enabled:               false,
 				Latitude:              sd.Restaurants[0].Latitude,
 				Longitude:             sd.Restaurants[0].Longitude,
 				MaxDeliveryDistanceKm: sd.Restaurants[0].MaxDeliveryDistanceKm,
 				TaxRate:               sd.Restaurants[0].TaxRate,
 				DateCreated:           sd.Restaurants[0].DateCreated.Format(time.RFC3339),
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*restaurantapi.Restaurant)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(*restaurantapi.Restaurant)
+				expResp.DateUpdated = gotResp.DateUpdated
+
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "logo-url-update",
+			URL:        fmt.Sprintf("/v1/restaurants/%s", sd.Restaurants[1].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusOK,
+			Input: &restaurantapi.UpdateRestaurant{
+				LogoURL: dbtest.StringPointer("brand_logo_new.png"),
+			},
+			GotResp: &restaurantapi.Restaurant{},
+			ExpResp: &restaurantapi.Restaurant{
+				ID:                    sd.Restaurants[1].ID.String(),
+				Name:                  sd.Restaurants[1].Name.String(),
+				Description:           sd.Restaurants[1].Description,
+				Address:               sd.Restaurants[1].Address,
+				Phone:                 sd.Restaurants[1].Phone,
+				Email:                 sd.Restaurants[1].Email,
+				ImageURL:              sd.Restaurants[1].ImageURL,
+				LogoURL:               "brand_logo_new.png",
+				Enabled:               sd.Restaurants[1].Enabled,
+				Latitude:              sd.Restaurants[1].Latitude,
+				Longitude:             sd.Restaurants[1].Longitude,
+				MaxDeliveryDistanceKm: sd.Restaurants[1].MaxDeliveryDistanceKm,
+				TaxRate:               sd.Restaurants[1].TaxRate,
+				DateCreated:           sd.Restaurants[1].DateCreated.Format(time.RFC3339),
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(*restaurantapi.Restaurant)
