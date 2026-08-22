@@ -170,6 +170,7 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				Phone:          "+1-555-1234",
 				Email:          "info@italianplace.com",
 				ImageURL:       "italian.jpg",
+				LogoURL:        "italian_logo.jpg",
 				Enabled:        true,
 			},
 			ExcFunc: func(ctx context.Context) any {
@@ -181,6 +182,7 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 					Phone:          "+1-555-1234",
 					Email:          "info@italianplace.com",
 					ImageURL:       "italian.jpg",
+					LogoURL:        "italian_logo.jpg",
 				}
 
 				resp, err := busDomain.Restaurant.Create(ctx, nr)
@@ -223,6 +225,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				Phone:                 "+1-555-9999",
 				Email:                 "updated@example.com",
 				ImageURL:              "updated.jpg",
+				LogoURL:               "updated_logo.jpg",
 				Enabled:               false,
 				Latitude:              sd.Restaurants[0].Latitude,
 				Longitude:             sd.Restaurants[0].Longitude,
@@ -238,6 +241,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 					Phone:       ptr("+1-555-9999"),
 					Email:       ptr("updated@example.com"),
 					ImageURL:    ptr("updated.jpg"),
+					LogoURL:     ptr("updated_logo.jpg"),
 					Enabled:     ptr(false),
 					MinSpend:    ptr(25.00),
 				}
@@ -273,6 +277,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				Phone:                 sd.Restaurants[1].Phone,
 				Email:                 sd.Restaurants[1].Email,
 				ImageURL:              sd.Restaurants[1].ImageURL,
+				LogoURL:               sd.Restaurants[1].LogoURL,
 				Enabled:               sd.Restaurants[1].Enabled,
 				Latitude:              sd.Restaurants[1].Latitude,
 				Longitude:             sd.Restaurants[1].Longitude,
@@ -287,6 +292,50 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				}
 
 				resp, err := busDomain.Restaurant.Update(ctx, sd.Restaurants[1].Restaurant, ur)
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(restaurantbus.Restaurant)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(restaurantbus.Restaurant)
+				expResp.DateUpdated = gotResp.DateUpdated
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+		{
+			Name: "logo-url-update",
+			ExpResp: restaurantbus.Restaurant{
+				ID:                    sd.Restaurants[2].ID,
+				OrganizationID:        sd.Restaurants[2].OrganizationID,
+				Name:                  sd.Restaurants[2].Name,
+				Description:           sd.Restaurants[2].Description,
+				Address:               sd.Restaurants[2].Address,
+				Phone:                 sd.Restaurants[2].Phone,
+				Email:                 sd.Restaurants[2].Email,
+				ImageURL:              sd.Restaurants[2].ImageURL,
+				LogoURL:               "brand_new_logo.png",
+				Enabled:               sd.Restaurants[2].Enabled,
+				Latitude:              sd.Restaurants[2].Latitude,
+				Longitude:             sd.Restaurants[2].Longitude,
+				MaxDeliveryDistanceKm: sd.Restaurants[2].MaxDeliveryDistanceKm,
+				MinSpend:              sd.Restaurants[2].MinSpend,
+				TaxRate:               sd.Restaurants[2].TaxRate,
+				DateCreated:           sd.Restaurants[2].DateCreated,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				ur := restaurantbus.UpdateRestaurant{
+					LogoURL: ptr("brand_new_logo.png"),
+				}
+
+				resp, err := busDomain.Restaurant.Update(ctx, sd.Restaurants[2].Restaurant, ur)
 				if err != nil {
 					return err
 				}
