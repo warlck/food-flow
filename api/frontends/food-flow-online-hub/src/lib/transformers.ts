@@ -93,3 +93,14 @@ export function transformApiMenuItems(
     categories: Array.from(categoriesSet),
   };
 }
+
+/**
+ * Cheapest price among the *available* items in a category. Used so the
+ * category card and the dialog header quote the same base price, and so the
+ * "+$X" deltas are relative to a price the customer can actually pay.
+ * Returns null when the category has no available items.
+ */
+export function cheapestAvailablePrice(categoryItems: MenuItem[]): number | null {
+  const prices = categoryItems.filter((mi) => mi.available).map((mi) => mi.price);
+  return prices.length === 0 ? null : Math.min(...prices);
+}
