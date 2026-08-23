@@ -314,3 +314,17 @@ ALTER TABLE addons ADD COLUMN rank INT;
 -- Version: 1.23
 -- Description: Add logo_url column to restaurants for brand avatar image
 ALTER TABLE restaurants ADD COLUMN logo_url TEXT NOT NULL DEFAULT '';
+
+-- Version: 1.24
+-- Description: Add operating_hours JSONB column to restaurants
+ALTER TABLE restaurants
+    ADD COLUMN operating_hours JSONB NOT NULL DEFAULT '{
+        "monday":    {"open": "10:00", "close": "22:00", "isClosed": false},
+        "tuesday":   {"open": "10:00", "close": "22:00", "isClosed": false},
+        "wednesday": {"open": "10:00", "close": "22:00", "isClosed": false},
+        "thursday":  {"open": "10:00", "close": "22:00", "isClosed": false},
+        "friday":    {"open": "10:00", "close": "23:00", "isClosed": false},
+        "saturday":  {"open": "11:00", "close": "23:00", "isClosed": false},
+        "sunday":    {"open": "11:00", "close": "22:00", "isClosed": false}
+    }'::jsonb;
+
