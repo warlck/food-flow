@@ -171,6 +171,7 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				Email:          "info@italianplace.com",
 				ImageURL:       "italian.jpg",
 				LogoURL:        "italian_logo.jpg",
+				OperatingHours: restaurantbus.DefaultOperatingHours(),
 				Enabled:        true,
 			},
 			ExcFunc: func(ctx context.Context) any {
@@ -183,6 +184,7 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 					Email:          "info@italianplace.com",
 					ImageURL:       "italian.jpg",
 					LogoURL:        "italian_logo.jpg",
+					OperatingHours: restaurantbus.DefaultOperatingHours(),
 				}
 
 				resp, err := busDomain.Restaurant.Create(ctx, nr)
@@ -226,6 +228,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				Email:                 "updated@example.com",
 				ImageURL:              "updated.jpg",
 				LogoURL:               "updated_logo.jpg",
+				OperatingHours:        sd.Restaurants[0].OperatingHours,
 				Enabled:               false,
 				Latitude:              sd.Restaurants[0].Latitude,
 				Longitude:             sd.Restaurants[0].Longitude,
@@ -278,6 +281,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				Email:                 sd.Restaurants[1].Email,
 				ImageURL:              sd.Restaurants[1].ImageURL,
 				LogoURL:               sd.Restaurants[1].LogoURL,
+				OperatingHours:        sd.Restaurants[1].OperatingHours,
 				Enabled:               sd.Restaurants[1].Enabled,
 				Latitude:              sd.Restaurants[1].Latitude,
 				Longitude:             sd.Restaurants[1].Longitude,
@@ -322,6 +326,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				Email:                 sd.Restaurants[2].Email,
 				ImageURL:              sd.Restaurants[2].ImageURL,
 				LogoURL:               "brand_new_logo.png",
+				OperatingHours:        sd.Restaurants[2].OperatingHours,
 				Enabled:               sd.Restaurants[2].Enabled,
 				Latitude:              sd.Restaurants[2].Latitude,
 				Longitude:             sd.Restaurants[2].Longitude,
@@ -336,6 +341,68 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				}
 
 				resp, err := busDomain.Restaurant.Update(ctx, sd.Restaurants[2].Restaurant, ur)
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(restaurantbus.Restaurant)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(restaurantbus.Restaurant)
+				expResp.DateUpdated = gotResp.DateUpdated
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+		{
+			Name: "operating-hours-update",
+			ExpResp: restaurantbus.Restaurant{
+				ID:                    sd.Restaurants[3].ID,
+				OrganizationID:        sd.Restaurants[3].OrganizationID,
+				Name:                  sd.Restaurants[3].Name,
+				Description:           sd.Restaurants[3].Description,
+				Address:               sd.Restaurants[3].Address,
+				Phone:                 sd.Restaurants[3].Phone,
+				Email:                 sd.Restaurants[3].Email,
+				ImageURL:              sd.Restaurants[3].ImageURL,
+				LogoURL:               sd.Restaurants[3].LogoURL,
+				OperatingHours: restaurantbus.OperatingHours{
+					"monday":    {Open: "08:00", Close: "20:00", IsClosed: false},
+					"tuesday":   {Open: "08:00", Close: "20:00", IsClosed: false},
+					"wednesday": {Open: "08:00", Close: "20:00", IsClosed: false},
+					"thursday":  {Open: "08:00", Close: "20:00", IsClosed: false},
+					"friday":    {Open: "08:00", Close: "21:00", IsClosed: false},
+					"saturday":  {Open: "09:00", Close: "21:00", IsClosed: false},
+					"sunday":    {Open: "09:00", Close: "18:00", IsClosed: true},
+				},
+				Enabled:               sd.Restaurants[3].Enabled,
+				Latitude:              sd.Restaurants[3].Latitude,
+				Longitude:             sd.Restaurants[3].Longitude,
+				MaxDeliveryDistanceKm: sd.Restaurants[3].MaxDeliveryDistanceKm,
+				MinSpend:              sd.Restaurants[3].MinSpend,
+				TaxRate:               sd.Restaurants[3].TaxRate,
+				DateCreated:           sd.Restaurants[3].DateCreated,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				customHours := restaurantbus.OperatingHours{
+					"monday":    {Open: "08:00", Close: "20:00", IsClosed: false},
+					"tuesday":   {Open: "08:00", Close: "20:00", IsClosed: false},
+					"wednesday": {Open: "08:00", Close: "20:00", IsClosed: false},
+					"thursday":  {Open: "08:00", Close: "20:00", IsClosed: false},
+					"friday":    {Open: "08:00", Close: "21:00", IsClosed: false},
+					"saturday":  {Open: "09:00", Close: "21:00", IsClosed: false},
+					"sunday":    {Open: "09:00", Close: "18:00", IsClosed: true},
+				}
+				ur := restaurantbus.UpdateRestaurant{
+					OperatingHours: &customHours,
+				}
+
+				resp, err := busDomain.Restaurant.Update(ctx, sd.Restaurants[3].Restaurant, ur)
 				if err != nil {
 					return err
 				}
