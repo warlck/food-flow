@@ -364,6 +364,15 @@ class AdminApi {
     return this.request<void>(`/v1/orders/${id}/cancel`, { method: 'POST' });
   }
 
+  getInsights(filters: InsightsFilters = {}) {
+    const params = new URLSearchParams();
+    if (filters.restaurantId) params.set('restaurant_id', filters.restaurantId);
+    if (filters.startDate) params.set('start_date', filters.startDate);
+    if (filters.endDate) params.set('end_date', filters.endDate);
+    const qs = params.toString();
+    return this.request<AdminInsights>(`/v1/insights${qs ? `?${qs}` : ''}`);
+  }
+
   listPromotions(restaurantId?: string) {
     const params = new URLSearchParams({
       page: '1',
@@ -492,4 +501,77 @@ export interface ImageUploadGrant {
 export const IMAGE_UPLOAD_ACCEPT = 'image/jpeg,image/png,image/webp';
 export const IMAGE_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 
+export interface InsightsFilters {
+  restaurantId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface AdminSalesSummary {
+  grossSales: number;
+  netSales: number;
+  totalOrders: number;
+  completedOrders: number;
+  cancelledOrders: number;
+  averageOrderValue: number;
+  totalDiscounts: number;
+  totalDeliveryFees: number;
+  totalTax: number;
+}
+
+export interface AdminTimeSeriesPoint {
+  date: string;
+  grossSales: number;
+  netSales: number;
+  orderCount: number;
+  averageOrder: number;
+}
+
+export interface AdminTopItemMetric {
+  menuItemId: string;
+  menuItemName: string;
+  categoryName: string;
+  quantitySold: number;
+  totalRevenue: number;
+}
+
+export interface AdminTopCategoryMetric {
+  categoryId: string;
+  categoryName: string;
+  quantitySold: number;
+  totalRevenue: number;
+  percentage: number;
+}
+
+export interface AdminTopAddonMetric {
+  addonId: string;
+  addonName: string;
+  quantitySold: number;
+  totalRevenue: number;
+}
+
+export interface AdminOrderTypeMetric {
+  orderType: string;
+  count: number;
+  totalRevenue: number;
+  percentage: number;
+}
+
+export interface AdminHourlyMetric {
+  hour: number;
+  count: number;
+  totalRevenue: number;
+}
+
+export interface AdminInsights {
+  summary: AdminSalesSummary;
+  salesOverTime: AdminTimeSeriesPoint[];
+  topItems: AdminTopItemMetric[];
+  topCategories: AdminTopCategoryMetric[];
+  topAddons: AdminTopAddonMetric[];
+  orderTypes: AdminOrderTypeMetric[];
+  peakHours: AdminHourlyMetric[];
+}
+
 export const adminApi = new AdminApi();
+
