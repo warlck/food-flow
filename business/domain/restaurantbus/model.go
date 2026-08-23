@@ -87,4 +87,3 @@ type UpdateRestaurant struct {
 	MinSpend              *float64
 	TaxRate               *float64
 }
-
