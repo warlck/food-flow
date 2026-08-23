@@ -48,6 +48,7 @@ func Test_Order(t *testing.T) {
 	unittest.Run(t, create(db.BusDomain, sd), "create")
 	unittest.Run(t, updateStatus(db.BusDomain, sd), "update-status")
 	unittest.Run(t, cancel(db.BusDomain, sd), "cancel")
+	unittest.Run(t, orderMetrics(db.BusDomain, sd), "order-metrics")
 }
 
 // =============================================================================
@@ -1581,6 +1582,62 @@ func cancel(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				}
 
 				return cmp.Diff(gotResp, expResp, equateTime)
+			},
+		},
+	}
+
+	return table
+}
+
+func orderMetrics(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
+	table := []unittest.Table{
+		{
+			Name:    "order-metrics-success",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				filter := orderbus.InsightsFilter{}
+				metrics, err := busDomain.Order.QueryOrderMetrics(ctx, filter)
+				if err != nil {
+					return err
+				}
+
+				if metrics.Summary.TotalOrders < 0 {
+					return errors.New("expected non-negative total orders")
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("unexpected error: %v", got)
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "order-metrics-with-restaurant-filter",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				restID := sd.Restaurants[0].ID.String()
+				filter := orderbus.InsightsFilter{
+					RestaurantID: &restID,
+				}
+				metrics, err := busDomain.Order.QueryOrderMetrics(ctx, filter)
+				if err != nil {
+					return err
+				}
+
+				if metrics.Summary.TotalOrders < 0 {
+					return errors.New("expected non-negative total orders")
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("unexpected error: %v", got)
+				}
+				return ""
 			},
 		},
 	}
