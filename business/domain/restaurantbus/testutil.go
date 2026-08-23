@@ -28,6 +28,7 @@ func TestNewRestaurants(n int, orgID uuid.UUID) []NewRestaurant {
 			Phone:                 fmt.Sprintf("+1-555-%04d", idx),
 			Email:                 fmt.Sprintf("rest%d@test.com", idx),
 			ImageURL:              fmt.Sprintf("image%d.jpg", idx),
+			LogoURL:               fmt.Sprintf("logo%d.jpg", idx),
 			Latitude:              &lat,
 			Longitude:             &lng,
 			MaxDeliveryDistanceKm: 10,

@@ -17,6 +17,7 @@ type Restaurant struct {
 	Phone                 string
 	Email                 string
 	ImageURL              string
+	LogoURL               string
 	Enabled               bool
 	Latitude              *float64
 	Longitude             *float64
@@ -36,6 +37,7 @@ type NewRestaurant struct {
 	Phone                 string
 	Email                 string
 	ImageURL              string
+	LogoURL               string
 	Latitude              *float64
 	Longitude             *float64
 	MaxDeliveryDistanceKm float64
@@ -51,6 +53,7 @@ type UpdateRestaurant struct {
 	Phone                 *string
 	Email                 *string
 	ImageURL              *string
+	LogoURL               *string
 	Enabled               *bool
 	Latitude              *float64
 	Longitude             *float64

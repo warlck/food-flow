@@ -55,6 +55,7 @@ func (b *Business) Create(ctx context.Context, nr NewRestaurant) (Restaurant, er
 		Phone:                 nr.Phone,
 		Email:                 nr.Email,
 		ImageURL:              nr.ImageURL,
+		LogoURL:               nr.LogoURL,
 		Enabled:               true,
 		Latitude:              nr.Latitude,
 		Longitude:             nr.Longitude,
@@ -96,6 +97,10 @@ func (b *Business) Update(ctx context.Context, res Restaurant, ur UpdateRestaura
 
 	if ur.ImageURL != nil {
 		res.ImageURL = *ur.ImageURL
+	}
+
+	if ur.LogoURL != nil {
+		res.LogoURL = *ur.LogoURL
 	}
 
 	if ur.Enabled != nil {

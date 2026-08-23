@@ -151,6 +151,7 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 		Phone:                 res.Phone,
 		Email:                 res.Email,
 		ImageURL:              res.ImageURL,
+		LogoURL:               res.LogoURL,
 		Enabled:               res.Enabled,
 		Latitude:              res.Latitude,
 		Longitude:             res.Longitude,

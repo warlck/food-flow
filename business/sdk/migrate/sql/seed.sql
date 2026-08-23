@@ -24,9 +24,9 @@ ON CONFLICT DO NOTHING;
 -- ============================================================================
 -- Restaurants
 -- ============================================================================
-INSERT INTO restaurants (restaurant_id, organization_id, name, description, address, phone, email, image_url, enabled, latitude, longitude, max_delivery_distance_km, tax_rate, date_created, date_updated) VALUES
-	('a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'e1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Donergy', 'Authentic Turkish Kebab & Pide Restaurant', '9 Raffles Boulevard, #01-91B, Millenia Walk, Singapore 039596', '+65 6333 0785', 'info@donergy.sg', 'https://www.donergy.sg/Content/images/logo.png', true, 1.29305, 103.86020, 10, 0.10, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
-	('a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'e1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'A1 Kebab', 'Signature Kebabs & 100% Plant-Based Falafel', '100 Beach Road, #01-12, Singapore 189702', '+65 6789 0123', 'info@a1kebabs.com', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/875772946_10ChickenRoll1.jpg', true, 1.29665, 103.85630, 10, 0.10, '2025-10-27 00:00:00', '2025-10-27 00:00:00')
+INSERT INTO restaurants (restaurant_id, organization_id, name, description, address, phone, email, image_url, logo_url, enabled, latitude, longitude, max_delivery_distance_km, tax_rate, date_created, date_updated) VALUES
+	('a1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'e1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'Donergy', 'Authentic Turkish Kebab & Pide Restaurant', '9 Raffles Boulevard, #01-91B, Millenia Walk, Singapore 039596', '+65 6333 0785', 'info@donergy.sg', 'https://images.unsplash.com/photo-1544025162-d76694265947?w=1200&h=400&fit=crop', 'https://www.donergy.sg/Content/images/logo.png', true, 1.29305, 103.86020, 10, 0.10, '2025-10-27 00:00:00', '2025-10-27 00:00:00'),
+	('a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'e1b2c3d4-e5f6-4a5b-8c9d-1e2f3a4b5c6d', 'A1 Kebab', 'Signature Kebabs & 100% Plant-Based Falafel', '100 Beach Road, #01-12, Singapore 189702', '+65 6789 0123', 'info@a1kebabs.com', 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&h=400&fit=crop', 'https://s3-ap-southeast-1.amazonaws.com/smoovpos-live/40a27a5c-7901-4397-b244-10dca6109848/875772946_10ChickenRoll1.jpg', true, 1.29665, 103.85630, 10, 0.10, '2025-10-27 00:00:00', '2025-10-27 00:00:00')
 ON CONFLICT DO NOTHING;
 
 -- ============================================================================

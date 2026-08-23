@@ -9,7 +9,7 @@ export function transformApiRestaurant(apiData: ApiRestaurantDetails): Restauran
     id: apiData.id,
     name: apiData.name,
     description: apiData.description,
-    logo: apiData.imageUrl,
+    logo: apiData.logoUrl || apiData.imageUrl,
     coverImage: apiData.imageUrl,
     address: apiData.address,
     phone: apiData.phone,

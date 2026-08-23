@@ -311,6 +311,6 @@ CREATE INDEX idx_restaurants_organization_id ON restaurants(organization_id);
 ALTER TABLE menu_items ADD COLUMN rank INT;
 ALTER TABLE addons ADD COLUMN rank INT;
 
-
-
-
+-- Version: 1.23
+-- Description: Add logo_url column to restaurants for brand avatar image
+ALTER TABLE restaurants ADD COLUMN logo_url TEXT NOT NULL DEFAULT '';

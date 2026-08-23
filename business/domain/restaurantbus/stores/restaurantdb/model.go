@@ -18,6 +18,7 @@ type restaurant struct {
 	Phone                 string    `db:"phone"`
 	Email                 string    `db:"email"`
 	ImageURL              string    `db:"image_url"`
+	LogoURL               string    `db:"logo_url"`
 	Enabled               bool      `db:"enabled"`
 	Latitude              *float64  `db:"latitude"`
 	Longitude             *float64  `db:"longitude"`
@@ -38,6 +39,7 @@ func toDBRestaurant(bus restaurantbus.Restaurant) restaurant {
 		Phone:                 bus.Phone,
 		Email:                 bus.Email,
 		ImageURL:              bus.ImageURL,
+		LogoURL:               bus.LogoURL,
 		Enabled:               bus.Enabled,
 		Latitude:              bus.Latitude,
 		Longitude:             bus.Longitude,
@@ -64,6 +66,7 @@ func toBusRestaurant(db restaurant) (restaurantbus.Restaurant, error) {
 		Phone:                 db.Phone,
 		Email:                 db.Email,
 		ImageURL:              db.ImageURL,
+		LogoURL:               db.LogoURL,
 		Enabled:               db.Enabled,
 		Latitude:              db.Latitude,
 		Longitude:             db.Longitude,
