@@ -27,6 +27,22 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+// Helper to calculate total price for an item including addons
+const calculateItemTotal = (item: CartItem): number => {
+  let itemTotal = item.menuItem.price * item.quantity;
+  if (item.selectedAddons) {
+    item.selectedAddons.forEach((selectedAddon) => {
+      itemTotal += selectedAddon.addon.price * selectedAddon.quantity * item.quantity;
+    });
+  }
+  return itemTotal;
+};
+
+// Helper to calculate total price for all cart items
+const calculateCartTotal = (cartItems: CartItem[]): number => {
+  return cartItems.reduce((total, item) => total + calculateItemTotal(item), 0);
+};
+
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [orderType, setOrderType] = useState<OrderType>('delivery');
@@ -46,14 +62,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (savedCart) {
       try {
         const parsedCart = JSON.parse(savedCart);
-        // Filter to ensure all items belong to savedRestaurantId if defined
-        const validItems = parsedCart.filter((item: CartItem) => {
-          if (!savedRestaurantId || !item.menuItem?.restaurantId) return true;
-          return item.menuItem.restaurantId === savedRestaurantId;
-        });
-
         // Ensure all items have cartItemId (for backward compatibility)
-        const cartWithIds = validItems.map((item: CartItem) => ({
+        const cartWithIds = parsedCart.map((item: CartItem) => ({
           ...item,
           cartItemId: item.cartItemId || generateCartItemId()
         }));
@@ -75,23 +85,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const setRestaurantIdHandler = (id: string) => {
-    if (!id) return;
+    if (!id || id === restaurantId) return;
+
+    // Reset the whole cart if restaurantId differs from the loaded restaurant
+    if (restaurantId && restaurantId !== id && items.length > 0) {
+      setItems([]);
+      setAppliedPromo(null);
+      toast({
+        description: "Cart reset for the selected restaurant",
+        variant: "default",
+      });
+    }
+
     setRestaurantId(id);
-    setItems(prevItems => {
-      const hasDifferentRestaurantItems = prevItems.some(
-        item => item.menuItem?.restaurantId && item.menuItem.restaurantId !== id
-      );
-      if (hasDifferentRestaurantItems) {
-        setAppliedPromo(null);
-        localStorage.removeItem('foodFlowCart');
-        toast({
-          description: "Cart reset for the selected restaurant",
-          variant: "default",
-        });
-        return [];
-      }
-      return prevItems;
-    });
   };
 
   // Save cart and order type to localStorage whenever they change
@@ -120,16 +126,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    const subtotal = items.reduce((total, item) => {
-      let itemTotal = item.menuItem.price * item.quantity;
-      if (item.selectedAddons) {
-        item.selectedAddons.forEach((selectedAddon) => {
-          itemTotal += selectedAddon.addon.price * selectedAddon.quantity * item.quantity;
-        });
-      }
-      return total + itemTotal;
-    }, 0);
-
+    const subtotal = calculateCartTotal(items);
     let isCurrent = true;
 
     orderService
@@ -161,25 +158,24 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [items, restaurantId, promoCode]);
 
   const addToCart = (menuItem: MenuItem, quantity: number = 1, selectedAddons?: SelectedAddon[], specialInstructions?: string) => {
+    const isDifferentRestaurant = Boolean(
+      menuItem.restaurantId && restaurantId && menuItem.restaurantId !== restaurantId
+    );
+
+    if (isDifferentRestaurant) {
+      setAppliedPromo(null);
+      toast({
+        description: "Cleared items from previous restaurant",
+        variant: "default",
+      });
+    }
+
+    if (menuItem.restaurantId && menuItem.restaurantId !== restaurantId) {
+      setRestaurantId(menuItem.restaurantId);
+    }
+
     setItems(prevItems => {
-      const isFromDifferentRestaurant = Boolean(
-        (restaurantId && menuItem.restaurantId && restaurantId !== menuItem.restaurantId) ||
-        (prevItems.length > 0 && prevItems.some(item => item.menuItem?.restaurantId && menuItem.restaurantId && item.menuItem.restaurantId !== menuItem.restaurantId))
-      );
-
-      let currentItems = prevItems;
-      if (isFromDifferentRestaurant) {
-        currentItems = [];
-        setAppliedPromo(null);
-        toast({
-          description: "Cleared items from previous restaurant",
-          variant: "default",
-        });
-      }
-
-      if (menuItem.restaurantId && restaurantId !== menuItem.restaurantId) {
-        setRestaurantId(menuItem.restaurantId);
-      }
+      const currentItems = isDifferentRestaurant ? [] : prevItems;
 
       // When addons or special instructions are provided, always add as new item
       if ((selectedAddons && selectedAddons.length > 0) || (specialInstructions && specialInstructions.length > 0)) {
@@ -270,18 +266,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getTotalPrice = () => {
-    return items.reduce((total, item) => {
-      let itemTotal = item.menuItem.price * item.quantity;
-      
-      // Add addon prices
-      if (item.selectedAddons) {
-        item.selectedAddons.forEach(selectedAddon => {
-          itemTotal += selectedAddon.addon.price * selectedAddon.quantity * item.quantity;
-        });
-      }
-      
-      return total + itemTotal;
-    }, 0);
+    return calculateCartTotal(items);
   };
 
   const hasItems = () => {
