@@ -12,6 +12,8 @@ import (
 	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/app/sdk/query"
+	"github.com/warlck/food-flow/business/domain/categorybus"
+	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/order"
@@ -23,13 +25,17 @@ import (
 type app struct {
 	orderBus      *orderbus.Business
 	restaurantBus *restaurantbus.Business
+	menuItemBus   *menuitembus.Business
+	categoryBus   *categorybus.Business
 }
 
 // newApp constructs a handlers for route access.
-func newApp(orderBus *orderbus.Business, restaurantBus *restaurantbus.Business) *app {
+func newApp(orderBus *orderbus.Business, restaurantBus *restaurantbus.Business, menuItemBus *menuitembus.Business, categoryBus *categorybus.Business) *app {
 	return &app{
 		orderBus:      orderBus,
 		restaurantBus: restaurantBus,
+		menuItemBus:   menuItemBus,
+		categoryBus:   categoryBus,
 	}
 }
 

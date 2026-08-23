@@ -101,6 +101,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:          cfg.AuthClient,
 		OrderBus:            cfg.OrderBus,
 		RestaurantBus:       cfg.RestaurantBus,
+		MenuItemBus:         cfg.MenuItemBus,
+		CategoryBus:         cfg.CategoryBus,
 		StripeSecretKey:     cfg.StripeSecretKey,
 		StripeWebhookSecret: cfg.StripeWebhookSecret,
 	})
