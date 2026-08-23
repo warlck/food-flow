@@ -19,7 +19,7 @@ const Menu: React.FC = () => {
   const queryRestaurantId = searchParams.get('restaurant_id');
   
   // Use restaurant_id from URL path or query param - no default
-  const restaurantId = urlRestaurantId || queryRestaurantId;
+  const restaurantId = (urlRestaurantId || queryRestaurantId)?.trim().replace(/\/+$/, '');
   
   // Fetch restaurant details from API only if restaurantId is provided
   const { data: apiData, isLoading, error } = useRestaurantDetails(restaurantId || '');

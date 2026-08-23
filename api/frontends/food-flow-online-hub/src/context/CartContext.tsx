@@ -39,11 +39,21 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedOrderType = localStorage.getItem('foodFlowOrderType');
     const savedRestaurantId = localStorage.getItem('foodFlowRestaurantId');
     
+    if (savedRestaurantId) {
+      setRestaurantId(savedRestaurantId);
+    }
+
     if (savedCart) {
       try {
         const parsedCart = JSON.parse(savedCart);
+        // Filter to ensure all items belong to savedRestaurantId if defined
+        const validItems = parsedCart.filter((item: CartItem) => {
+          if (!savedRestaurantId || !item.menuItem?.restaurantId) return true;
+          return item.menuItem.restaurantId === savedRestaurantId;
+        });
+
         // Ensure all items have cartItemId (for backward compatibility)
-        const cartWithIds = parsedCart.map((item: CartItem) => ({
+        const cartWithIds = validItems.map((item: CartItem) => ({
           ...item,
           cartItemId: item.cartItemId || generateCartItemId()
         }));
@@ -62,11 +72,27 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem('foodFlowOrderType');
       }
     }
-    
-    if (savedRestaurantId) {
-      setRestaurantId(savedRestaurantId);
-    }
   }, []);
+
+  const setRestaurantIdHandler = (id: string) => {
+    if (!id) return;
+    setRestaurantId(id);
+    setItems(prevItems => {
+      const hasDifferentRestaurantItems = prevItems.some(
+        item => item.menuItem?.restaurantId && item.menuItem.restaurantId !== id
+      );
+      if (hasDifferentRestaurantItems) {
+        setAppliedPromo(null);
+        localStorage.removeItem('foodFlowCart');
+        toast({
+          description: "Cart reset for the selected restaurant",
+          variant: "default",
+        });
+        return [];
+      }
+      return prevItems;
+    });
+  };
 
   // Save cart and order type to localStorage whenever they change
   useEffect(() => {
@@ -136,13 +162,32 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addToCart = (menuItem: MenuItem, quantity: number = 1, selectedAddons?: SelectedAddon[], specialInstructions?: string) => {
     setItems(prevItems => {
+      const isFromDifferentRestaurant = Boolean(
+        (restaurantId && menuItem.restaurantId && restaurantId !== menuItem.restaurantId) ||
+        (prevItems.length > 0 && prevItems.some(item => item.menuItem?.restaurantId && menuItem.restaurantId && item.menuItem.restaurantId !== menuItem.restaurantId))
+      );
+
+      let currentItems = prevItems;
+      if (isFromDifferentRestaurant) {
+        currentItems = [];
+        setAppliedPromo(null);
+        toast({
+          description: "Cleared items from previous restaurant",
+          variant: "default",
+        });
+      }
+
+      if (menuItem.restaurantId && restaurantId !== menuItem.restaurantId) {
+        setRestaurantId(menuItem.restaurantId);
+      }
+
       // When addons or special instructions are provided, always add as new item
       if ((selectedAddons && selectedAddons.length > 0) || (specialInstructions && specialInstructions.length > 0)) {
         toast({
           description: `Added ${menuItem.name} to cart`,
           variant: "default",
         });
-        return [...prevItems, { 
+        return [...currentItems, { 
           cartItemId: generateCartItemId(),
           menuItem, 
           quantity, 
@@ -152,7 +197,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Check if item is already in cart (without addons and without special instructions)
-      const existingItemIndex = prevItems.findIndex(
+      const existingItemIndex = currentItems.findIndex(
         item => item.menuItem.id === menuItem.id && 
         (!item.selectedAddons || item.selectedAddons.length === 0) && 
         (!item.specialInstructions || item.specialInstructions.length === 0)
@@ -160,7 +205,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (existingItemIndex >= 0) {
         // Update existing item quantity
-        const updatedItems = [...prevItems];
+        const updatedItems = [...currentItems];
         updatedItems[existingItemIndex] = {
           ...updatedItems[existingItemIndex],
           quantity: updatedItems[existingItemIndex].quantity + quantity
@@ -176,7 +221,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: `Added ${menuItem.name} to cart`,
           variant: "default",
         });
-        return [...prevItems, { 
+        return [...currentItems, { 
           cartItemId: generateCartItemId(),
           menuItem, 
           quantity 
@@ -307,7 +352,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         hasItems,
         updateSpecialInstructions,
         setOrderType,
-        setRestaurantId,
+        setRestaurantId: setRestaurantIdHandler,
         applyPromoCode,
         removePromoCode,
       }}
