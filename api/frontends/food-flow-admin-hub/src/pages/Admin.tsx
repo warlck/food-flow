@@ -571,24 +571,6 @@ export default function Admin() {
           </div>
         </div>
 
-        <div className="admin-sidebar-copy mx-1 mb-6 rounded-xl border border-white/10 bg-white/[.055] p-2.5">
-          <div className="flex w-full items-center gap-2.5 text-left">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#FFF1EB] text-xs font-bold text-[#FF4500] overflow-hidden">
-              {workspace?.restaurant.logoUrl ? (
-                <img src={workspace.restaurant.logoUrl} alt="" className="h-full w-full object-cover" />
-              ) : workspace ? (
-                initials(workspace.restaurant.name)
-              ) : (
-                'FF'
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[12px] font-semibold text-white">{workspace?.restaurant.name ?? 'Choose restaurant'}</div>
-              <div className="mt-0.5 flex items-center gap-1 text-[10px] text-[#D1D5DB]"><span className="h-1.5 w-1.5 rounded-full bg-[#FFB72B]" /> {workspace?.restaurant.enabled ? 'Open for business' : 'Paused'}</div>
-            </div>
-          </div>
-        </div>
-
         <nav className="space-y-1">
           <div className="admin-nav-label px-3 pb-2 text-[10px] font-bold uppercase tracking-[.16em] text-[#9CA3AF]">Workspace</div>
           {navItems.map(({ icon: Icon, label, section: navSection, soon }) => (
