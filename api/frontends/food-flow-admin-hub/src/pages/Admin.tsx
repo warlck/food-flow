@@ -18,7 +18,7 @@ import { ImageField } from '@/components/ImageField';
 import { useAuth } from '@/context/AuthContext';
 import {
   AddonInput, AdminAddon, AdminCategory, AdminMenuItem, AdminOrder, AdminOrganization, AdminPromotion, AdminRestaurant, AdminWorkspace,
-  CategoryInput, MenuItemInput, OrderStatus, OrderType, PaymentStatus, PromotionInput, RestaurantInput, adminApi,
+  CategoryInput, DEFAULT_OPERATING_HOURS, DaySchedule, MenuItemInput, OperatingHours, OrderStatus, OrderType, PaymentStatus, PromotionInput, RestaurantInput, adminApi,
 } from '@/lib/admin-api';
 import './Admin.css';
 
@@ -1574,6 +1574,14 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
   const [isGeocoding, setIsGeocoding] = useState<boolean>(false);
   const [geoResults, setGeoResults] = useState<{ display_name: string; lat: string; lon: string }[]>([]);
   const [geoError, setGeoError] = useState<string>('');
+
+  // Operating hours state for restaurant profile
+  const [schedule, setSchedule] = useState<OperatingHours>(
+    (existing as AdminRestaurant | undefined)?.operatingHours && Object.keys((existing as AdminRestaurant).operatingHours!).length > 0
+      ? (existing as AdminRestaurant).operatingHours!
+      : DEFAULT_OPERATING_HOURS
+  );
+
   // Promotion discount type state for max attribute & validation
   const [promoDiscountType, setPromoDiscountType] = useState<'percentage' | 'fixed_amount'>(
     (existing as AdminPromotion | undefined)?.discountType ?? 'percentage'
@@ -1586,6 +1594,11 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
       setAddressInput(rest?.address ?? '');
       setLat(rest?.latitude ?? null);
       setLon(rest?.longitude ?? null);
+      setSchedule(
+        rest?.operatingHours && Object.keys(rest.operatingHours).length > 0
+          ? rest.operatingHours
+          : DEFAULT_OPERATING_HOURS
+      );
       setGeoResults([]);
       setGeoError('');
     }
@@ -1701,6 +1714,7 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
           email: String(data.get('email')),
           imageUrl: String(data.get('imageUrl') ?? ''),
           logoUrl: String(data.get('logoUrl') ?? ''),
+          operatingHours: schedule,
           enabled: data.get('enabled') === 'true',
           latitude: latitudeVal,
           longitude: longitudeVal,
@@ -1754,161 +1768,394 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
   const titles = { restaurant: existing ? 'Edit restaurant' : 'Create a restaurant', category: existing ? 'Edit category' : 'Create a category', item: existing ? 'Edit menu item' : 'Create a menu item', addon: existing ? 'Edit add-on' : 'Create an add-on', promotion: existing ? 'Edit promotion' : 'Create promotion' };
   const descriptions = { restaurant: 'The profile guests see across your storefront.', category: 'Group related items so your menu is easy to browse.', item: 'Add the details your team and guests need.', addon: 'Offer an optional extra across every item in a category.', promotion: 'Set up discount codes and redemption rules.' };
 
+  // Full-screen Studio layout for Restaurant Editor
+  if (kind === 'restaurant') {
+    const existingRest = existing as AdminRestaurant | undefined;
+    return (
+      <Dialog open={Boolean(editor)} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="flex h-[92vh] max-h-[94vh] w-[96vw] max-w-6xl flex-col overflow-hidden rounded-2xl border-[#E5E7EB] bg-[#F9FAFB] p-0 shadow-2xl">
+          <form onSubmit={submit} className="flex h-full flex-col overflow-hidden">
+            {/* Sticky Studio Header */}
+            <div className="flex shrink-0 items-center justify-between border-b border-[#E5E7EB] bg-white px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]">
+                  <Building2 size={20} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-bold tracking-[-.025em] text-[#111827]">
+                      {existingRest ? 'Restaurant Studio' : 'New Restaurant'}
+                    </h2>
+                    {existingRest && (
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${existingRest.enabled ? 'bg-[#E8F5E9] text-[#2E7D32]' : 'bg-[#FFEBEE] text-[#C62828]'}`}>
+                        {existingRest.enabled ? 'Live' : 'Paused'}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#6B7280]">
+                    {existingRest ? 'Configure restaurant profile, address, operating hours, and storefront branding.' : 'Fill in the details to launch a new restaurant in your organization.'}
+                  </p>
+                </div>
+              </div>
+
+              {existingRest?.id && (
+                <div className="hidden sm:flex items-center gap-2">
+                  <span className="text-[11px] font-medium text-[#6B7280]">UUID:</span>
+                  <code className="rounded-lg bg-[#F3F4F6] px-2.5 py-1 text-[11px] font-mono text-[#374151]">
+                    {existingRest.id}
+                  </code>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(existingRest.id);
+                      setCopiedId(true);
+                      toast.success('Restaurant UUID copied');
+                      setTimeout(() => setCopiedId(false), 2000);
+                    }}
+                    className="h-7 gap-1 border-[#E5E7EB] bg-white px-2 text-[11px] text-[#374151] hover:bg-[#F9FAFB]"
+                  >
+                    {copiedId ? <Check size={12} className="text-[#10B981]" /> : <Copy size={12} />}
+                    {copiedId ? 'Copied' : 'Copy'}
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Main Studio Body - Two Column Grid */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Left Column: General & Delivery Settings */}
+                <div className="lg:col-span-7 space-y-6">
+                  {/* Card 1: General Details & Location */}
+                  <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm space-y-4">
+                    <div className="flex items-center gap-2 border-b border-[#F3F4F6] pb-3 text-xs font-bold uppercase tracking-wider text-[#FF4500]">
+                      <Store size={14} />
+                      <span>General Details & Location</span>
+                    </div>
+
+                    <Field label="Restaurant name" htmlFor="name" required hint="3–100 characters">
+                      <Input
+                        id="name"
+                        name="name"
+                        defaultValue={existingRest?.name ?? ''}
+                        required
+                        minLength={3}
+                        maxLength={100}
+                        placeholder="e.g. Juniper Kitchen"
+                        className="admin-input"
+                      />
+                    </Field>
+
+                    <Field label="Description" htmlFor="description" hint="Recommended">
+                      <Textarea
+                        id="description"
+                        name="description"
+                        defaultValue={existingRest?.description ?? ''}
+                        rows={2}
+                        placeholder="Add a concise, useful description of cuisine and specialties"
+                        className="admin-input resize-none text-xs"
+                      />
+                    </Field>
+
+                    <Field label="Address" htmlFor="address" required hint="Enter street or 6-digit postal code">
+                      <div className="flex gap-2">
+                        <Input
+                          id="address"
+                          name="address"
+                          value={addressInput}
+                          onChange={(e) => setAddressInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleResolveAddress();
+                            }
+                          }}
+                          required
+                          placeholder="Street, city and postal code"
+                          className="admin-input flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleResolveAddress}
+                          disabled={isGeocoding || !addressInput.trim()}
+                          className="border-[#E5E7EB] bg-white text-xs font-medium text-[#374151] hover:bg-[#F9FAFB] hover:text-[#111827] shrink-0"
+                        >
+                          {isGeocoding ? <Loader2 size={14} className="animate-spin mr-1" /> : <Search size={14} className="mr-1" />}
+                          Verify
+                        </Button>
+                      </div>
+                    </Field>
+
+                    {/* Geo Candidate Selection */}
+                    {geoResults.length > 0 && (
+                      <div className="rounded-xl border border-[#E5E7EB] bg-white p-2 shadow-sm space-y-1">
+                        <div className="px-2 py-1 text-[11px] font-semibold text-[#6B7280]">Select matching address:</div>
+                        <div className="max-h-40 overflow-y-auto divide-y divide-[#F3F4F6]">
+                          {geoResults.map((item, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handleSelectResult(item)}
+                              className="w-full text-left px-3 py-2 text-xs text-[#374151] hover:bg-[#FFF5F0] hover:text-[#FF4500] transition-colors rounded-lg flex items-center justify-between"
+                            >
+                              <span className="truncate mr-2">{item.display_name}</span>
+                              <span className="shrink-0 text-[10px] text-[#9CA3AF]">Lat: {parseFloat(item.lat).toFixed(4)}, Lon: {parseFloat(item.lon).toFixed(4)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {geoError && (
+                      <div className="flex items-center gap-1.5 text-xs text-[#DC2626] bg-[#FEF2F2] border border-[#FCA5A5] rounded-lg p-2.5">
+                        <CircleAlert size={14} className="shrink-0" />
+                        <span>{geoError}</span>
+                      </div>
+                    )}
+
+                    {/* Address Resolution Status Indicator */}
+                    {lat !== null && lon !== null ? (
+                      <div className="flex items-center justify-between rounded-xl border border-[#D1FAE5] bg-[#ECFDF5] px-3.5 py-2 text-xs text-[#065F46]">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#10B981] text-white">
+                            <Check size={12} />
+                          </div>
+                          <div>
+                            <span className="font-semibold text-xs">Address verified for delivery</span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-[#059669] bg-[#A7F3D0] px-2 py-0.5 rounded-full">Verified</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 rounded-xl border border-[#FDE68A] bg-[#FFFBEB] px-3.5 py-2 text-xs text-[#92400E]">
+                        <CircleAlert size={14} className="shrink-0 text-[#D97706]" />
+                        <span>Click <strong>Verify</strong> to check address coordinates for delivery routing.</span>
+                      </div>
+                    )}
+
+                    <input type="hidden" name="latitude" value={lat ?? ''} />
+                    <input type="hidden" name="longitude" value={lon ?? ''} />
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Phone" htmlFor="phone" required>
+                        <Input id="phone" name="phone" defaultValue={existingRest?.phone ?? ''} required placeholder="+65 6123 4567" className="admin-input" />
+                      </Field>
+                      <Field label="Email" htmlFor="email" required>
+                        <Input id="email" name="email" type="email" defaultValue={existingRest?.email ?? ''} required placeholder="hello@restaurant.com" className="admin-input" />
+                      </Field>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Operational Rules & Storefront Settings */}
+                  <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm space-y-4">
+                    <div className="flex items-center gap-2 border-b border-[#F3F4F6] pb-3 text-xs font-bold uppercase tracking-wider text-[#FF4500]">
+                      <Bike size={14} />
+                      <span>Delivery, Pricing & Storefront Status</span>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <Field label="Max delivery distance (km)" htmlFor="maxDeliveryDistanceKm" hint="0 = unlimited">
+                        <Input id="maxDeliveryDistanceKm" name="maxDeliveryDistanceKm" type="number" min="0" step="0.1" defaultValue={existingRest?.maxDeliveryDistanceKm ?? 0} placeholder="0" className="admin-input" />
+                      </Field>
+                      <Field label="Minimum spend ($)" htmlFor="minSpend" hint="0 = no minimum">
+                        <Input id="minSpend" name="minSpend" type="number" min="0" step="0.01" defaultValue={existingRest?.minSpend ?? 0} placeholder="0.00" className="admin-input" />
+                      </Field>
+                      <Field label="Tax rate (%)" htmlFor="taxRatePct" hint="e.g. 10 = 10%">
+                        <Input id="taxRatePct" name="taxRatePct" type="number" min="0" max="100" step="0.1" defaultValue={(existingRest?.taxRate ?? 0.10) * 100} placeholder="10" className="admin-input" />
+                      </Field>
+                    </div>
+
+                    <Field label="Storefront Status" htmlFor="enabled" hint="Live allows guests to place online orders">
+                      <div className="flex items-center gap-3 pt-1">
+                        <Switch
+                          id="enabled"
+                          name="enabled"
+                          defaultChecked={existingRest?.enabled ?? true}
+                          value="true"
+                        />
+                        <span className="text-xs font-semibold text-[#374151]">
+                          {existingRest?.enabled ?? true ? 'Live (Storefront enabled)' : 'Paused (Storefront paused)'}
+                        </span>
+                      </div>
+                    </Field>
+                  </div>
+                </div>
+
+                {/* Right Column: Visual Branding & Operating Hours */}
+                <div className="lg:col-span-5 space-y-6">
+                  {/* Card 3: Visual Branding & Media */}
+                  <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm space-y-4">
+                    <div className="flex items-center gap-2 border-b border-[#F3F4F6] pb-3 text-xs font-bold uppercase tracking-wider text-[#FF4500]">
+                      <ChefHat size={14} />
+                      <span>Visual Branding & Media</span>
+                    </div>
+
+                    {/* Brand Logo / Avatar */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-bold text-[#374151]">Brand Logo / Avatar</Label>
+                        <span className="text-[11px] text-[#9CA3AF]">Square 1:1</span>
+                      </div>
+                      <ImageField
+                        name="logoUrl"
+                        variant="avatar"
+                        entityType="restaurant"
+                        restaurantId={existingRest?.id}
+                        defaultValue={existingRest?.logoUrl ?? ''}
+                        aspectHint="Square 1:1 icon for avatar & selector"
+                        placeholder="https://.../logo.png"
+                      />
+                    </div>
+
+                    {/* Cover Banner */}
+                    <div className="space-y-1.5 pt-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-bold text-[#374151]">Cover Banner</Label>
+                        <span className="text-[11px] text-[#9CA3AF]">Landscape 16:5</span>
+                      </div>
+                      <ImageField
+                        name="imageUrl"
+                        variant="banner"
+                        entityType="restaurant"
+                        restaurantId={existingRest?.id}
+                        defaultValue={existingRest?.imageUrl ?? ''}
+                        aspectHint="Recommended: 1200×400px widescreen photo"
+                        placeholder="https://.../cover.jpg"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Card 4: Operating Hours */}
+                  <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-3">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#FF4500]">
+                        <Clock3 size={14} />
+                        <span>Operating Hours</span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const mon = schedule.monday ?? { open: '10:00', close: '22:00', isClosed: false };
+                          const next: OperatingHours = {};
+                          const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                          days.forEach(d => { next[d] = { ...mon }; });
+                          setSchedule(next);
+                          toast.success("Applied Monday's hours to all days");
+                        }}
+                        className="h-6 px-2 text-[11px] font-medium text-[#FF4500] hover:bg-[#FFF1EB]"
+                        title="Copy Monday's schedule to all other days"
+                      >
+                        Apply Mon to all
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {[
+                        { key: 'monday', label: 'Monday' },
+                        { key: 'tuesday', label: 'Tuesday' },
+                        { key: 'wednesday', label: 'Wednesday' },
+                        { key: 'thursday', label: 'Thursday' },
+                        { key: 'friday', label: 'Friday' },
+                        { key: 'saturday', label: 'Saturday' },
+                        { key: 'sunday', label: 'Sunday' },
+                      ].map(({ key, label }) => {
+                        const daySched = schedule[key] ?? { open: '10:00', close: '22:00', isClosed: false };
+                        return (
+                          <div key={key} className="flex items-center justify-between gap-2 rounded-xl bg-[#F9FAFB] px-3 py-2 border border-[#F3F4F6]">
+                            <div className="w-24">
+                              <span className="text-xs font-semibold text-[#374151]">{label}</span>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              {!daySched.isClosed ? (
+                                <div className="flex items-center gap-1.5 font-mono text-xs">
+                                  <Input
+                                    type="time"
+                                    value={daySched.open}
+                                    onChange={(e) => {
+                                      setSchedule((prev) => ({
+                                        ...prev,
+                                        [key]: { ...(prev[key] ?? daySched), open: e.target.value },
+                                      }));
+                                    }}
+                                    className="h-7 w-20 px-1.5 text-center text-xs font-mono bg-white border-[#E5E7EB]"
+                                  />
+                                  <span className="text-[#9CA3AF] text-xs">to</span>
+                                  <Input
+                                    type="time"
+                                    value={daySched.close}
+                                    onChange={(e) => {
+                                      setSchedule((prev) => ({
+                                        ...prev,
+                                        [key]: { ...(prev[key] ?? daySched), close: e.target.value },
+                                      }));
+                                    }}
+                                    className="h-7 w-20 px-1.5 text-center text-xs font-mono bg-white border-[#E5E7EB]"
+                                  />
+                                </div>
+                              ) : (
+                                <span className="text-xs italic text-[#9CA3AF] py-1">Closed all day</span>
+                              )}
+
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSchedule((prev) => ({
+                                    ...prev,
+                                    [key]: {
+                                      ...(prev[key] ?? daySched),
+                                      isClosed: !daySched.isClosed,
+                                    },
+                                  }));
+                                }}
+                                className={`h-7 px-2 text-[11px] font-semibold rounded-lg ${daySched.isClosed ? 'bg-[#FEE2E2] text-[#B91C1C] hover:bg-[#FECACA]' : 'bg-[#E5E7EB] text-[#4B5563] hover:bg-[#D1D5DB]'}`}
+                              >
+                                {daySched.isClosed ? 'Closed' : 'Open'}
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {error && <div className="mt-4 rounded-xl bg-red-50 p-3 text-xs font-medium text-red-700 border border-red-200">{error}</div>}
+            </div>
+
+            {/* Sticky Studio Footer */}
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-[#E5E7EB] bg-white px-6 py-4">
+              <Button type="button" variant="outline" onClick={onClose} className="h-9 px-4 text-xs font-semibold">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving} className="admin-primary h-9 min-w-[120px] gap-2 text-xs font-semibold">
+                {saving && <Loader2 size={14} className="animate-spin" />}
+                {existingRest ? 'Save Changes' : 'Create Restaurant'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Standard modal for Category, MenuItem, Addon, Promotion
   return (
     <Dialog open={Boolean(editor)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[92vh] overflow-y-auto border-[#E5E7EB] p-0 sm:max-w-[560px]">
         {kind && <form onSubmit={submit}>
-          <DialogHeader className="border-b border-[#E5E7EB] px-6 py-5 text-left"><div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]">{kind === 'restaurant' ? <Building2 size={18} /> : kind === 'category' ? <Boxes size={18} /> : kind === 'addon' ? <Puzzle size={18} /> : kind === 'promotion' ? <Tag size={18} /> : <UtensilsCrossed size={18} />}</div><DialogTitle className="text-xl tracking-[-.025em]">{titles[kind]}</DialogTitle><DialogDescription className="text-xs">{descriptions[kind]}</DialogDescription></DialogHeader>
+          <DialogHeader className="border-b border-[#E5E7EB] px-6 py-5 text-left"><div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]">{kind === 'category' ? <Boxes size={18} /> : kind === 'addon' ? <Puzzle size={18} /> : kind === 'promotion' ? <Tag size={18} /> : <UtensilsCrossed size={18} />}</div><DialogTitle className="text-xl tracking-[-.025em]">{titles[kind]}</DialogTitle><DialogDescription className="text-xs">{descriptions[kind]}</DialogDescription></DialogHeader>
           <div className="space-y-4 px-6 py-5">
-            {kind === 'restaurant' && (existing as AdminRestaurant | undefined)?.id && (
-              <Field label="Restaurant ID" htmlFor="restaurantId" hint="Unique system UUID">
-                <div className="flex gap-2">
-                  <Input
-                    id="restaurantId"
-                    value={(existing as AdminRestaurant).id}
-                    readOnly
-                    className="admin-input flex-1 font-mono text-xs bg-[#F9FAFB] text-[#4B5563] cursor-text select-all"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      navigator.clipboard.writeText((existing as AdminRestaurant).id);
-                      setCopiedId(true);
-                      toast.success('Restaurant UUID copied to clipboard');
-                      setTimeout(() => setCopiedId(false), 2000);
-                    }}
-                    className="border-[#E5E7EB] bg-white text-xs font-medium text-[#374151] hover:bg-[#F9FAFB] hover:text-[#111827] shrink-0"
-                    title="Copy Restaurant UUID"
-                  >
-                    {copiedId ? <Check size={14} className="mr-1 text-[#10B981]" /> : <Copy size={14} className="mr-1" />}
-                    {copiedId ? 'Copied' : 'Copy'}
-                  </Button>
-                </div>
-              </Field>
-            )}
-            {kind !== 'promotion' && <Field label={kind === 'restaurant' ? 'Restaurant name' : kind === 'category' ? 'Category name' : kind === 'addon' ? 'Add-on name' : 'Item name'} htmlFor="name" required hint="3–100 characters"><Input id="name" name="name" defaultValue={existing?.name ?? ''} required minLength={3} maxLength={100} placeholder={kind === 'restaurant' ? 'e.g. Juniper Kitchen' : kind === 'category' ? 'e.g. Seasonal plates' : kind === 'addon' ? 'e.g. Extra avocado' : 'e.g. Garden harvest bowl'} className="admin-input" /></Field>}
+            {kind !== 'promotion' && <Field label={kind === 'category' ? 'Category name' : kind === 'addon' ? 'Add-on name' : 'Item name'} htmlFor="name" required hint="3–100 characters"><Input id="name" name="name" defaultValue={existing?.name ?? ''} required minLength={3} maxLength={100} placeholder={kind === 'category' ? 'e.g. Seasonal plates' : kind === 'addon' ? 'e.g. Extra avocado' : 'e.g. Garden harvest bowl'} className="admin-input" /></Field>}
             {kind !== 'promotion' && <Field label="Description" htmlFor="description" hint="Recommended"><Textarea id="description" name="description" defaultValue={existing?.description ?? ''} rows={3} placeholder="Add a concise, useful description" className="admin-input resize-none" /></Field>}
-            {kind === 'restaurant' && <>
-              <Field label="Address" htmlFor="address" required hint="Enter street or 6-digit postal code">
-                <div className="flex gap-2">
-                  <Input
-                    id="address"
-                    name="address"
-                    value={addressInput}
-                    onChange={(e) => {
-                      setAddressInput(e.target.value);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleResolveAddress();
-                      }
-                    }}
-                    required
-                    placeholder="Street, city and postal code"
-                    className="admin-input flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleResolveAddress}
-                    disabled={isGeocoding || !addressInput.trim()}
-                    className="border-[#E5E7EB] bg-white text-xs font-medium text-[#374151] hover:bg-[#F9FAFB] hover:text-[#111827] shrink-0"
-                  >
-                    {isGeocoding ? <Loader2 size={14} className="animate-spin mr-1" /> : <Search size={14} className="mr-1" />}
-                    Search
-                  </Button>
-                </div>
-              </Field>
-
-              {/* Geo Candidate Selection */}
-              {geoResults.length > 0 && (
-                <div className="rounded-xl border border-[#E5E7EB] bg-white p-2 shadow-sm space-y-1">
-                  <div className="px-2 py-1 text-[11px] font-semibold text-[#6B7280]">Select matching address:</div>
-                  <div className="max-h-40 overflow-y-auto divide-y divide-[#F3F4F6]">
-                    {geoResults.map((item, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleSelectResult(item)}
-                        className="w-full text-left px-3 py-2 text-xs text-[#374151] hover:bg-[#FFF5F0] hover:text-[#FF4500] transition-colors rounded-lg flex items-center justify-between"
-                      >
-                        <span className="truncate mr-2">{item.display_name}</span>
-                        <span className="shrink-0 text-[10px] text-[#9CA3AF]">Lat: {parseFloat(item.lat).toFixed(4)}, Lon: {parseFloat(item.lon).toFixed(4)}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {geoError && (
-                <div className="flex items-center gap-1.5 text-xs text-[#DC2626] bg-[#FEF2F2] border border-[#FCA5A5] rounded-lg p-2.5">
-                  <CircleAlert size={14} className="shrink-0" />
-                  <span>{geoError}</span>
-                </div>
-              )}
-
-              {/* Address Resolution Status Indicator */}
-              {lat !== null && lon !== null ? (
-                <div className="flex items-center justify-between rounded-xl border border-[#D1FAE5] bg-[#ECFDF5] px-3.5 py-2 text-xs text-[#065F46]">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#10B981] text-white">
-                      <Check size={12} />
-                    </div>
-                    <div>
-                      <span className="font-semibold text-xs">Address verified for delivery</span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-[#059669] bg-[#A7F3D0] px-2 py-0.5 rounded-full">Verified</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 rounded-xl border border-[#FDE68A] bg-[#FFFBEB] px-3.5 py-2 text-xs text-[#92400E]">
-                  <CircleAlert size={14} className="shrink-0 text-[#D97706]" />
-                  <span>Click <strong>Search</strong> to verify this address for delivery.</span>
-                </div>
-              )}
-
-              <div className="grid gap-4 sm:grid-cols-2"><Field label="Phone" htmlFor="phone" required><Input id="phone" name="phone" defaultValue={(existing as AdminRestaurant | undefined)?.phone ?? ''} required placeholder="+65 6123 4567" className="admin-input" /></Field><Field label="Email" htmlFor="email" required><Input id="email" name="email" type="email" defaultValue={(existing as AdminRestaurant | undefined)?.email ?? ''} required placeholder="hello@restaurant.com" className="admin-input" /></Field></div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Brand Logo / Avatar" htmlFor="logoUrl" hint="Optional — square icon for avatar & selector">
-                  <ImageField
-                    name="logoUrl"
-                    entityType="restaurant"
-                    restaurantId={(existing as AdminRestaurant | undefined)?.id}
-                    defaultValue={(existing as AdminRestaurant | undefined)?.logoUrl ?? ''}
-                  />
-                </Field>
-                <Field label="Cover image" htmlFor="imageUrl" hint="Optional — wide banner for storefront header">
-                  <ImageField
-                    name="imageUrl"
-                    entityType="restaurant"
-                    restaurantId={(existing as AdminRestaurant | undefined)?.id}
-                    defaultValue={(existing as AdminRestaurant | undefined)?.imageUrl ?? ''}
-                  />
-                </Field>
-              </div>
-              <input type="hidden" name="latitude" value={lat ?? ''} />
-              <input type="hidden" name="longitude" value={lon ?? ''} />
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Field label="Max delivery distance (km)" htmlFor="maxDeliveryDistanceKm" hint="0 = unlimited"><Input id="maxDeliveryDistanceKm" name="maxDeliveryDistanceKm" type="number" min="0" step="0.1" defaultValue={(existing as AdminRestaurant | undefined)?.maxDeliveryDistanceKm ?? 0} placeholder="0" className="admin-input" /></Field>
-                <Field label="Minimum spend ($)" htmlFor="minSpend" hint="0 = no minimum"><Input id="minSpend" name="minSpend" type="number" min="0" step="0.01" defaultValue={(existing as AdminRestaurant | undefined)?.minSpend ?? 0} placeholder="0.00" className="admin-input" /></Field>
-                <Field label="Tax rate (%)" htmlFor="taxRatePct" hint="e.g. 10 = 10%"><Input id="taxRatePct" name="taxRatePct" type="number" min="0" max="100" step="0.1" defaultValue={((existing as AdminRestaurant | undefined)?.taxRate ?? 0.10) * 100} placeholder="10" className="admin-input" /></Field>
-              </div>
-              <Field label="Storefront Status" htmlFor="enabled" hint="Live allows guests to place online orders">
-                <div className="flex items-center gap-3 pt-1">
-                  <Switch
-                    id="enabled"
-                    name="enabled"
-                    defaultChecked={(existing as AdminRestaurant | undefined)?.enabled ?? true}
-                    value="true"
-                  />
-                  <span className="text-xs font-semibold text-[#374151]">
-                    {(existing as AdminRestaurant | undefined)?.enabled ?? true ? 'Live (Storefront enabled)' : 'Paused (Storefront paused)'}
-                  </span>
-                </div>
-              </Field>
-            </>}
             {kind === 'item' && workspace && <>
               <div className="grid gap-4 sm:grid-cols-2"><Field label="Price" htmlFor="price" required><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">$</span><Input id="price" name="price" type="number" min="0.01" step="0.01" defaultValue={(existing as AdminMenuItem | undefined)?.price ?? ''} required placeholder="0.00" className="admin-input pl-7" /></div></Field><Field label="Category" htmlFor="categoryId" required><Select name="categoryId" defaultValue={itemCategoryId}><SelectTrigger className="admin-input"><SelectValue placeholder="Choose category" /></SelectTrigger><SelectContent>{workspace.categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}</SelectContent></Select></Field></div>
               <Field label="Display Rank" htmlFor="rank" hint="Optional display priority (lower numbers appear first)"><Input id="rank" name="rank" type="number" min="1" step="1" defaultValue={(existing as AdminMenuItem | undefined)?.rank ?? ''} placeholder="e.g. 10" className="admin-input" /></Field>
