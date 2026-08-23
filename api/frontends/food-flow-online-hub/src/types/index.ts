@@ -28,6 +28,12 @@ export interface SelectedAddon {
   quantity: number;
 }
 
+export interface DaySchedule {
+  open: string;
+  close: string;
+  isClosed?: boolean;
+}
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -39,10 +45,7 @@ export interface Restaurant {
   email: string;
   enabled?: boolean;
   openingHours: {
-    [key: string]: {
-      open: string;
-      close: string;
-    };
+    [key: string]: DaySchedule;
   };
   latitude?: number;
   longitude?: number;

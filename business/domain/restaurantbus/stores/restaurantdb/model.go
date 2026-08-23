@@ -1,6 +1,7 @@
 package restaurantdb
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -19,6 +20,7 @@ type restaurant struct {
 	Email                 string    `db:"email"`
 	ImageURL              string    `db:"image_url"`
 	LogoURL               string    `db:"logo_url"`
+	OperatingHours        string    `db:"operating_hours"`
 	Enabled               bool      `db:"enabled"`
 	Latitude              *float64  `db:"latitude"`
 	Longitude             *float64  `db:"longitude"`
@@ -30,6 +32,12 @@ type restaurant struct {
 }
 
 func toDBRestaurant(bus restaurantbus.Restaurant) restaurant {
+	hours := bus.OperatingHours
+	if len(hours) == 0 {
+		hours = restaurantbus.DefaultOperatingHours()
+	}
+	hoursJSON, _ := json.Marshal(hours)
+
 	return restaurant{
 		ID:                    bus.ID,
 		OrganizationID:        bus.OrganizationID,
@@ -40,6 +48,7 @@ func toDBRestaurant(bus restaurantbus.Restaurant) restaurant {
 		Email:                 bus.Email,
 		ImageURL:              bus.ImageURL,
 		LogoURL:               bus.LogoURL,
+		OperatingHours:        string(hoursJSON),
 		Enabled:               bus.Enabled,
 		Latitude:              bus.Latitude,
 		Longitude:             bus.Longitude,
@@ -57,6 +66,14 @@ func toBusRestaurant(db restaurant) (restaurantbus.Restaurant, error) {
 		return restaurantbus.Restaurant{}, fmt.Errorf("parse name: %w", err)
 	}
 
+	var hours restaurantbus.OperatingHours
+	if db.OperatingHours != "" {
+		_ = json.Unmarshal([]byte(db.OperatingHours), &hours)
+	}
+	if len(hours) == 0 {
+		hours = restaurantbus.DefaultOperatingHours()
+	}
+
 	bus := restaurantbus.Restaurant{
 		ID:                    db.ID,
 		OrganizationID:        db.OrganizationID,
@@ -67,6 +84,7 @@ func toBusRestaurant(db restaurant) (restaurantbus.Restaurant, error) {
 		Email:                 db.Email,
 		ImageURL:              db.ImageURL,
 		LogoURL:               db.LogoURL,
+		OperatingHours:        hours,
 		Enabled:               db.Enabled,
 		Latitude:              db.Latitude,
 		Longitude:             db.Longitude,

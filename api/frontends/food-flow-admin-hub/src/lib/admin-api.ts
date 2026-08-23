@@ -2,6 +2,24 @@ import { NotAuthenticatedError, getValidToken, logout as clearStoredToken } from
 
 const SALES_API_BASE_URL = import.meta.env.VITE_SALES_API_URL || '';
 
+export interface DaySchedule {
+  open: string;
+  close: string;
+  isClosed: boolean;
+}
+
+export type OperatingHours = Record<string, DaySchedule>;
+
+export const DEFAULT_OPERATING_HOURS: OperatingHours = {
+  monday:    { open: '10:00', close: '22:00', isClosed: false },
+  tuesday:   { open: '10:00', close: '22:00', isClosed: false },
+  wednesday: { open: '10:00', close: '22:00', isClosed: false },
+  thursday:  { open: '10:00', close: '22:00', isClosed: false },
+  friday:    { open: '10:00', close: '23:00', isClosed: false },
+  saturday:  { open: '11:00', close: '23:00', isClosed: false },
+  sunday:    { open: '11:00', close: '22:00', isClosed: false },
+};
+
 export interface AdminRestaurant {
   id: string;
   name: string;
@@ -11,6 +29,7 @@ export interface AdminRestaurant {
   email: string;
   imageUrl: string;
   logoUrl?: string;
+  operatingHours?: OperatingHours;
   enabled: boolean;
   latitude?: number | null;
   longitude?: number | null;
@@ -137,7 +156,7 @@ export interface OrderStatusInput {
   paymentStatus?: PaymentStatus;
 }
 
-export type RestaurantInput = Pick<AdminRestaurant, 'name' | 'description' | 'address' | 'phone' | 'email' | 'imageUrl' | 'logoUrl' | 'enabled' | 'latitude' | 'longitude' | 'maxDeliveryDistanceKm' | 'minSpend' | 'taxRate'> & {
+export type RestaurantInput = Pick<AdminRestaurant, 'name' | 'description' | 'address' | 'phone' | 'email' | 'imageUrl' | 'logoUrl' | 'operatingHours' | 'enabled' | 'latitude' | 'longitude' | 'maxDeliveryDistanceKm' | 'minSpend' | 'taxRate'> & {
   organizationId?: string;
 };
 export type CategoryInput = Pick<AdminCategory, 'name' | 'description' | 'restaurantId'>;

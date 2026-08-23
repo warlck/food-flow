@@ -29,14 +29,15 @@ func create201(sd apitest.SeedData) []apitest.Table {
 			},
 			GotResp: &restaurantapi.Restaurant{},
 			ExpResp: &restaurantapi.Restaurant{
-				Name:        "New Restaurant",
-				Description: "A wonderful new restaurant with great food",
-				Address:     "123 Main Street",
-				Phone:       "+1-555-0100",
-				Email:       "info@newrestaurant.com",
-				ImageURL:    "restaurant.jpg",
-				LogoURL:     "restaurant_logo.jpg",
-				Enabled:     true,
+				Name:           "New Restaurant",
+				Description:    "A wonderful new restaurant with great food",
+				Address:        "123 Main Street",
+				Phone:          "+1-555-0100",
+				Email:          "info@newrestaurant.com",
+				ImageURL:       "restaurant.jpg",
+				LogoURL:        "restaurant_logo.jpg",
+				OperatingHours: restaurantapi.ToAppOperatingHours(nil),
+				Enabled:        true,
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(*restaurantapi.Restaurant)

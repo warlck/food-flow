@@ -27,6 +27,22 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+// Helper to calculate total price for an item including addons
+const calculateItemTotal = (item: CartItem): number => {
+  let itemTotal = item.menuItem.price * item.quantity;
+  if (item.selectedAddons) {
+    item.selectedAddons.forEach((selectedAddon) => {
+      itemTotal += selectedAddon.addon.price * selectedAddon.quantity * item.quantity;
+    });
+  }
+  return itemTotal;
+};
+
+// Helper to calculate total price for all cart items
+const calculateCartTotal = (cartItems: CartItem[]): number => {
+  return cartItems.reduce((total, item) => total + calculateItemTotal(item), 0);
+};
+
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [orderType, setOrderType] = useState<OrderType>('delivery');
@@ -39,6 +55,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedOrderType = localStorage.getItem('foodFlowOrderType');
     const savedRestaurantId = localStorage.getItem('foodFlowRestaurantId');
     
+    if (savedRestaurantId) {
+      setRestaurantId(savedRestaurantId);
+    }
+
     if (savedCart) {
       try {
         const parsedCart = JSON.parse(savedCart);
@@ -62,11 +82,23 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem('foodFlowOrderType');
       }
     }
-    
-    if (savedRestaurantId) {
-      setRestaurantId(savedRestaurantId);
-    }
   }, []);
+
+  const setRestaurantIdHandler = (id: string) => {
+    if (!id || id === restaurantId) return;
+
+    // Reset the whole cart if restaurantId differs from the loaded restaurant
+    if (restaurantId && restaurantId !== id && items.length > 0) {
+      setItems([]);
+      setAppliedPromo(null);
+      toast({
+        description: "Cart reset for the selected restaurant",
+        variant: "default",
+      });
+    }
+
+    setRestaurantId(id);
+  };
 
   // Save cart and order type to localStorage whenever they change
   useEffect(() => {
@@ -94,16 +126,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    const subtotal = items.reduce((total, item) => {
-      let itemTotal = item.menuItem.price * item.quantity;
-      if (item.selectedAddons) {
-        item.selectedAddons.forEach((selectedAddon) => {
-          itemTotal += selectedAddon.addon.price * selectedAddon.quantity * item.quantity;
-        });
-      }
-      return total + itemTotal;
-    }, 0);
-
+    const subtotal = calculateCartTotal(items);
     let isCurrent = true;
 
     orderService
@@ -135,14 +158,32 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [items, restaurantId, promoCode]);
 
   const addToCart = (menuItem: MenuItem, quantity: number = 1, selectedAddons?: SelectedAddon[], specialInstructions?: string) => {
+    const isDifferentRestaurant = Boolean(
+      menuItem.restaurantId && restaurantId && menuItem.restaurantId !== restaurantId
+    );
+
+    if (isDifferentRestaurant) {
+      setAppliedPromo(null);
+      toast({
+        description: "Cleared items from previous restaurant",
+        variant: "default",
+      });
+    }
+
+    if (menuItem.restaurantId && menuItem.restaurantId !== restaurantId) {
+      setRestaurantId(menuItem.restaurantId);
+    }
+
     setItems(prevItems => {
+      const currentItems = isDifferentRestaurant ? [] : prevItems;
+
       // When addons or special instructions are provided, always add as new item
       if ((selectedAddons && selectedAddons.length > 0) || (specialInstructions && specialInstructions.length > 0)) {
         toast({
           description: `Added ${menuItem.name} to cart`,
           variant: "default",
         });
-        return [...prevItems, { 
+        return [...currentItems, { 
           cartItemId: generateCartItemId(),
           menuItem, 
           quantity, 
@@ -152,7 +193,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Check if item is already in cart (without addons and without special instructions)
-      const existingItemIndex = prevItems.findIndex(
+      const existingItemIndex = currentItems.findIndex(
         item => item.menuItem.id === menuItem.id && 
         (!item.selectedAddons || item.selectedAddons.length === 0) && 
         (!item.specialInstructions || item.specialInstructions.length === 0)
@@ -160,7 +201,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (existingItemIndex >= 0) {
         // Update existing item quantity
-        const updatedItems = [...prevItems];
+        const updatedItems = [...currentItems];
         updatedItems[existingItemIndex] = {
           ...updatedItems[existingItemIndex],
           quantity: updatedItems[existingItemIndex].quantity + quantity
@@ -176,7 +217,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: `Added ${menuItem.name} to cart`,
           variant: "default",
         });
-        return [...prevItems, { 
+        return [...currentItems, { 
           cartItemId: generateCartItemId(),
           menuItem, 
           quantity 
@@ -225,18 +266,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getTotalPrice = () => {
-    return items.reduce((total, item) => {
-      let itemTotal = item.menuItem.price * item.quantity;
-      
-      // Add addon prices
-      if (item.selectedAddons) {
-        item.selectedAddons.forEach(selectedAddon => {
-          itemTotal += selectedAddon.addon.price * selectedAddon.quantity * item.quantity;
-        });
-      }
-      
-      return total + itemTotal;
-    }, 0);
+    return calculateCartTotal(items);
   };
 
   const hasItems = () => {
@@ -307,7 +337,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         hasItems,
         updateSpecialInstructions,
         setOrderType,
-        setRestaurantId,
+        setRestaurantId: setRestaurantIdHandler,
         applyPromoCode,
         removePromoCode,
       }}

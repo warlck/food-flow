@@ -40,6 +40,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				Email:                 "updated@restaurant.com",
 				ImageURL:              "updated.jpg",
 				LogoURL:               "updated_logo.jpg",
+				OperatingHours:        restaurantapi.ToAppOperatingHours(sd.Restaurants[0].OperatingHours),
 				Enabled:               false,
 				Latitude:              sd.Restaurants[0].Latitude,
 				Longitude:             sd.Restaurants[0].Longitude,
@@ -78,6 +79,62 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				Email:                 sd.Restaurants[1].Email,
 				ImageURL:              sd.Restaurants[1].ImageURL,
 				LogoURL:               "brand_logo_new.png",
+				OperatingHours:        restaurantapi.ToAppOperatingHours(sd.Restaurants[1].OperatingHours),
+				Enabled:               sd.Restaurants[1].Enabled,
+				Latitude:              sd.Restaurants[1].Latitude,
+				Longitude:             sd.Restaurants[1].Longitude,
+				MaxDeliveryDistanceKm: sd.Restaurants[1].MaxDeliveryDistanceKm,
+				TaxRate:               sd.Restaurants[1].TaxRate,
+				DateCreated:           sd.Restaurants[1].DateCreated.Format(time.RFC3339),
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*restaurantapi.Restaurant)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(*restaurantapi.Restaurant)
+				expResp.DateUpdated = gotResp.DateUpdated
+
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "operating-hours-update",
+			URL:        fmt.Sprintf("/v1/restaurants/%s", sd.Restaurants[1].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusOK,
+			Input: &restaurantapi.UpdateRestaurant{
+				OperatingHours: &restaurantapi.OperatingHours{
+					"monday":    {Open: "08:00", Close: "20:00", IsClosed: false},
+					"tuesday":   {Open: "08:00", Close: "20:00", IsClosed: false},
+					"wednesday": {Open: "08:00", Close: "20:00", IsClosed: false},
+					"thursday":  {Open: "08:00", Close: "20:00", IsClosed: false},
+					"friday":    {Open: "08:00", Close: "21:00", IsClosed: false},
+					"saturday":  {Open: "09:00", Close: "21:00", IsClosed: false},
+					"sunday":    {Open: "09:00", Close: "18:00", IsClosed: true},
+				},
+			},
+			GotResp: &restaurantapi.Restaurant{},
+			ExpResp: &restaurantapi.Restaurant{
+				ID:          sd.Restaurants[1].ID.String(),
+				Name:        sd.Restaurants[1].Name.String(),
+				Description: sd.Restaurants[1].Description,
+				Address:     sd.Restaurants[1].Address,
+				Phone:       sd.Restaurants[1].Phone,
+				Email:       sd.Restaurants[1].Email,
+				ImageURL:    sd.Restaurants[1].ImageURL,
+				LogoURL:     "brand_logo_new.png",
+				OperatingHours: restaurantapi.OperatingHours{
+					"monday":    {Open: "08:00", Close: "20:00", IsClosed: false},
+					"tuesday":   {Open: "08:00", Close: "20:00", IsClosed: false},
+					"wednesday": {Open: "08:00", Close: "20:00", IsClosed: false},
+					"thursday":  {Open: "08:00", Close: "20:00", IsClosed: false},
+					"friday":    {Open: "08:00", Close: "21:00", IsClosed: false},
+					"saturday":  {Open: "09:00", Close: "21:00", IsClosed: false},
+					"sunday":    {Open: "09:00", Close: "18:00", IsClosed: true},
+				},
 				Enabled:               sd.Restaurants[1].Enabled,
 				Latitude:              sd.Restaurants[1].Latitude,
 				Longitude:             sd.Restaurants[1].Longitude,

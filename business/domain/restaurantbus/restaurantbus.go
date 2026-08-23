@@ -46,6 +46,11 @@ func NewBusiness(log *logger.Logger, storer Storer) *Business {
 func (b *Business) Create(ctx context.Context, nr NewRestaurant) (Restaurant, error) {
 	now := time.Now()
 
+	hours := nr.OperatingHours
+	if len(hours) == 0 {
+		hours = DefaultOperatingHours()
+	}
+
 	res := Restaurant{
 		ID:                    uuid.New(),
 		OrganizationID:        nr.OrganizationID,
@@ -56,6 +61,7 @@ func (b *Business) Create(ctx context.Context, nr NewRestaurant) (Restaurant, er
 		Email:                 nr.Email,
 		ImageURL:              nr.ImageURL,
 		LogoURL:               nr.LogoURL,
+		OperatingHours:        hours,
 		Enabled:               true,
 		Latitude:              nr.Latitude,
 		Longitude:             nr.Longitude,
@@ -101,6 +107,10 @@ func (b *Business) Update(ctx context.Context, res Restaurant, ur UpdateRestaura
 
 	if ur.LogoURL != nil {
 		res.LogoURL = *ur.LogoURL
+	}
+
+	if ur.OperatingHours != nil {
+		res.OperatingHours = *ur.OperatingHours
 	}
 
 	if ur.Enabled != nil {
