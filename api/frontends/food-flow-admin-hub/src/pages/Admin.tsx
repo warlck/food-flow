@@ -34,6 +34,35 @@ const NAME_PATTERN = /^[\p{L}\p{N}' -]{3,100}$/u;
 
 type Section = 'overview' | 'restaurant' | 'menu' | 'orders' | 'promotions';
 
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (err) {
+    console.warn('navigator.clipboard failed, attempting fallback', err);
+  }
+
+  try {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.top = '0';
+    textArea.style.left = '0';
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return successful;
+  } catch (err) {
+    console.error('Fallback copy failed', err);
+    return false;
+  }
+}
+
 const navItems: { icon: typeof LayoutDashboard; label: string; section?: Section; soon?: boolean }[] = [
   { icon: LayoutDashboard, label: 'Overview', section: 'overview' },
   { icon: Store, label: 'Restaurant details', section: 'restaurant' },
@@ -719,7 +748,13 @@ export default function Admin() {
                   setRestaurants(page.items);
                 }, 'Restaurant profile updated');
               }}
-              onRefresh={() => loadWorkspace(selectedId, true)}
+              onRefresh={async () => {
+                if (selectedId) {
+                  await loadWorkspace(selectedId, true);
+                  const page = await adminApi.listRestaurants();
+                  setRestaurants(page.items);
+                }
+              }}
             />
           ) : section === 'menu' ? (
             <>
@@ -1827,11 +1862,15 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      navigator.clipboard.writeText(existingRest.id);
-                      setCopiedId(true);
-                      toast.success('Restaurant UUID copied');
-                      setTimeout(() => setCopiedId(false), 2000);
+                    onClick={async () => {
+                      const ok = await copyToClipboard(existingRest.id);
+                      if (ok) {
+                        setCopiedId(true);
+                        toast.success('Restaurant UUID copied');
+                        setTimeout(() => setCopiedId(false), 2000);
+                      } else {
+                        toast.error('Failed to copy UUID');
+                      }
                     }}
                     className="h-7 gap-1 border-[#E5E7EB] bg-white px-2 text-[11px] text-[#374151] hover:bg-[#F9FAFB]"
                   >
@@ -2320,7 +2359,7 @@ function RestaurantSection({
   workspace: AdminWorkspace | null;
   loading: boolean;
   onSave: (input: RestaurantInput) => Promise<void>;
-  onRefresh: () => void;
+  onRefresh: () => Promise<void>;
 }) {
   const restaurant = workspace?.restaurant;
   const [addressInput, setAddressInput] = useState(restaurant?.address ?? '');
@@ -2331,6 +2370,7 @@ function RestaurantSection({
   const [lon, setLon] = useState<number | null>(restaurant?.longitude ?? null);
   const [copiedId, setCopiedId] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isLocalRefreshing, setIsLocalRefreshing] = useState(false);
   const [schedule, setSchedule] = useState<OperatingHours>(restaurant?.operatingHours ?? DEFAULT_OPERATING_HOURS);
   const [name, setName] = useState(restaurant?.name ?? '');
   const [description, setDescription] = useState(restaurant?.description ?? '');
@@ -2363,6 +2403,30 @@ function RestaurantSection({
       setGeoError(null);
     }
   }, [restaurant]);
+
+  const handleCopyId = async () => {
+    if (!restaurant?.id) return;
+    const ok = await copyToClipboard(restaurant.id);
+    if (ok) {
+      setCopiedId(true);
+      toast.success('Restaurant UUID copied to clipboard');
+      setTimeout(() => setCopiedId(false), 2000);
+    } else {
+      toast.error('Failed to copy UUID to clipboard');
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsLocalRefreshing(true);
+    try {
+      await onRefresh();
+      toast.success('Restaurant details refreshed');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to refresh restaurant details');
+    } finally {
+      setIsLocalRefreshing(false);
+    }
+  };
 
   const handleResolveAddress = async () => {
     const query = addressInput.trim();
@@ -2504,37 +2568,38 @@ function RestaurantSection({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-1.5 rounded-xl border border-[#E5E7EB] bg-white px-3 py-1.5 shadow-sm">
+          <button
+            type="button"
+            onClick={handleCopyId}
+            className="flex items-center gap-2 rounded-xl border border-[#E5E7EB] bg-white px-3 py-1.5 shadow-sm hover:border-[#FF4500] hover:bg-[#FFF7F3] transition-colors cursor-pointer group"
+            title="Click to copy full UUID"
+          >
             <span className="text-[11px] font-medium text-[#6B7280]">UUID:</span>
-            <code className="text-[11px] font-mono text-[#374151]">
+            <code className="text-[11px] font-mono text-[#374151] group-hover:text-[#FF4500]">
               {restaurant.id.slice(0, 8)}...{restaurant.id.slice(-4)}
             </code>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                navigator.clipboard.writeText(restaurant.id);
-                setCopiedId(true);
-                toast.success('Restaurant UUID copied to clipboard');
-                setTimeout(() => setCopiedId(false), 2000);
-              }}
-              className="h-6 w-6 p-0 text-[#6B7280] hover:text-[#FF4500]"
-              title="Copy full UUID"
-            >
-              {copiedId ? <Check size={12} className="text-[#10B981]" /> : <Copy size={12} />}
-            </Button>
-          </div>
+            {copiedId ? (
+              <span className="flex items-center gap-1 text-[11px] font-semibold text-[#10B981]">
+                <Check size={13} /> Copied!
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-[11px] font-semibold text-[#6B7280] group-hover:text-[#FF4500]">
+                <Copy size={13} /> Copy
+              </span>
+            )}
+          </button>
 
           <Button
+            type="button"
             variant="outline"
             size="sm"
-            className="h-9 gap-1.5 rounded-xl border-[#E5E7EB] bg-white px-3 text-xs font-semibold text-[#374151] hover:bg-[#FFF7F3] hover:text-[#FF4500]"
-            onClick={onRefresh}
+            className="h-9 gap-1.5 rounded-xl border-[#E5E7EB] bg-white px-3.5 text-xs font-semibold text-[#374151] hover:bg-[#FFF7F3] hover:text-[#FF4500] shadow-sm transition-colors"
+            onClick={handleRefresh}
+            disabled={isLocalRefreshing || loading}
             title="Reload restaurant data"
           >
-            <RefreshCw size={14} />
-            <span>Refresh</span>
+            <RefreshCw size={14} className={isLocalRefreshing ? 'animate-spin text-[#FF4500]' : 'text-[#6B7280]'} />
+            <span>{isLocalRefreshing ? 'Refreshing...' : 'Refresh'}</span>
           </Button>
         </div>
       </section>
