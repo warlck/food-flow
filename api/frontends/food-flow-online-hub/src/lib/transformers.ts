@@ -5,6 +5,23 @@ import { MenuItem, Restaurant, Addon } from '@/types';
  * Transform API restaurant data to frontend Restaurant type
  */
 export function transformApiRestaurant(apiData: ApiRestaurantDetails): Restaurant {
+  const defaultHours = {
+    monday: { open: "10:00", close: "22:00", isClosed: false },
+    tuesday: { open: "10:00", close: "22:00", isClosed: false },
+    wednesday: { open: "10:00", close: "22:00", isClosed: false },
+    thursday: { open: "10:00", close: "22:00", isClosed: false },
+    friday: { open: "10:00", close: "23:00", isClosed: false },
+    saturday: { open: "11:00", close: "23:00", isClosed: false },
+    sunday: { open: "11:00", close: "22:00", isClosed: false },
+  };
+
+  const openingHours = apiData.operatingHours && Object.keys(apiData.operatingHours).length > 0
+    ? Object.entries(apiData.operatingHours).reduce((acc, [day, sched]) => {
+        acc[day] = { open: sched.open, close: sched.close, isClosed: sched.isClosed };
+        return acc;
+      }, {} as Record<string, { open: string; close: string; isClosed?: boolean }>)
+    : defaultHours;
+
   return {
     id: apiData.id,
     name: apiData.name,
@@ -15,15 +32,7 @@ export function transformApiRestaurant(apiData: ApiRestaurantDetails): Restauran
     phone: apiData.phone,
     email: apiData.email,
     enabled: apiData.enabled,
-    openingHours: {
-      monday: { open: "10:00", close: "22:00" },
-      tuesday: { open: "10:00", close: "22:00" },
-      wednesday: { open: "10:00", close: "22:00" },
-      thursday: { open: "10:00", close: "22:00" },
-      friday: { open: "10:00", close: "23:00" },
-      saturday: { open: "11:00", close: "23:00" },
-      sunday: { open: "11:00", close: "22:00" },
-    },
+    openingHours,
     latitude: apiData.latitude,
     longitude: apiData.longitude,
     maxDeliveryDistanceKm: apiData.maxDeliveryDistanceKm,

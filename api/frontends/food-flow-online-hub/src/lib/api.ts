@@ -33,6 +33,14 @@ export interface ApiCategory {
   mentuItems: ApiMenuItem[];
 }
 
+export interface ApiDaySchedule {
+  open: string;
+  close: string;
+  isClosed: boolean;
+}
+
+export type ApiOperatingHours = Record<string, ApiDaySchedule>;
+
 export interface ApiRestaurantDetails {
   id: string;
   name: string;
@@ -42,6 +50,7 @@ export interface ApiRestaurantDetails {
   email: string;
   imageUrl: string;
   logoUrl?: string;
+  operatingHours?: ApiOperatingHours;
   enabled: boolean;
   latitude?: number;
   longitude?: number;

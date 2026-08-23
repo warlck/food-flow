@@ -11,7 +11,8 @@ interface RestaurantInfoProps {
 const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ restaurant }) => {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
   const formattedToday = today as keyof typeof restaurant.openingHours;
-  const isOpen = restaurant.openingHours[formattedToday] !== undefined;
+  const todaySched = restaurant.openingHours?.[formattedToday];
+  const isOpen = Boolean(todaySched && !todaySched.isClosed);
 
   // Generate Google Maps URL for directions using restaurant name and address
   const getGoogleMapsUrl = (): string | null => {
@@ -102,7 +103,7 @@ const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ restaurant }) => {
                     ) : isOpen ? (
                       <>
                         <span className="text-food-success font-medium">Open Today:</span>{" "}
-                        {restaurant.openingHours[formattedToday]?.open} - {restaurant.openingHours[formattedToday]?.close}
+                        {todaySched?.open} - {todaySched?.close}
                       </>
                     ) : (
                       <span className="text-red-500 font-medium">Closed Today</span>
