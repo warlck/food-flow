@@ -152,6 +152,7 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 		Email:                 res.Email,
 		ImageURL:              res.ImageURL,
 		LogoURL:               res.LogoURL,
+		OperatingHours:        ToAppOperatingHours(res.OperatingHours),
 		Enabled:               res.Enabled,
 		Latitude:              res.Latitude,
 		Longitude:             res.Longitude,

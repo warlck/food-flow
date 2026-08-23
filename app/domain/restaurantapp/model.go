@@ -11,24 +11,66 @@ import (
 	"github.com/warlck/food-flow/business/types/name"
 )
 
+// DaySchedule represents open/close timings and closed status for a single day.
+type DaySchedule struct {
+	Open     string `json:"open"`
+	Close    string `json:"close"`
+	IsClosed bool   `json:"isClosed"`
+}
+
+// OperatingHours represents a restaurant's weekly schedule.
+type OperatingHours map[string]DaySchedule
+
+// ToAppOperatingHours converts domain operating hours to app operating hours.
+func ToAppOperatingHours(bus restaurantbus.OperatingHours) OperatingHours {
+	if len(bus) == 0 {
+		bus = restaurantbus.DefaultOperatingHours()
+	}
+	app := make(OperatingHours, len(bus))
+	for k, v := range bus {
+		app[k] = DaySchedule{
+			Open:     v.Open,
+			Close:    v.Close,
+			IsClosed: v.IsClosed,
+		}
+	}
+	return app
+}
+
+func toBusOperatingHours(app OperatingHours) restaurantbus.OperatingHours {
+	if len(app) == 0 {
+		return restaurantbus.DefaultOperatingHours()
+	}
+	bus := make(restaurantbus.OperatingHours, len(app))
+	for k, v := range app {
+		bus[k] = restaurantbus.DaySchedule{
+			Open:     v.Open,
+			Close:    v.Close,
+			IsClosed: v.IsClosed,
+		}
+	}
+	return bus
+}
+
 // Restaurant represents information about a restaurant for API responses.
 type Restaurant struct {
-	ID                    string   `json:"id"`
-	Name                  string   `json:"name"`
-	Description           string   `json:"description"`
-	Address               string   `json:"address"`
-	Phone                 string   `json:"phone"`
-	Email                 string   `json:"email"`
-	ImageURL              string   `json:"imageUrl"`
-	LogoURL               string   `json:"logoUrl"`
-	Enabled               bool     `json:"enabled"`
-	Latitude              *float64 `json:"latitude,omitempty"`
-	Longitude             *float64 `json:"longitude,omitempty"`
-	MaxDeliveryDistanceKm float64  `json:"maxDeliveryDistanceKm"`
-	MinSpend              float64  `json:"minSpend"`
-	TaxRate               float64  `json:"taxRate"`
-	DateCreated           string   `json:"dateCreated"`
-	DateUpdated           string   `json:"dateUpdated"`
+	ID                    string         `json:"id"`
+	Name                  string         `json:"name"`
+	Description           string         `json:"description"`
+	Address               string         `json:"address"`
+	Phone                 string         `json:"phone"`
+	Email                 string         `json:"email"`
+	ImageURL              string         `json:"imageUrl"`
+	LogoURL               string         `json:"logoUrl"`
+	OperatingHours        OperatingHours `json:"operatingHours"`
+	Enabled               bool           `json:"enabled"`
+	Latitude              *float64       `json:"latitude,omitempty"`
+	Longitude             *float64       `json:"longitude,omitempty"`
+	MaxDeliveryDistanceKm float64        `json:"maxDeliveryDistanceKm"`
+	MinSpend              float64        `json:"minSpend"`
+	TaxRate               float64        `json:"taxRate"`
+	DateCreated           string         `json:"dateCreated"`
+	DateUpdated           string         `json:"dateUpdated"`
 }
 
 // Encode implements the encoder interface.
@@ -48,6 +90,7 @@ func ToAppRestaurant(bus restaurantbus.Restaurant) Restaurant {
 		Email:                 bus.Email,
 		ImageURL:              bus.ImageURL,
 		LogoURL:               bus.LogoURL,
+		OperatingHours:        ToAppOperatingHours(bus.OperatingHours),
 		Enabled:               bus.Enabled,
 		Latitude:              bus.Latitude,
 		Longitude:             bus.Longitude,
@@ -73,19 +116,20 @@ func ToAppRestaurants(restaurants []restaurantbus.Restaurant) []Restaurant {
 
 // NewRestaurant defines the data needed to add a new restaurant.
 type NewRestaurant struct {
-	OrganizationID        string   `json:"organizationId" validate:"required,uuid"`
-	Name                  string   `json:"name" validate:"required"`
-	Description           string   `json:"description"`
-	Address               string   `json:"address" validate:"required"`
-	Phone                 string   `json:"phone" validate:"required"`
-	Email                 string   `json:"email" validate:"required,email"`
-	ImageURL              string   `json:"imageUrl"`
-	LogoURL               string   `json:"logoUrl"`
-	Latitude              *float64 `json:"latitude" validate:"omitempty,latitude"`
-	Longitude             *float64 `json:"longitude" validate:"omitempty,longitude"`
-	MaxDeliveryDistanceKm float64  `json:"maxDeliveryDistanceKm" validate:"gte=0"`
-	MinSpend              float64  `json:"minSpend" validate:"gte=0"`
-	TaxRate               float64  `json:"taxRate" validate:"gte=0"`
+	OrganizationID        string         `json:"organizationId" validate:"required,uuid"`
+	Name                  string         `json:"name" validate:"required"`
+	Description           string         `json:"description"`
+	Address               string         `json:"address" validate:"required"`
+	Phone                 string         `json:"phone" validate:"required"`
+	Email                 string         `json:"email" validate:"required,email"`
+	ImageURL              string         `json:"imageUrl"`
+	LogoURL               string         `json:"logoUrl"`
+	OperatingHours        OperatingHours `json:"operatingHours,omitempty"`
+	Latitude              *float64       `json:"latitude" validate:"omitempty,latitude"`
+	Longitude             *float64       `json:"longitude" validate:"omitempty,longitude"`
+	MaxDeliveryDistanceKm float64        `json:"maxDeliveryDistanceKm" validate:"gte=0"`
+	MinSpend              float64        `json:"minSpend" validate:"gte=0"`
+	TaxRate               float64        `json:"taxRate" validate:"gte=0"`
 }
 
 // Decode implements the decoder interface.
@@ -122,6 +166,7 @@ func toBusNewRestaurant(app NewRestaurant) (restaurantbus.NewRestaurant, error) 
 		Email:                 app.Email,
 		ImageURL:              app.ImageURL,
 		LogoURL:               app.LogoURL,
+		OperatingHours:        toBusOperatingHours(app.OperatingHours),
 		Latitude:              app.Latitude,
 		Longitude:             app.Longitude,
 		MaxDeliveryDistanceKm: app.MaxDeliveryDistanceKm,
@@ -136,19 +181,20 @@ func toBusNewRestaurant(app NewRestaurant) (restaurantbus.NewRestaurant, error) 
 
 // UpdateRestaurant defines the data needed to update a restaurant.
 type UpdateRestaurant struct {
-	Name                  *string  `json:"name"`
-	Description           *string  `json:"description"`
-	Address               *string  `json:"address"`
-	Phone                 *string  `json:"phone"`
-	Email                 *string  `json:"email" validate:"omitempty,email"`
-	ImageURL              *string  `json:"imageUrl"`
-	LogoURL               *string  `json:"logoUrl"`
-	Enabled               *bool    `json:"enabled"`
-	Latitude              *float64 `json:"latitude" validate:"omitempty,latitude"`
-	Longitude             *float64 `json:"longitude" validate:"omitempty,longitude"`
-	MaxDeliveryDistanceKm *float64 `json:"maxDeliveryDistanceKm" validate:"omitempty,gte=0"`
-	MinSpend              *float64 `json:"minSpend" validate:"omitempty,gte=0"`
-	TaxRate               *float64 `json:"taxRate" validate:"omitempty,gte=0"`
+	Name                  *string         `json:"name"`
+	Description           *string         `json:"description"`
+	Address               *string         `json:"address"`
+	Phone                 *string         `json:"phone"`
+	Email                 *string         `json:"email" validate:"omitempty,email"`
+	ImageURL              *string         `json:"imageUrl"`
+	LogoURL               *string         `json:"logoUrl"`
+	OperatingHours        *OperatingHours `json:"operatingHours,omitempty"`
+	Enabled               *bool           `json:"enabled"`
+	Latitude              *float64        `json:"latitude" validate:"omitempty,latitude"`
+	Longitude             *float64        `json:"longitude" validate:"omitempty,longitude"`
+	MaxDeliveryDistanceKm *float64        `json:"maxDeliveryDistanceKm" validate:"omitempty,gte=0"`
+	MinSpend              *float64        `json:"minSpend" validate:"omitempty,gte=0"`
+	TaxRate               *float64        `json:"taxRate" validate:"omitempty,gte=0"`
 }
 
 // Decode implements the decoder interface.
@@ -175,6 +221,12 @@ func toBusUpdateRestaurant(app UpdateRestaurant) (restaurantbus.UpdateRestaurant
 		nme = &nm
 	}
 
+	var hours *restaurantbus.OperatingHours
+	if app.OperatingHours != nil {
+		h := toBusOperatingHours(*app.OperatingHours)
+		hours = &h
+	}
+
 	bus := restaurantbus.UpdateRestaurant{
 		Name:                  nme,
 		Description:           app.Description,
@@ -183,6 +235,7 @@ func toBusUpdateRestaurant(app UpdateRestaurant) (restaurantbus.UpdateRestaurant
 		Email:                 app.Email,
 		ImageURL:              app.ImageURL,
 		LogoURL:               app.LogoURL,
+		OperatingHours:        hours,
 		Enabled:               app.Enabled,
 		Latitude:              app.Latitude,
 		Longitude:             app.Longitude,
@@ -234,23 +287,24 @@ type Category struct {
 // RestaurantWithMenuCategories represents information about restaurant including menu item categories
 // of the restaurant. Each category object embeds all the menuItems that in that category
 type RestaurantWithMenuCategories struct {
-	ID                    string     `json:"id"`
-	Name                  string     `json:"name"`
-	Description           string     `json:"description"`
-	Address               string     `json:"address"`
-	Phone                 string     `json:"phone"`
-	Email                 string     `json:"email"`
-	ImageURL              string     `json:"imageUrl"`
-	LogoURL               string     `json:"logoUrl"`
-	Enabled               bool       `json:"enabled"`
-	Latitude              *float64   `json:"latitude,omitempty"`
-	Longitude             *float64   `json:"longitude,omitempty"`
-	MaxDeliveryDistanceKm float64    `json:"maxDeliveryDistanceKm"`
-	MinSpend              float64    `json:"minSpend"`
-	TaxRate               float64    `json:"taxRate"`
-	Categories            []Category `json:"categories"`
-	DateCreated           string     `json:"dateCreated"`
-	DateUpdated           string     `json:"dateUpdated"`
+	ID                    string         `json:"id"`
+	Name                  string         `json:"name"`
+	Description           string         `json:"description"`
+	Address               string         `json:"address"`
+	Phone                 string         `json:"phone"`
+	Email                 string         `json:"email"`
+	ImageURL              string         `json:"imageUrl"`
+	LogoURL               string         `json:"logoUrl"`
+	OperatingHours        OperatingHours `json:"operatingHours"`
+	Enabled               bool           `json:"enabled"`
+	Latitude              *float64       `json:"latitude,omitempty"`
+	Longitude             *float64       `json:"longitude,omitempty"`
+	MaxDeliveryDistanceKm float64        `json:"maxDeliveryDistanceKm"`
+	MinSpend              float64        `json:"minSpend"`
+	TaxRate               float64        `json:"taxRate"`
+	Categories            []Category     `json:"categories"`
+	DateCreated           string         `json:"dateCreated"`
+	DateUpdated           string         `json:"dateUpdated"`
 }
 
 // Encode implements the encoder interface.

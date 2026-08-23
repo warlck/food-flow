@@ -100,6 +100,7 @@ func queryByIDWithDetails200(sd apitest.SeedData) []apitest.Table {
 		Email:                 sd.Restaurants[0].Email,
 		ImageURL:              sd.Restaurants[0].ImageURL,
 		LogoURL:               sd.Restaurants[0].LogoURL,
+		OperatingHours:        restaurantapi.ToAppOperatingHours(sd.Restaurants[0].OperatingHours),
 		Enabled:               sd.Restaurants[0].Enabled,
 		Latitude:              sd.Restaurants[0].Latitude,
 		Longitude:             sd.Restaurants[0].Longitude,
