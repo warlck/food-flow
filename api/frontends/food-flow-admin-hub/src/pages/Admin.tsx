@@ -647,16 +647,6 @@ export default function Admin() {
           </div>
           <div className="flex items-center gap-2">
             <Button
-              variant="outline"
-              className="h-9 gap-1.5 rounded-xl border-[#E5E7EB] bg-white px-3 text-xs font-semibold text-[#374151] shadow-sm hover:border-[#FF8C42] hover:bg-[#FFF7F3] hover:text-[#FF4500] transition-colors"
-              onClick={() => setEditor({ kind: 'restaurant' })}
-              title="Add a new restaurant"
-            >
-              <Plus size={14} className="text-[#FF4500]" />
-              <span className="hidden sm:inline">Add Restaurant</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
-            <Button
               variant="ghost"
               size="sm"
               className="h-9 w-9 rounded-xl px-0 text-[#6B7280] hover:bg-[#FFF7F3] hover:text-[#FF4500]"
@@ -672,10 +662,21 @@ export default function Admin() {
         <div className="admin-content">
           {section === 'overview' ? (
             <div className="space-y-6">
-              <section className="mb-7">
-                <div className="mb-1.5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.14em] text-[#FF4500]"><Building2 size={13} /> Organization</div>
-                <h1 className="text-[28px] font-bold tracking-[-.035em] text-[#333333] sm:text-[32px]">{organization?.name || 'FoodFlow Organization'}</h1>
-                <p className="mt-1 max-w-2xl text-[13px] text-[#6B7280]">Manage your organization's restaurants and their respective workspaces.</p>
+              <section className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                <div>
+                  <div className="mb-1.5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.14em] text-[#FF4500]"><Building2 size={13} /> Organization</div>
+                  <h1 className="text-[28px] font-bold tracking-[-.035em] text-[#333333] sm:text-[32px]">{organization?.name || 'FoodFlow Organization'}</h1>
+                  <p className="mt-1 max-w-2xl text-[13px] text-[#6B7280]">Manage your organization's restaurants and their respective workspaces.</p>
+                </div>
+                <Button
+                  variant="outline"
+                  className="h-9 gap-1.5 rounded-xl border-[#E5E7EB] bg-white px-3.5 text-xs font-semibold text-[#374151] shadow-sm hover:border-[#FF8C42] hover:bg-[#FFF7F3] hover:text-[#FF4500] transition-colors shrink-0"
+                  onClick={() => setEditor({ kind: 'restaurant' })}
+                  title="Add a new restaurant"
+                >
+                  <Plus size={14} className="text-[#FF4500]" />
+                  <span>Add Restaurant</span>
+                </Button>
               </section>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
