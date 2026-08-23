@@ -1,14 +1,40 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Restaurant } from '@/types';
-import { Clock, MapPin, Phone, Mail, Star, ExternalLink } from 'lucide-react';
+import { Clock, MapPin, Phone, Mail, Star, ExternalLink, ChevronDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface RestaurantInfoProps {
   restaurant: Restaurant;
 }
 
+const DAYS: Array<{ key: string; label: string }> = [
+  { key: 'monday', label: 'Monday' },
+  { key: 'tuesday', label: 'Tuesday' },
+  { key: 'wednesday', label: 'Wednesday' },
+  { key: 'thursday', label: 'Thursday' },
+  { key: 'friday', label: 'Friday' },
+  { key: 'saturday', label: 'Saturday' },
+  { key: 'sunday', label: 'Sunday' },
+];
+
+function formatScheduleTime(timeStr?: string): string {
+  if (!timeStr) return '';
+  const parts = timeStr.split(':');
+  if (parts.length >= 2) {
+    const hours = parseInt(parts[0], 10);
+    const mins = parts[1];
+    if (!isNaN(hours)) {
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const formattedHours = hours % 12 || 12;
+      return `${formattedHours}:${mins} ${ampm}`;
+    }
+  }
+  return timeStr;
+}
+
 const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ restaurant }) => {
+  const [showAllHours, setShowAllHours] = useState(false);
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
   const formattedToday = today as keyof typeof restaurant.openingHours;
   const todaySched = restaurant.openingHours?.[formattedToday];
@@ -91,25 +117,72 @@ const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ restaurant }) => {
       <div className="container mx-auto px-4 -mt-6 mb-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Hours */}
-          <Card className="bg-white/90 backdrop-blur-sm">
+          <Card className="bg-white/90 backdrop-blur-sm transition-all duration-200 shadow-sm">
             <CardContent className="pt-6">
               <div className="flex items-start">
-                <Clock className="h-5 w-5 text-food-primary mr-2 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold">Hours</h3>
-                  <p className="text-sm text-gray-600 mb-2">
+                <Clock className="h-5 w-5 text-food-primary mr-2.5 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-gray-900">Hours</h3>
+                  <p className="text-sm text-gray-600 mb-1.5">
                     {restaurant.enabled === false ? (
                       <span className="text-red-600 font-bold">Paused (Storefront Closed)</span>
                     ) : isOpen ? (
                       <>
-                        <span className="text-food-success font-medium">Open Today:</span>{" "}
-                        {todaySched?.open} - {todaySched?.close}
+                        <span className="text-food-success font-semibold">Open Today:</span>{" "}
+                        <span className="font-mono text-xs">{formatScheduleTime(todaySched?.open)} – {formatScheduleTime(todaySched?.close)}</span>
                       </>
                     ) : (
                       <span className="text-red-500 font-medium">Closed Today</span>
                     )}
                   </p>
-                  <button className="text-food-primary text-sm">See all hours</button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAllHours((prev) => !prev)}
+                    className="inline-flex items-center gap-1 text-food-primary text-xs font-semibold hover:underline focus:outline-none focus:ring-2 focus:ring-food-primary rounded py-0.5"
+                    aria-expanded={showAllHours}
+                  >
+                    <span>{showAllHours ? 'Hide all hours' : 'See all hours'}</span>
+                    <ChevronDown
+                      size={13}
+                      className={`transition-transform duration-200 ${showAllHours ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+
+                  {/* Expandable 7-day schedule */}
+                  {showAllHours && (
+                    <div className="mt-3 pt-3 border-t border-gray-100 space-y-1.5 text-xs animate-in fade-in slide-in-from-top-1 duration-150">
+                      {DAYS.map(({ key, label }) => {
+                        const daySched = restaurant.openingHours?.[key];
+                        const isCurrentDay = key === formattedToday;
+                        const isClosed = !daySched || daySched.isClosed;
+                        return (
+                          <div
+                            key={key}
+                            className={`flex items-center justify-between py-1 px-2 rounded-md ${
+                              isCurrentDay
+                                ? 'bg-orange-50/80 font-bold text-food-primary'
+                                : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              {isCurrentDay && (
+                                <span className="h-1.5 w-1.5 rounded-full bg-food-primary animate-pulse" />
+                              )}
+                              <span>{label}</span>
+                            </span>
+                            <span className="font-mono text-[11px]">
+                              {isClosed ? (
+                                <span className="text-red-500 font-sans font-medium">Closed</span>
+                              ) : (
+                                `${formatScheduleTime(daySched.open)} – ${formatScheduleTime(daySched.close)}`
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
