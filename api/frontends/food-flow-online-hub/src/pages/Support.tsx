@@ -18,7 +18,6 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useCart } from '@/context/CartContext';
 import { Input } from '@/components/ui/input';
 
 interface FAQItem {
@@ -74,7 +73,6 @@ const faqs: FAQItem[] = [
 ];
 
 const Support: React.FC = () => {
-  const { restaurantId } = useCart();
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredFaqs = faqs.filter(
@@ -90,11 +88,11 @@ const Support: React.FC = () => {
         {/* Back Link */}
         <div className="mb-6">
           <Link
-            to={restaurantId ? `/restaurant/${restaurantId}` : '/'}
+            to="/"
             className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-food-primary transition-colors"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Menu
+            Back to Home
           </Link>
         </div>
 

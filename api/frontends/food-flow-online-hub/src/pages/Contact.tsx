@@ -4,22 +4,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Phone, MessageSquare, Mail, Clock, Info, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useCart } from '@/context/CartContext';
 
 const Contact: React.FC = () => {
-  const { restaurantId } = useCart();
-
   return (
     <Layout>
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         {/* Back Link */}
         <div className="mb-6">
           <Link
-            to={restaurantId ? `/restaurant/${restaurantId}` : '/'}
+            to="/"
             className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-food-primary transition-colors"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Menu
+            Back to Home
           </Link>
         </div>
 

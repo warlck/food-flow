@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { ShoppingCart, Menu, X, Book, ChefHat, Package } from 'lucide-react';
@@ -7,6 +7,8 @@ import { ShoppingCart, Menu, X, Book, ChefHat, Package } from 'lucide-react';
 const Header: React.FC = () => {
   const { getTotalItems, restaurantId } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const isLandingPage = location.pathname === '/';
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -25,7 +27,7 @@ const Header: React.FC = () => {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-6">
-          {restaurantId && (
+          {!isLandingPage && restaurantId && (
             <Link to={`/restaurant/${restaurantId}`} className="text-gray-700 hover:text-food-primary transition-colors flex items-center">
               <Book className="mr-1" size={18} />
               <span>Menu</span>
@@ -38,16 +40,18 @@ const Header: React.FC = () => {
         </nav>
 
         {/* Cart Button */}
-        <Link to="/cart">
-          <Button variant="outline" className="ml-4 relative">
-            <ShoppingCart className="h-5 w-5" />
-            {getTotalItems() > 0 && (
-              <span className="absolute -top-2 -right-2 bg-food-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {getTotalItems()}
-              </span>
-            )}
-          </Button>
-        </Link>
+        {!isLandingPage && (
+          <Link to="/cart">
+            <Button variant="outline" className="ml-4 relative">
+              <ShoppingCart className="h-5 w-5" />
+              {getTotalItems() > 0 && (
+                <span className="absolute -top-2 -right-2 bg-food-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {getTotalItems()}
+                </span>
+              )}
+            </Button>
+          </Link>
+        )}
 
         {/* Mobile Menu Button */}
         <Button
@@ -64,7 +68,7 @@ const Header: React.FC = () => {
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-t py-4 px-4 shadow-lg animate-fade-in">
           <nav className="flex flex-col space-y-4">
-            {restaurantId && (
+            {!isLandingPage && restaurantId && (
               <Link 
                 to={`/mobile-restaurant/${restaurantId}`} 
                 className="text-gray-700 hover:text-food-primary transition-colors flex items-center p-2"
