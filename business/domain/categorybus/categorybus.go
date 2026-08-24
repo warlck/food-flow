@@ -24,6 +24,7 @@ type Storer interface {
 	Update(ctx context.Context, cat Category) error
 	Delete(ctx context.Context, cat Category) error
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]Category, error)
+	QueryAll(ctx context.Context, filter QueryFilter, orderBy order.By) ([]Category, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, categoryID uuid.UUID) (Category, error)
 }
@@ -100,6 +101,16 @@ func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.
 	categories, err := b.storer.Query(ctx, filter, orderBy, page)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
+	}
+
+	return categories, nil
+}
+
+// QueryAll retrieves all categories matching the filter without pagination.
+func (b *Business) QueryAll(ctx context.Context, filter QueryFilter, orderBy order.By) ([]Category, error) {
+	categories, err := b.storer.QueryAll(ctx, filter, orderBy)
+	if err != nil {
+		return nil, fmt.Errorf("queryall: %w", err)
 	}
 
 	return categories, nil

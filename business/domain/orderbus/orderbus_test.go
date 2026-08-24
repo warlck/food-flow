@@ -48,6 +48,7 @@ func Test_Order(t *testing.T) {
 	unittest.Run(t, create(db.BusDomain, sd), "create")
 	unittest.Run(t, updateStatus(db.BusDomain, sd), "update-status")
 	unittest.Run(t, cancel(db.BusDomain, sd), "cancel")
+	unittest.Run(t, orderMetrics(db.BusDomain, sd), "order-metrics")
 }
 
 // =============================================================================
@@ -1342,6 +1343,78 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				return ""
 			},
 		},
+		{
+			Name:    "order-with-special-instructions-and-nullable-scan",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				lat := 1.3000
+				lng := 103.8500
+				no := orderbus.NewOrder{
+					RestaurantID:        sd.Restaurants[0].ID.String(),
+					CustomerName:        "Special Instructions User",
+					CustomerEmail:       "special@example.com",
+					CustomerPhone:       "555-9999",
+					OrderType:           orderbus.OrderTypeDelivery,
+					PaymentMethod:       orderbus.PaymentMethodCreditCard,
+					SpecialInstructions: "Extra sauce on the side",
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID:          sd.MenuItems[0].ID.String(),
+							Quantity:            1,
+							SpecialInstructions: "No onions please",
+						},
+					},
+					DeliveryAddress: &orderbus.NewDeliveryAddress{
+						Street:               "123 Delivery St",
+						City:                 "Singapore",
+						State:                "SG",
+						PostalCode:           "123456",
+						DeliveryInstructions: "Ring the doorbell twice",
+						Latitude:             &lat,
+						Longitude:            &lng,
+					},
+				}
+
+				ord, err := busDomain.Order.Create(ctx, no)
+				if err != nil {
+					return fmt.Errorf("create order: %w", err)
+				}
+
+				queried, err := busDomain.Order.QueryByID(ctx, ord.ID)
+				if err != nil {
+					return fmt.Errorf("query created order: %w", err)
+				}
+
+				if queried.SpecialInstructions != "Extra sauce on the side" {
+					return fmt.Errorf("expected order SpecialInstructions 'Extra sauce on the side', got %q", queried.SpecialInstructions)
+				}
+
+				if len(queried.Items) == 0 || queried.Items[0].SpecialInstructions != "No onions please" {
+					return fmt.Errorf("expected item SpecialInstructions 'No onions please', got %q", queried.Items[0].SpecialInstructions)
+				}
+
+				if queried.DeliveryAddress == nil || queried.DeliveryAddress.DeliveryInstructions != "Ring the doorbell twice" {
+					return fmt.Errorf("expected delivery instructions 'Ring the doorbell twice', got %v", queried.DeliveryAddress)
+				}
+
+				// Verify querying order with NULL optional fields works without scanning errors
+				nullOrder, err := busDomain.Order.QueryByID(ctx, sd.Orders[0].ID)
+				if err != nil {
+					return fmt.Errorf("query seeded order with NULL fields: %w", err)
+				}
+				if nullOrder.ID != sd.Orders[0].ID {
+					return fmt.Errorf("expected order ID %s, got %s", sd.Orders[0].ID, nullOrder.ID)
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("unexpected error: %v", got)
+				}
+				return ""
+			},
+		},
 	}
 
 	return table
@@ -1581,6 +1654,253 @@ func cancel(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				}
 
 				return cmp.Diff(gotResp, expResp, equateTime)
+			},
+		},
+	}
+
+	return table
+}
+
+func orderMetrics(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
+	table := []unittest.Table{
+		{
+			Name:    "order-metrics-success",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				filter := orderbus.InsightsFilter{}
+				metrics, err := busDomain.Order.QueryOrderMetrics(ctx, filter)
+				if err != nil {
+					return err
+				}
+
+				if metrics.Summary.TotalOrders <= 0 {
+					return errors.New("expected positive total orders")
+				}
+
+				// Accounting Identity 1: GrossSales - Discounts == NetSales
+				grossMinusDisc := metrics.Summary.GrossSales.Value() - metrics.Summary.TotalDiscounts.Value()
+				if math.Abs(grossMinusDisc-metrics.Summary.NetSales.Value()) > 0.01 {
+					return fmt.Errorf("identity 1 failed: GrossSales (%.2f) - Discounts (%.2f) != NetSales (%.2f)",
+						metrics.Summary.GrossSales.Value(), metrics.Summary.TotalDiscounts.Value(), metrics.Summary.NetSales.Value())
+				}
+
+				// Accounting Identity 2: NetSales + DeliveryFees + Tax == TotalCollected
+				netPlusFeesTax := metrics.Summary.NetSales.Value() + metrics.Summary.TotalDeliveryFees.Value() + metrics.Summary.TotalTax.Value()
+				if math.Abs(netPlusFeesTax-metrics.Summary.TotalCollected.Value()) > 0.01 {
+					return fmt.Errorf("identity 2 failed: NetSales (%.2f) + Deliv (%.2f) + Tax (%.2f) != TotalCollected (%.2f)",
+						metrics.Summary.NetSales.Value(), metrics.Summary.TotalDeliveryFees.Value(), metrics.Summary.TotalTax.Value(), metrics.Summary.TotalCollected.Value())
+				}
+
+				// Accounting Identity 3: AOV == TotalCollected / CompletedOrders
+				if metrics.Summary.CompletedOrders > 0 {
+					expectedAOV := metrics.Summary.TotalCollected.Value() / float64(metrics.Summary.CompletedOrders)
+					if math.Abs(expectedAOV-metrics.Summary.AverageOrderValue.Value()) > 0.01 {
+						return fmt.Errorf("identity 3 failed: AOV (%.2f) != TotalCollected (%.2f) / CompletedOrders (%d) = %.2f",
+							metrics.Summary.AverageOrderValue.Value(), metrics.Summary.TotalCollected.Value(), metrics.Summary.CompletedOrders, expectedAOV)
+					}
+				}
+
+				if len(metrics.SalesOverTime) == 0 {
+					return errors.New("expected non-empty SalesOverTime")
+				}
+				if len(metrics.TopItems) == 0 {
+					return errors.New("expected non-empty TopItems")
+				}
+				if len(metrics.OrderTypes) == 0 {
+					return errors.New("expected non-empty OrderTypes")
+				}
+				if len(metrics.PeakHours) == 0 {
+					return errors.New("expected non-empty PeakHours")
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("unexpected error: %v", got)
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "order-metrics-with-restaurant-filter",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				restID := sd.Restaurants[0].ID.String()
+				filter := orderbus.InsightsFilter{
+					RestaurantID: &restID,
+				}
+				metrics, err := busDomain.Order.QueryOrderMetrics(ctx, filter)
+				if err != nil {
+					return err
+				}
+
+				if metrics.Summary.TotalOrders <= 0 {
+					return errors.New("expected positive total orders")
+				}
+
+				// Accounting Identity 1: GrossSales - Discounts == NetSales
+				grossMinusDisc := metrics.Summary.GrossSales.Value() - metrics.Summary.TotalDiscounts.Value()
+				if math.Abs(grossMinusDisc-metrics.Summary.NetSales.Value()) > 0.01 {
+					return fmt.Errorf("identity 1 failed: GrossSales (%.2f) - Discounts (%.2f) != NetSales (%.2f)",
+						metrics.Summary.GrossSales.Value(), metrics.Summary.TotalDiscounts.Value(), metrics.Summary.NetSales.Value())
+				}
+
+				// Accounting Identity 2: NetSales + DeliveryFees + Tax == TotalCollected
+				netPlusFeesTax := metrics.Summary.NetSales.Value() + metrics.Summary.TotalDeliveryFees.Value() + metrics.Summary.TotalTax.Value()
+				if math.Abs(netPlusFeesTax-metrics.Summary.TotalCollected.Value()) > 0.01 {
+					return fmt.Errorf("identity 2 failed: NetSales (%.2f) + Deliv (%.2f) + Tax (%.2f) != TotalCollected (%.2f)",
+						metrics.Summary.NetSales.Value(), metrics.Summary.TotalDeliveryFees.Value(), metrics.Summary.TotalTax.Value(), metrics.Summary.TotalCollected.Value())
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("unexpected error: %v", got)
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "order-metrics-adversarial-mixed-status-aov",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				rest, err := restaurantbus.TestSeedRestaurants(ctx, 1, busDomain.Restaurant, sd.Restaurants[0].OrganizationID)
+				if err != nil {
+					return err
+				}
+				cats, err := categorybus.TestSeedCategories(ctx, 1, rest[0].ID, busDomain.Category)
+				if err != nil {
+					return err
+				}
+				items, err := menuitembus.TestSeedMenuItems(ctx, 1, cats[0].ID, rest[0].ID, busDomain.MenuItem)
+				if err != nil {
+					return err
+				}
+
+				// 1. Completed order ($50)
+				no1 := orderbus.NewOrder{
+					RestaurantID:  rest[0].ID.String(),
+					CustomerName:  "Completed Customer",
+					CustomerEmail: "comp@example.com",
+					CustomerPhone: "555-1111",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: items[0].ID.String(),
+							Quantity:   2,
+						},
+					},
+				}
+				ord1, err := busDomain.Order.Create(ctx, no1)
+				if err != nil {
+					return fmt.Errorf("create ord1: %w", err)
+				}
+				us1 := orderbus.UpdateOrderStatus{
+					OrderStatus: orderbus.OrderStatusCompleted,
+				}
+				if err := busDomain.Order.UpdateStatus(ctx, ord1.ID, us1); err != nil {
+					return fmt.Errorf("update ord1 to completed: %w", err)
+				}
+
+				// 2. Cancelled order ($50) on same restaurant / date
+				no2 := orderbus.NewOrder{
+					RestaurantID:  rest[0].ID.String(),
+					CustomerName:  "Cancelled Customer",
+					CustomerEmail: "canc@example.com",
+					CustomerPhone: "555-2222",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: items[0].ID.String(),
+							Quantity:   2,
+						},
+					},
+				}
+				ord2, err := busDomain.Order.Create(ctx, no2)
+				if err != nil {
+					return fmt.Errorf("create ord2: %w", err)
+				}
+				us2 := orderbus.UpdateOrderStatus{
+					OrderStatus: orderbus.OrderStatusCancelled,
+				}
+				if err := busDomain.Order.UpdateStatus(ctx, ord2.ID, us2); err != nil {
+					return fmt.Errorf("update ord2 to cancelled: %w", err)
+				}
+
+				restIDStr := rest[0].ID.String()
+				filter := orderbus.InsightsFilter{
+					RestaurantID: &restIDStr,
+				}
+				metrics, err := busDomain.Order.QueryOrderMetrics(ctx, filter)
+				if err != nil {
+					return fmt.Errorf("query metrics: %w", err)
+				}
+
+				if metrics.Summary.TotalOrders != 2 {
+					return fmt.Errorf("expected TotalOrders == 2, got %d", metrics.Summary.TotalOrders)
+				}
+				if metrics.Summary.CompletedOrders != 1 {
+					return fmt.Errorf("expected CompletedOrders == 1, got %d", metrics.Summary.CompletedOrders)
+				}
+				if metrics.Summary.CancelledOrders != 1 {
+					return fmt.Errorf("expected CancelledOrders == 1, got %d", metrics.Summary.CancelledOrders)
+				}
+
+				if math.Abs(metrics.Summary.TotalCollected.Value()-ord1.Total.Value()) > 0.01 {
+					return fmt.Errorf("expected TotalCollected == %.2f, got %.2f", ord1.Total.Value(), metrics.Summary.TotalCollected.Value())
+				}
+
+				if math.Abs(metrics.Summary.AverageOrderValue.Value()-ord1.Total.Value()) > 0.01 {
+					return fmt.Errorf("expected AOV == %.2f, got %.2f", ord1.Total.Value(), metrics.Summary.AverageOrderValue.Value())
+				}
+
+				if len(metrics.SalesOverTime) != 1 {
+					return fmt.Errorf("expected 1 SalesOverTime point, got %d", len(metrics.SalesOverTime))
+				}
+				pt := metrics.SalesOverTime[0]
+				if pt.OrderCount != 1 {
+					return fmt.Errorf("expected SalesOverTime OrderCount == 1, got %d", pt.OrderCount)
+				}
+				if math.Abs(pt.AverageOrder.Value()-ord1.Total.Value()) > 0.01 {
+					return fmt.Errorf("expected SalesOverTime AverageOrder == %.2f, got %.2f", ord1.Total.Value(), pt.AverageOrder.Value())
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("unexpected error: %v", got)
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "order-metrics-with-multiple-restaurant-filter",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				restIDs := []uuid.UUID{sd.Restaurants[0].ID, sd.Restaurants[1].ID}
+				metrics, err := busDomain.Order.QueryOrderMetrics(ctx, orderbus.InsightsFilter{
+					RestaurantIDs: restIDs,
+				})
+				if err != nil {
+					return fmt.Errorf("query metrics: %w", err)
+				}
+
+				if metrics.Summary.TotalOrders <= 0 {
+					return fmt.Errorf("expected positive total orders across multiple restaurants, got %d", metrics.Summary.TotalOrders)
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("unexpected error: %v", got)
+				}
+				return ""
 			},
 		},
 	}

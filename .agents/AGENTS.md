@@ -40,6 +40,23 @@ These rules apply to all agent interactions within this workspace.
   - Every field in an `Update` model MUST have an explicit unit test verifying that updating the field via the business layer correctly mutates and persists the value in the database.
   - Include tests for edge cases (e.g. `0` / zero-values, `nil` optionals, boundary limits) as well as non-zero / active values.
 
+## Adversarial Testing & Quality Assurance Mandates
+To eliminate blindspots, denominator dilution, and untested fallback branches, all agents MUST adhere to these testing mandates:
+1. **Adversarial Multi-State Test Fixtures**:
+   - Never rely exclusively on homogeneous "happy path" seed data where all records share the same state (e.g. all `completed` orders).
+   - Every aggregation, query, and analytics test MUST execute against a fixture containing conflicting and mixed entity states on the same grouping key (e.g., 1 completed, 1 cancelled, and 1 in-flight order on the same date bucket) to verify that denominators and filters isolate the exact intended states without dilution.
+2. **Branch & Boundary Condition Testing**:
+   - Every alternative parsing branch, format fallback (e.g., date-only `YYYY-MM-DD` alongside `RFC3339`), and optional query parameter MUST have a dedicated subtest asserting exact boundary behavior.
+   - For date-only filters, tests must explicitly assert that events occurring up to the final microsecond of the day (`23:59:59.999999 UTC`) are included.
+3. **Exact Mathematical Value Assertions**:
+   - Loose assertions such as `assert value > 0` or `assert len(slice) > 0` are STRICTLY BANNED for financial calculations, rates, percentages, and metrics.
+   - Tests MUST assert exact, hand-calculated mathematical values and explicit decimal precision rules (e.g., rounded to 2 decimal places).
+4. **Triangular Consistency Protocol**:
+   - Every metric or domain calculation MUST be strictly synchronized across all three tiers:
+     * **Tier 1 (Store Layer)**: SQL query arithmetic and filtering invariants.
+     * **Tier 2 (Application/API Layer)**: DTO transformation, scaling, and precision rounding.
+     * **Tier 3 (Frontend/UI Layer)**: Display formatting, badge labels, and user-facing formula legends.
+
 ## Code Review Flow
 Finding problems and writing the report are two different jobs. Always do the finding first and the writing last. When asked to review a branch (and always before producing a Feature Review Report), follow these steps in order:
 
@@ -58,9 +75,11 @@ Finding problems and writing the report are two different jobs. Always do the fi
 - **Review only the branch diff.** Pre-existing issues are labeled as pre-existing and normally do not block the branch, but security-relevant ones must be called out in the Pre-Merge Checklist.
 - **Scale depth to the diff.** Small branches may use a lighter findings pass, but the validation gate and human triage are never skipped.
 
-## Feature Review Reports
-- **Trigger**: Once implementation of a feature based on a spec (`docs/specs/*.md`) has been completed (all planned commits made and tests green), and before declaring the branch done, you MUST create a CodeRabbit-style review report covering the full branch diff. The report is produced as the final step of the Code Review Flow above.
-- **Report Location**: Save the report to `docs/reviews/<feature-slug>-review.md` (e.g. `docs/reviews/menu-addon-rank-review.md`). This folder is gitignored: reports are local-only review artifacts and are never committed.
+## Feature Review Reports & Walkthrough Documentation
+- **Mandatory Review Report Generation**: Whenever asked to create a code review report, review a branch, or finish implementing a feature spec, you MUST generate a CodeRabbit-style review report covering the full branch diff and save it directly in `docs/reviews/<feature-slug>-review.md` (e.g. `docs/reviews/sales-insights-dashboard-review.md`).
+- **Review Assets**: Save all review screenshots and visual artifacts in `docs/reviews/images/`.
+- **Local Walkthroughs**: Save walkthroughs in `docs/local/walkthrough.md` with visual artifacts in `docs/local/images/`.
+- **Gitignored Location**: Both `docs/reviews/` and `docs/local/` are local-only gitignored directories and are never committed.
 - **Required Report Sections**:
   1. **Header metadata**: base branch and merge-base SHA, head SHA, commit count, files changed, and diffstat (`git diff --stat $(git merge-base master HEAD)..HEAD`).
   2. **Walkthrough**: a per-area table (schema, store, business, API, frontends, tests, docs) summarizing what changed and why.

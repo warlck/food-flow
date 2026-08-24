@@ -400,6 +400,54 @@ func (b *Business) Cancel(ctx context.Context, orderID uuid.UUID) error {
 	return nil
 }
 
+// QueryOrderMetrics aggregates pure order domain analytics datasets.
+func (b *Business) QueryOrderMetrics(ctx context.Context, filter InsightsFilter) (OrderMetrics, error) {
+	summary, err := b.storer.QuerySalesSummary(ctx, filter)
+	if err != nil {
+		return OrderMetrics{}, fmt.Errorf("query sales summary: %w", err)
+	}
+
+	salesOverTime, err := b.storer.QuerySalesOverTime(ctx, filter)
+	if err != nil {
+		return OrderMetrics{}, fmt.Errorf("query sales over time: %w", err)
+	}
+
+	topItems, err := b.storer.QueryTopItemSales(ctx, filter, 10)
+	if err != nil {
+		return OrderMetrics{}, fmt.Errorf("query top item sales: %w", err)
+	}
+
+	allItemSales, err := b.storer.QueryAllItemSales(ctx, filter)
+	if err != nil {
+		return OrderMetrics{}, fmt.Errorf("query all item sales: %w", err)
+	}
+
+	topAddons, err := b.storer.QueryTopAddonSales(ctx, filter, 10)
+	if err != nil {
+		return OrderMetrics{}, fmt.Errorf("query top addon sales: %w", err)
+	}
+
+	orderTypes, err := b.storer.QueryOrderTypes(ctx, filter)
+	if err != nil {
+		return OrderMetrics{}, fmt.Errorf("query order types: %w", err)
+	}
+
+	peakHours, err := b.storer.QueryPeakHours(ctx, filter)
+	if err != nil {
+		return OrderMetrics{}, fmt.Errorf("query peak hours: %w", err)
+	}
+
+	return OrderMetrics{
+		Summary:       summary,
+		SalesOverTime: salesOverTime,
+		TopItems:      topItems,
+		AllItemSales:  allItemSales,
+		TopAddons:     topAddons,
+		OrderTypes:    orderTypes,
+		PeakHours:     peakHours,
+	}, nil
+}
+
 // roundToTwoDecimals rounds a float64 to two decimal places.
 func roundToTwoDecimals(value float64) float64 {
 	return math.Round(value*100) / 100

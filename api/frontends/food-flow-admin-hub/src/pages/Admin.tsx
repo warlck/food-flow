@@ -1,10 +1,23 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowRight, Banknote, BarChart3, Bike, BookOpen, Boxes, Building2, Check, ChevronDown, ChevronRight,
-  ChefHat, CircleAlert, Clock3, Copy, CreditCard, Grid2X2, GripVertical, HelpCircle, ImageOff, LayoutDashboard, List,
-  Loader2, LogOut, Mail, MapPin, Menu, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, ReceiptText,
-  Puzzle, RefreshCw, Search, Settings, ShoppingBag, Sparkles, Store, Tag, Trash2, UtensilsCrossed, XCircle,
+  ArrowRight, Banknote, BarChart3, Bike, BookOpen, Boxes, Building2, Calendar, Check, ChevronDown, ChevronRight,
+  ChefHat, CircleAlert, Clock, Clock3, Copy, CreditCard, DollarSign, Grid2X2, GripVertical, HelpCircle, ImageOff, LayoutDashboard, List,
+  Loader2, LogOut, Mail, MapPin, Menu, MoreHorizontal, PackageCheck, Pencil, Percent, Phone, Plus, Receipt, ReceiptText,
+  Puzzle, RefreshCw, Search, Settings, ShoppingBag, Sparkles, Store, Tag, Trash2, TrendingUp, Truck, UtensilsCrossed, XCircle,
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+} from 'recharts';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -17,7 +30,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ImageField } from '@/components/ImageField';
 import { useAuth } from '@/context/AuthContext';
 import {
-  AddonInput, AdminAddon, AdminCategory, AdminMenuItem, AdminOrder, AdminOrganization, AdminPromotion, AdminRestaurant, AdminWorkspace,
+  AddonInput, AdminAddon, AdminCategory, AdminInsights, AdminMenuItem, AdminOrder, AdminOrganization, AdminPromotion, AdminRestaurant, AdminWorkspace,
   CategoryInput, DEFAULT_OPERATING_HOURS, DaySchedule, MenuItemInput, OperatingHours, OrderStatus, OrderType, PaymentStatus, PromotionInput, RestaurantInput, adminApi,
 } from '@/lib/admin-api';
 import './Admin.css';
@@ -32,7 +45,7 @@ type EditorState =
 
 const NAME_PATTERN = /^[\p{L}\p{N}' -]{3,100}$/u;
 
-type Section = 'overview' | 'restaurant' | 'menu' | 'orders' | 'promotions';
+type Section = 'overview' | 'restaurant' | 'menu' | 'orders' | 'promotions' | 'insights';
 
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
@@ -69,7 +82,7 @@ const navItems: { icon: typeof LayoutDashboard; label: string; section?: Section
   { icon: BookOpen, label: 'Menu & inventory', section: 'menu' },
   { icon: ReceiptText, label: 'Orders', section: 'orders' },
   { icon: Tag, label: 'Promotions', section: 'promotions' },
-  { icon: BarChart3, label: 'Sales & insights', soon: true },
+  { icon: BarChart3, label: 'Sales & insights', section: 'insights' },
   { icon: Settings, label: 'Settings' },
 ];
 
@@ -911,6 +924,11 @@ export default function Admin() {
               onToggleEnabled={togglePromotionEnabled}
               onDelete={deletePromotion}
               onRefresh={() => loadPromotions()}
+            />
+          ) : section === 'insights' ? (
+            <SalesInsightsSection
+              restaurants={restaurants}
+              currentRestaurantId={selectedId}
             />
           ) : (
             <OrdersSection
@@ -3176,3 +3194,704 @@ function PromotionsSection({
     </div>
   );
 }
+
+const DONUT_COLORS = ['#FF4500', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'];
+
+function SalesInsightsSection({
+  restaurants,
+  currentRestaurantId,
+}: {
+  restaurants: AdminRestaurant[];
+  currentRestaurantId: string;
+}) {
+  const [selectedRestId, setSelectedRestId] = useState<string>(currentRestaurantId || 'all');
+  const [timeRange, setTimeRange] = useState<'today' | '7d' | '30d' | '90d' | 'all'>('30d');
+  const [insights, setInsights] = useState<AdminInsights | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
+
+  // Sync selectedRestId if currentRestaurantId changes initially
+  useEffect(() => {
+    if (currentRestaurantId && selectedRestId === 'all' && restaurants.some(r => r.id === currentRestaurantId)) {
+      setSelectedRestId(currentRestaurantId);
+    }
+  }, [currentRestaurantId]);
+
+  const dateFilter = useMemo(() => {
+    const now = new Date();
+    if (timeRange === 'today') {
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      return { startDate: start.toISOString(), endDate: now.toISOString() };
+    }
+    if (timeRange === '7d') {
+      const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      return { startDate: start.toISOString(), endDate: now.toISOString() };
+    }
+    if (timeRange === '30d') {
+      const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      return { startDate: start.toISOString(), endDate: now.toISOString() };
+    }
+    if (timeRange === '90d') {
+      const start = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      return { startDate: start.toISOString(), endDate: now.toISOString() };
+    }
+    return {};
+  }, [timeRange]);
+
+  const loadInsights = useCallback(async (isQuiet = false) => {
+    if (!isQuiet) setLoading(true); else setRefreshing(true);
+    try {
+      const data = await adminApi.getInsights({
+        restaurantId: selectedRestId === 'all' ? undefined : selectedRestId,
+        startDate: dateFilter.startDate,
+        endDate: dateFilter.endDate,
+      });
+      setInsights(data);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load sales insights');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [selectedRestId, dateFilter]);
+
+  useEffect(() => {
+    loadInsights();
+  }, [loadInsights]);
+
+  const formatCurrency = (val: number) => `$${val.toFixed(2)}`;
+
+  const maxItemRevenue = useMemo(() => {
+    if (!insights?.topItems?.length) return 1;
+    return Math.max(...insights.topItems.map((i) => i.totalRevenue), 1);
+  }, [insights]);
+
+  // Transform 24h peak hours into full 24-entry array with zero-filling
+  const hourlyData = useMemo(() => {
+    const dataMap = new Map<number, { count: number; revenue: number }>();
+    insights?.peakHours?.forEach((h) => {
+      dataMap.set(h.hour, { count: h.count, revenue: h.totalRevenue });
+    });
+
+    return Array.from({ length: 24 }, (_, hour) => {
+      const label = hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`;
+      const entry = dataMap.get(hour);
+      return {
+        hour,
+        label,
+        count: entry?.count ?? 0,
+        revenue: entry?.revenue ?? 0,
+      };
+    });
+  }, [insights]);
+
+  // Transform time series data for the area chart
+  const velocityData = useMemo(() => {
+    return insights?.salesOverTime?.map((pt) => {
+      // pt.date is "YYYY-MM-DD"
+      const parts = pt.date.split('-');
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const displayDate = parts.length === 3 ? `${monthNames[parseInt(parts[1], 10) - 1]} ${parseInt(parts[2], 10)}` : pt.date;
+      return {
+        date: displayDate,
+        rawDate: pt.date,
+        grossSales: pt.grossSales,
+        netSales: pt.netSales,
+        totalCollected: pt.totalCollected,
+        orders: pt.orderCount,
+        aov: pt.averageOrder,
+      };
+    }) ?? [];
+  }, [insights]);
+
+  const orderTypesData = useMemo(() => {
+    return insights?.orderTypes?.map((ot) => ({
+      name: ot.orderType === 'delivery' ? 'Delivery' : ot.orderType === 'pickup' ? 'Pickup' : ot.orderType,
+      value: ot.count,
+      revenue: ot.totalRevenue,
+      percentage: ot.percentage,
+    })) ?? [];
+  }, [insights]);
+
+  return (
+    <div className="space-y-7 pb-12">
+      {/* Header with Title & Filter Controls */}
+      <section className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+        <div>
+          <div className="mb-1.5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.14em] text-[#FF4500]">
+            <BarChart3 size={13} /> Performance & Analytics
+          </div>
+          <h1 className="text-[28px] font-bold tracking-[-.035em] text-[#333333] sm:text-[32px]">Sales & Insights</h1>
+          <p className="mt-1 max-w-2xl text-[13px] text-[#6B7280]">
+            Track revenue velocity, order volumes, average ticket size, peak dining hours, and best-performing menu items.
+          </p>
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3 py-1 text-xs font-semibold text-[#374151] shadow-xs">
+              <ShoppingBag size={13} className="text-[#2563EB]" />
+              <span>{insights?.summary.totalOrders ?? 0} total orders</span>
+              <span className="text-[#9CA3AF]">•</span>
+              <span className="font-bold text-[#10B981]">{insights?.summary.completedOrders ?? 0} completed</span>
+              {Boolean(insights?.summary.cancelledOrders) && (
+                <>
+                  <span className="text-[#9CA3AF]">•</span>
+                  <span className="text-[#EF4444]">{insights?.summary.cancelledOrders} cancelled</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Restaurant Selector */}
+          <Select value={selectedRestId} onValueChange={setSelectedRestId}>
+            <SelectTrigger className="h-9 w-[190px] rounded-xl border-[#E5E7EB] bg-white text-xs font-semibold text-[#374151] shadow-sm">
+              <div className="flex items-center gap-2 truncate">
+                <Store size={14} className="text-[#FF4500] shrink-0" />
+                <SelectValue placeholder="All Restaurants" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Restaurants</SelectItem>
+              {restaurants.map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  {r.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Time Range Pills */}
+          <div className="flex items-center rounded-xl border border-[#E5E7EB] bg-white p-1 shadow-sm">
+            {(['today', '7d', '30d', '90d', 'all'] as const).map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setTimeRange(r)}
+                className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
+                  timeRange === r
+                    ? 'bg-[#111827] text-white shadow-xs'
+                    : 'text-[#6B7280] hover:text-[#111827]'
+                }`}
+              >
+                {r === 'today' ? 'Today' : r === '7d' ? '7D' : r === '30d' ? '30D' : r === '90d' ? '90D' : 'All Time'}
+              </button>
+            ))}
+          </div>
+
+          {/* Refresh Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => loadInsights(true)}
+            disabled={loading || refreshing}
+            className="h-9 gap-1.5 rounded-xl border-[#E5E7EB] bg-white px-3 text-xs font-semibold text-[#374151] shadow-sm hover:bg-[#FFF7F3] hover:text-[#FF4500]"
+          >
+            <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+            <span>Refresh</span>
+          </Button>
+        </div>
+      </section>
+
+      {/* KPI Cards Grid (Structured in Accounting Flow) */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+        {/* 1. Gross Sales */}
+        <div className="admin-stat-card rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#6B7280]">Gross Sales</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FFF1EB] text-[#FF4500]">
+              <Banknote size={14} />
+            </div>
+          </div>
+          <div className="mt-2 text-xl font-extrabold tracking-tight text-[#111827]">
+            {loading ? <div className="h-6 w-20 animate-pulse rounded bg-gray-200" /> : formatCurrency(insights?.summary.grossSales ?? 0)}
+          </div>
+          <div className="mt-1 text-[11px] text-[#9CA3AF]">Menu before discounts</div>
+        </div>
+
+        {/* 2. Discounts */}
+        <div className="admin-stat-card rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#6B7280]">Discounts</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FEF3C7] text-[#D97706]">
+              <Tag size={14} />
+            </div>
+          </div>
+          <div className="mt-2 text-xl font-extrabold tracking-tight text-[#111827]">
+            {loading ? <div className="h-6 w-16 animate-pulse rounded bg-gray-200" /> : formatCurrency(insights?.summary.totalDiscounts ?? 0)}
+          </div>
+          <div className="mt-1 text-[11px] text-[#9CA3AF]">Promo savings deducted</div>
+        </div>
+
+        {/* 3. Net Sales */}
+        <div className="admin-stat-card rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#6B7280]">Net Sales</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#E6F4EA] text-[#137333]">
+              <Sparkles size={14} />
+            </div>
+          </div>
+          <div className="mt-2 text-xl font-extrabold tracking-tight text-[#111827]">
+            {loading ? <div className="h-6 w-20 animate-pulse rounded bg-gray-200" /> : formatCurrency(insights?.summary.netSales ?? 0)}
+          </div>
+          <div className="mt-1 text-[11px] text-[#9CA3AF]">Gross − Discounts</div>
+        </div>
+
+        {/* 4. Fees & Taxes */}
+        <div className="admin-stat-card rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#6B7280]">Fees & Taxes</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F1F5F9] text-[#475569]">
+              <Bike size={14} />
+            </div>
+          </div>
+          <div className="mt-2 text-xl font-extrabold tracking-tight text-[#111827]">
+            {loading ? <div className="h-6 w-16 animate-pulse rounded bg-gray-200" /> : formatCurrency((insights?.summary.totalDeliveryFees ?? 0) + (insights?.summary.totalTax ?? 0))}
+          </div>
+          <div className="mt-1 text-[11px] text-[#9CA3AF] truncate">
+            {formatCurrency(insights?.summary.totalDeliveryFees ?? 0)} deliv • {formatCurrency(insights?.summary.totalTax ?? 0)} tax
+          </div>
+        </div>
+
+        {/* 5. Total Collected (Gross Inflow) */}
+        <div className="admin-stat-card rounded-2xl border border-[#FED7C7] bg-[#FFFDFC] p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#FF4500]">Total Collected</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FFF1EB] text-[#FF4500]">
+              <CreditCard size={14} />
+            </div>
+          </div>
+          <div className="mt-2 text-xl font-extrabold tracking-tight text-[#FF4500]">
+            {loading ? <div className="h-6 w-20 animate-pulse rounded bg-gray-200" /> : formatCurrency(insights?.summary.totalCollected ?? 0)}
+          </div>
+          <div className="mt-1 text-[11px] font-medium text-[#6B7280]">Net + Fees & Taxes</div>
+        </div>
+
+        {/* 6. Average Order Value (AOV) */}
+        <div className="admin-stat-card rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#6B7280]">Avg Ticket (AOV)</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F3E8FF] text-[#7C3AED]">
+              <ReceiptText size={14} />
+            </div>
+          </div>
+          <div className="mt-2 text-xl font-extrabold tracking-tight text-[#111827]">
+            {loading ? <div className="h-6 w-16 animate-pulse rounded bg-gray-200" /> : formatCurrency(insights?.summary.averageOrderValue ?? 0)}
+          </div>
+          <div className="mt-1 text-[11px] text-[#9CA3AF]">
+            {insights?.summary.completedOrders ? `${insights.summary.completedOrders} completed orders` : 'Per completed order'}
+          </div>
+        </div>
+      </div>
+
+      {/* Accounting Flow & Formula Legend Guide */}
+      <div className="rounded-2xl border border-[#E5E7EB] bg-gradient-to-r from-[#FAFAFA] to-white p-4 shadow-xs">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-bold text-[#374151]">
+            <HelpCircle size={14} className="text-[#FF4500]" />
+            <span>Accounting Flow & Calculation Formulas</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowLegend((prev) => !prev)}
+            className="flex items-center gap-1 text-[11px] font-semibold text-[#6B7280] hover:text-[#111827]"
+          >
+            <span>{showLegend ? 'Hide guide' : 'Show formula guide'}</span>
+            <ChevronDown size={13} className={`transition-transform duration-200 ${showLegend ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+        {showLegend && (
+          <div className="mt-3 grid grid-cols-1 gap-2.5 border-t border-[#E5E7EB] pt-3 text-xs text-[#6B7280] md:grid-cols-3">
+            <div className="rounded-xl border border-[#F3F4F6] bg-white p-3 shadow-2xs">
+              <div className="font-bold text-[#111827] mb-1 flex items-center gap-1.5">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#FFF1EB] text-[10px] font-extrabold text-[#FF4500]">1</span>
+                <span>Core Food Revenue</span>
+              </div>
+              <div className="font-mono text-[11px] font-semibold text-[#FF4500] bg-[#FFF7F3] px-2 py-0.5 rounded-md inline-block mb-1.5">
+                Gross Sales − Discounts = Net Sales
+              </div>
+              <p className="text-[11px] leading-relaxed text-[#6B7280]">
+                <strong>Gross Sales</strong> is menu base prices before discounts. Subtracting promo <strong>Discounts</strong> yields <strong>Net Sales</strong> (food revenue kept by the restaurant).
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-[#F3F4F6] bg-white p-3 shadow-2xs">
+              <div className="font-bold text-[#111827] mb-1 flex items-center gap-1.5">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#EFF6FF] text-[10px] font-extrabold text-[#2563EB]">2</span>
+                <span>Gross Cash Inflow</span>
+              </div>
+              <div className="font-mono text-[11px] font-semibold text-[#2563EB] bg-[#EFF6FF] px-2 py-0.5 rounded-md inline-block mb-1.5">
+                Net Sales + Fees & Taxes = Total Collected
+              </div>
+              <p className="text-[11px] leading-relaxed text-[#6B7280]">
+                Adding delivery courier fees and government sales taxes to Net Sales gives <strong>Total Collected</strong> (gross cash processed via payment gateway).
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-[#F3F4F6] bg-white p-3 shadow-2xs">
+              <div className="font-bold text-[#111827] mb-1 flex items-center gap-1.5">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#F3E8FF] text-[10px] font-extrabold text-[#7C3AED]">3</span>
+                <span>Average Ticket (AOV)</span>
+              </div>
+              <div className="font-mono text-[11px] font-semibold text-[#7C3AED] bg-[#F5F3FF] px-2 py-0.5 rounded-md inline-block mb-1.5">
+                Total Collected ÷ Completed Orders = AOV
+              </div>
+              <p className="text-[11px] leading-relaxed text-[#6B7280]">
+                Average dollar amount paid per completed order. Measures combo meal selections and add-on attachment rates.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Main Charts Row: Area Velocity + Donut Fulfillment */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Sales & Revenue Velocity (Area Chart) */}
+        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-xs lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-base font-bold text-[#111827]">Sales & Revenue Velocity</h2>
+              <p className="text-xs text-[#6B7280]">Daily gross sales vs. net sales volume over selected timeline</p>
+            </div>
+            <div className="flex items-center gap-4 text-xs font-semibold">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#FF4500]" />
+                <span className="text-[#374151]">Gross Sales</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#10B981]" />
+                <span className="text-[#374151]">Net Sales</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="h-[280px] w-full">
+            {velocityData.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center text-xs text-[#9CA3AF]">
+                <BarChart3 size={32} className="mb-2 opacity-30" />
+                No sales data recorded for this date range
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={velocityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorGross" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#FF4500" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#FF4500" stopOpacity={0.0} />
+                    </linearGradient>
+                    <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="date"
+                    tickLine={false}
+                    axisLine={{ stroke: '#F3F4F6' }}
+                    tick={{ fill: '#9CA3AF', fontSize: 11 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={{ stroke: '#F3F4F6' }}
+                    tick={{ fill: '#9CA3AF', fontSize: 11 }}
+                    tickFormatter={(val) => `$${val}`}
+                  />
+                  <RechartsTooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      const gross = Number(payload.find((p) => p.dataKey === 'grossSales')?.value ?? 0);
+                      const net = Number(payload.find((p) => p.dataKey === 'netSales')?.value ?? 0);
+                      const orders = payload[0]?.payload?.orders ?? 0;
+                      return (
+                        <div className="rounded-xl border border-[#E5E7EB] bg-white p-3 shadow-lg text-xs space-y-1.5 min-w-[150px]">
+                          <div className="font-bold text-[#111827] border-b border-[#F3F4F6] pb-1">{label}</div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[#6B7280]">Gross:</span>
+                            <span className="font-bold text-[#FF4500]">${gross.toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[#6B7280]">Net:</span>
+                            <span className="font-bold text-[#10B981]">${net.toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] text-[#9CA3AF] pt-0.5">
+                            <span>Orders:</span>
+                            <span>{orders}</span>
+                          </div>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="grossSales"
+                    stroke="#FF4500"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorGross)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="netSales"
+                    stroke="#10B981"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorNet)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* Fulfillment Channels (Donut Pie Chart) */}
+        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-xs flex flex-col">
+          <div className="mb-4">
+            <h2 className="text-base font-bold text-[#111827]">Fulfillment Channels</h2>
+            <p className="text-xs text-[#6B7280]">Order distribution between delivery and customer pickup</p>
+          </div>
+
+          <div className="flex-1 min-h-[200px] flex items-center justify-center">
+            {orderTypesData.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-xs text-[#9CA3AF]">
+                <Bike size={32} className="mb-2 opacity-30" />
+                No fulfillment data available
+              </div>
+            ) : (
+              <div className="h-[200px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={orderTypesData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={80}
+                      paddingAngle={4}
+                      dataKey="value"
+                    >
+                      {orderTypesData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip
+                      formatter={(val) => [`${val ?? 0} orders`, 'Count']}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 space-y-2 border-t border-[#F3F4F6] pt-3">
+            {orderTypesData.map((ot, idx) => (
+              <div key={ot.name} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: DONUT_COLORS[idx % DONUT_COLORS.length] }}
+                  />
+                  <span className="font-medium text-[#374151]">{ot.name}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-bold text-[#111827]">{ot.value} orders</span>
+                  <span className="text-[11px] text-[#9CA3AF] w-10 text-right">{ot.percentage.toFixed(1)}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Peak Ordering Times (24-Hour Bar Chart) */}
+      <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-xs">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-base font-bold text-[#111827]">Peak Ordering Times (24-Hour Distribution)</h2>
+            <p className="text-xs text-[#6B7280]">Identify rush hours (lunch vs. dinner peaks) to optimize kitchen staffing and food preparation</p>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-[#9CA3AF]">
+            <Clock size={13} className="text-[#FF4500]" />
+            <span>Local Restaurant Time (SGT)</span>
+          </div>
+        </div>
+
+        <div className="h-[200px] w-full">
+          {hourlyData.every((h) => h.count === 0) ? (
+            <div className="flex h-full flex-col items-center justify-center text-xs text-[#9CA3AF]">
+              <Clock size={32} className="mb-2 opacity-30" />
+              No hourly activity recorded
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={hourlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <XAxis
+                  dataKey="label"
+                  interval={2}
+                  tickLine={false}
+                  axisLine={{ stroke: '#F3F4F6' }}
+                  tick={{ fill: '#9CA3AF', fontSize: 10 }}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={{ stroke: '#F3F4F6' }}
+                  tick={{ fill: '#9CA3AF', fontSize: 10 }}
+                  allowDecimals={false}
+                />
+                <RechartsTooltip
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null;
+                    const item = payload[0].payload;
+                    return (
+                      <div className="rounded-xl border border-[#E5E7EB] bg-white p-2.5 shadow-lg text-xs space-y-1">
+                        <div className="font-bold text-[#111827]">{item.label}</div>
+                        <div className="text-[#FF4500] font-semibold">{item.count} orders placed</div>
+                        <div className="text-[11px] text-[#6B7280]">${item.revenue.toFixed(2)} total volume</div>
+                      </div>
+                    );
+                  }}
+                />
+                <Bar dataKey="count" fill="#FF4500" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom Grid: Top Selling Items Table + Category Share & Addons */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Top-Selling Dishes Table */}
+        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-xs lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-base font-bold text-[#111827]">Top-Selling Menu Items</h2>
+              <p className="text-xs text-[#6B7280]">Dishes generating the highest revenue and order volume</p>
+            </div>
+            <span className="rounded-full bg-[#FFF1EB] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#FF4500]">
+              Ranked by Revenue
+            </span>
+          </div>
+
+          {insights?.topItems?.length === 0 ? (
+            <div className="flex h-[240px] flex-col items-center justify-center text-xs text-[#9CA3AF]">
+              <UtensilsCrossed size={32} className="mb-2 opacity-30" />
+              No menu items sold in this period
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-[#F3F4F6] text-[10px] font-bold uppercase tracking-[.08em] text-[#9CA3AF]">
+                    <th className="pb-3 w-12 text-center"># Rank</th>
+                    <th className="pb-3">Dish & Category</th>
+                    <th className="pb-3 text-center">Units Sold</th>
+                    <th className="pb-3 text-right">Revenue</th>
+                    <th className="pb-3 text-right w-24">Share</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F9FAFB]">
+                  {insights?.topItems?.map((item, idx) => {
+                    const sharePct = (item.totalRevenue / maxItemRevenue) * 100;
+                    return (
+                      <tr key={item.menuItemId} className="hover:bg-[#F9FAFB] transition-colors">
+                        <td className="py-3.5 text-center">
+                          <span
+                            className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                              idx === 0
+                                ? 'bg-[#FEF3C7] text-[#D97706]'
+                                : idx === 1
+                                ? 'bg-[#EFF6FF] text-[#2563EB]'
+                                : idx === 2
+                                ? 'bg-[#ECFDF5] text-[#059669]'
+                                : 'bg-[#F3F4F6] text-[#6B7280]'
+                            }`}
+                          >
+                            {idx + 1}
+                          </span>
+                        </td>
+                        <td className="py-3.5">
+                          <div className="font-bold text-[#111827]">{item.menuItemName}</div>
+                          <div className="text-[11px] text-[#6B7280]">{item.categoryName}</div>
+                        </td>
+                        <td className="py-3.5 text-center font-bold text-[#374151]">{item.quantitySold}</td>
+                        <td className="py-3.5 text-right font-extrabold text-[#111827]">
+                          {formatCurrency(item.totalRevenue)}
+                        </td>
+                        <td className="py-3.5 text-right">
+                          <div className="h-2 w-full rounded-full bg-[#F3F4F6] overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-[#FF4500]"
+                              style={{ width: `${Math.min(100, Math.max(8, sharePct))}%` }}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Category Contribution & Addons Sidebar */}
+        <div className="space-y-6">
+          {/* Category Contribution */}
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-xs">
+            <h2 className="text-base font-bold text-[#111827]">Category Contribution</h2>
+            <p className="text-xs text-[#6B7280] mb-4">Revenue share by menu category</p>
+
+            {insights?.topCategories?.length === 0 ? (
+              <div className="py-8 text-center text-xs text-[#9CA3AF]">No category data</div>
+            ) : (
+              <div className="space-y-3.5">
+                {insights?.topCategories?.map((cat) => (
+                  <div key={cat.categoryId} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#374151]">{cat.categoryName}</span>
+                      <span className="font-semibold text-[#111827]">
+                        {formatCurrency(cat.totalRevenue)}{' '}
+                        <span className="text-[11px] font-normal text-[#9CA3AF]">({cat.percentage.toFixed(1)}%)</span>
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-[#F3F4F6] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-[#2563EB]"
+                        style={{ width: `${Math.min(100, Math.max(5, cat.percentage))}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Popular Upsell Add-ons */}
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-xs">
+            <h2 className="text-base font-bold text-[#111827]">Popular Upsell Add-ons</h2>
+            <p className="text-xs text-[#6B7280] mb-4">Most frequently attached modifiers & upgrades</p>
+
+            {insights?.topAddons?.length === 0 ? (
+              <div className="py-8 text-center text-xs text-[#9CA3AF]">No add-ons sold</div>
+            ) : (
+              <div className="space-y-2.5">
+                {insights?.topAddons?.map((addon) => (
+                  <div
+                    key={addon.addonId}
+                    className="flex items-center justify-between rounded-xl bg-[#F9FAFB] p-2.5 text-xs"
+                  >
+                    <div>
+                      <div className="font-bold text-[#111827]">{addon.addonName}</div>
+                      <div className="text-[11px] text-[#6B7280]">{addon.quantitySold} added</div>
+                    </div>
+                    <div className="font-extrabold text-[#111827]">{formatCurrency(addon.totalRevenue)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+

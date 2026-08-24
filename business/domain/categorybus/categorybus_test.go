@@ -30,6 +30,7 @@ func Test_Category(t *testing.T) {
 	// -------------------------------------------------------------------------
 
 	unittest.Run(t, query(db.BusDomain, sd), "query")
+	unittest.Run(t, queryAll(db.BusDomain, sd), "query-all")
 	unittest.Run(t, create(db.BusDomain, sd), "create")
 	unittest.Run(t, update(db.BusDomain, sd), "update")
 	unittest.Run(t, delete(db.BusDomain, sd), "delete")
@@ -158,6 +159,59 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				}
 
 				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+
+	return table
+}
+
+func queryAll(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
+	table := []unittest.Table{
+		{
+			Name:    "all-unfiltered",
+			ExpResp: len(sd.Categories),
+			ExcFunc: func(ctx context.Context) any {
+				resp, err := busDomain.Category.QueryAll(ctx, categorybus.QueryFilter{}, categorybus.DefaultOrderBy)
+				if err != nil {
+					return err
+				}
+				return len(resp)
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotLen, ok := got.(int)
+				if !ok {
+					return fmt.Sprintf("expected int, got %T", got)
+				}
+				expLen := exp.(int)
+				if gotLen != expLen {
+					return fmt.Sprintf("expected %d categories, got %d", expLen, gotLen)
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "by-restaurant",
+			ExpResp: 2, // 2 categories for restaurant 0
+			ExcFunc: func(ctx context.Context) any {
+				resp, err := busDomain.Category.QueryAll(ctx, categorybus.QueryFilter{
+					RestaurantID: &sd.Restaurants[0].ID,
+				}, categorybus.DefaultOrderBy)
+				if err != nil {
+					return err
+				}
+				return len(resp)
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotLen, ok := got.(int)
+				if !ok {
+					return fmt.Sprintf("expected int, got %T", got)
+				}
+				expLen := exp.(int)
+				if gotLen != expLen {
+					return fmt.Sprintf("expected %d categories, got %d", expLen, gotLen)
+				}
+				return ""
 			},
 		},
 	}
