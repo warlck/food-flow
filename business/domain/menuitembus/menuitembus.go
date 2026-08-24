@@ -25,6 +25,7 @@ type Storer interface {
 	Update(ctx context.Context, item MenuItem) error
 	Delete(ctx context.Context, item MenuItem) error
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]MenuItem, error)
+	QueryAll(ctx context.Context, filter QueryFilter, orderBy order.By) ([]MenuItem, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, menuItemID uuid.UUID) (MenuItem, error)
 	QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]MenuItem, error)
@@ -123,6 +124,16 @@ func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.
 	items, err := b.storer.Query(ctx, filter, orderBy, page)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
+	}
+
+	return items, nil
+}
+
+// QueryAll retrieves all menu items matching the filter without pagination.
+func (b *Business) QueryAll(ctx context.Context, filter QueryFilter, orderBy order.By) ([]MenuItem, error) {
+	items, err := b.storer.QueryAll(ctx, filter, orderBy)
+	if err != nil {
+		return nil, fmt.Errorf("queryall: %w", err)
 	}
 
 	return items, nil

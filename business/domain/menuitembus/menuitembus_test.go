@@ -34,6 +34,7 @@ func Test_MenuItem(t *testing.T) {
 	// -------------------------------------------------------------------------
 
 	unittest.Run(t, query(db.BusDomain, sd), "query")
+	unittest.Run(t, queryAll(db.BusDomain, sd), "query-all")
 	unittest.Run(t, create(db.BusDomain, sd), "create")
 	unittest.Run(t, update(db.BusDomain, sd), "update")
 	unittest.Run(t, delete(db.BusDomain, sd), "delete")
@@ -179,6 +180,59 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				}
 
 				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+
+	return table
+}
+
+func queryAll(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
+	table := []unittest.Table{
+		{
+			Name:    "all-unfiltered",
+			ExpResp: len(sd.MenuItems),
+			ExcFunc: func(ctx context.Context) any {
+				resp, err := busDomain.MenuItem.QueryAll(ctx, menuitembus.QueryFilter{}, menuitembus.DefaultOrderBy)
+				if err != nil {
+					return err
+				}
+				return len(resp)
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotLen, ok := got.(int)
+				if !ok {
+					return fmt.Sprintf("expected int, got %T", got)
+				}
+				expLen := exp.(int)
+				if gotLen != expLen {
+					return fmt.Sprintf("expected %d items, got %d", expLen, gotLen)
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "by-restaurant",
+			ExpResp: 4, // 2 items in cat1 + 2 items in cat2 for restaurant 0
+			ExcFunc: func(ctx context.Context) any {
+				resp, err := busDomain.MenuItem.QueryAll(ctx, menuitembus.QueryFilter{
+					RestaurantID: &sd.Restaurants[0].ID,
+				}, menuitembus.DefaultOrderBy)
+				if err != nil {
+					return err
+				}
+				return len(resp)
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotLen, ok := got.(int)
+				if !ok {
+					return fmt.Sprintf("expected int, got %T", got)
+				}
+				expLen := exp.(int)
+				if gotLen != expLen {
+					return fmt.Sprintf("expected %d items, got %d", expLen, gotLen)
+				}
+				return ""
 			},
 		},
 	}

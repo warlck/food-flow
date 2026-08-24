@@ -123,6 +123,34 @@ func (s *Store) Query(ctx context.Context, filter menuitembus.QueryFilter, order
 	return toBusMenuItems(dbItems)
 }
 
+// QueryAll retrieves all menu items matching the filter from the database without pagination.
+func (s *Store) QueryAll(ctx context.Context, filter menuitembus.QueryFilter, orderBy order.By) ([]menuitembus.MenuItem, error) {
+	data := map[string]any{}
+
+	const q = `
+	SELECT
+		menu_item_id, name, description, price, category_id, restaurant_id, image_url, available, date_created, date_updated, rank
+	FROM
+		menu_items`
+
+	buf := bytes.NewBufferString(q)
+	applyFilter(filter, data, buf)
+
+	orderByClause, err := orderByClause(orderBy)
+	if err != nil {
+		return nil, err
+	}
+
+	buf.WriteString(orderByClause)
+
+	var dbItems []menuItem
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbItems); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusMenuItems(dbItems)
+}
+
 // Count returns the total number of menu items in the DB.
 func (s *Store) Count(ctx context.Context, filter menuitembus.QueryFilter) (int, error) {
 	data := map[string]any{}

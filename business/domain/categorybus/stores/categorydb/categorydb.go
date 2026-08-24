@@ -118,6 +118,34 @@ func (s *Store) Query(ctx context.Context, filter categorybus.QueryFilter, order
 	return toBusCategories(dbCats)
 }
 
+// QueryAll retrieves all categories matching the filter from the database without pagination.
+func (s *Store) QueryAll(ctx context.Context, filter categorybus.QueryFilter, orderBy order.By) ([]categorybus.Category, error) {
+	data := map[string]any{}
+
+	const q = `
+	SELECT
+		category_id, name, description, restaurant_id, enabled, date_created, date_updated
+	FROM
+		categories`
+
+	buf := bytes.NewBufferString(q)
+	applyFilter(filter, data, buf)
+
+	orderByClause, err := orderByClause(orderBy)
+	if err != nil {
+		return nil, err
+	}
+
+	buf.WriteString(orderByClause)
+
+	var dbCats []category
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbCats); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusCategories(dbCats)
+}
+
 // Count returns the total number of categories in the DB.
 func (s *Store) Count(ctx context.Context, filter categorybus.QueryFilter) (int, error) {
 	data := map[string]any{}
