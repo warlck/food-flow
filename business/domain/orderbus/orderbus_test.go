@@ -1343,6 +1343,78 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				return ""
 			},
 		},
+		{
+			Name:    "order-with-special-instructions-and-nullable-scan",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				lat := 1.3000
+				lng := 103.8500
+				no := orderbus.NewOrder{
+					RestaurantID:        sd.Restaurants[0].ID.String(),
+					CustomerName:        "Special Instructions User",
+					CustomerEmail:       "special@example.com",
+					CustomerPhone:       "555-9999",
+					OrderType:           orderbus.OrderTypeDelivery,
+					PaymentMethod:       orderbus.PaymentMethodCreditCard,
+					SpecialInstructions: "Extra sauce on the side",
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID:          sd.MenuItems[0].ID.String(),
+							Quantity:            1,
+							SpecialInstructions: "No onions please",
+						},
+					},
+					DeliveryAddress: &orderbus.NewDeliveryAddress{
+						Street:               "123 Delivery St",
+						City:                 "Singapore",
+						State:                "SG",
+						PostalCode:           "123456",
+						DeliveryInstructions: "Ring the doorbell twice",
+						Latitude:             &lat,
+						Longitude:            &lng,
+					},
+				}
+
+				ord, err := busDomain.Order.Create(ctx, no)
+				if err != nil {
+					return fmt.Errorf("create order: %w", err)
+				}
+
+				queried, err := busDomain.Order.QueryByID(ctx, ord.ID)
+				if err != nil {
+					return fmt.Errorf("query created order: %w", err)
+				}
+
+				if queried.SpecialInstructions != "Extra sauce on the side" {
+					return fmt.Errorf("expected order SpecialInstructions 'Extra sauce on the side', got %q", queried.SpecialInstructions)
+				}
+
+				if len(queried.Items) == 0 || queried.Items[0].SpecialInstructions != "No onions please" {
+					return fmt.Errorf("expected item SpecialInstructions 'No onions please', got %q", queried.Items[0].SpecialInstructions)
+				}
+
+				if queried.DeliveryAddress == nil || queried.DeliveryAddress.DeliveryInstructions != "Ring the doorbell twice" {
+					return fmt.Errorf("expected delivery instructions 'Ring the doorbell twice', got %v", queried.DeliveryAddress)
+				}
+
+				// Verify querying order with NULL optional fields works without scanning errors
+				nullOrder, err := busDomain.Order.QueryByID(ctx, sd.Orders[0].ID)
+				if err != nil {
+					return fmt.Errorf("query seeded order with NULL fields: %w", err)
+				}
+				if nullOrder.ID != sd.Orders[0].ID {
+					return fmt.Errorf("expected order ID %s, got %s", sd.Orders[0].ID, nullOrder.ID)
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("unexpected error: %v", got)
+				}
+				return ""
+			},
+		},
 	}
 
 	return table
