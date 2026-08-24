@@ -156,6 +156,27 @@ func insights200(sd apitest.SeedData) []apitest.Table {
 				return ""
 			},
 		},
+		{
+			Name:       "insights-multi-tenant-org-scoping",
+			URL:        "/v1/insights",
+			Token:      sd.Admins[1].Token,
+			StatusCode: http.StatusOK,
+			Method:     http.MethodGet,
+			GotResp:    &orderapp.AppInsights{},
+			ExpResp:    &orderapp.AppInsights{},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*orderapp.AppInsights)
+				if !exists {
+					return "error occurred: could not cast response"
+				}
+
+				if gotResp.Summary.TotalOrders != 0 {
+					return fmt.Sprintf("expected 0 orders for Org 1 with no restaurants/orders, got %d", gotResp.Summary.TotalOrders)
+				}
+
+				return ""
+			},
+		},
 	}
 
 	return table
@@ -171,6 +192,18 @@ func insights401(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusForbidden,
 			GotResp:    &errs.Error{},
 			ExpResp:    errs.Newf(errs.PermissionDenied, "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_only]"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "unauthorized-org-admin",
+			URL:        "/v1/insights?restaurant_id=" + sd.Restaurants[0].ID.String(),
+			Token:      sd.Admins[1].Token,
+			Method:     http.MethodGet,
+			StatusCode: http.StatusForbidden,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Newf(errs.PermissionDenied, "user not authorized for this organization"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

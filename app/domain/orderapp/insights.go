@@ -17,6 +17,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/orderbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/order"
+	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
@@ -100,16 +101,15 @@ type AppInsights struct {
 func (a *app) queryInsights(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	qp := r.URL.Query()
 
+	claims := mid.GetClaims(ctx)
 	var filter orderbus.InsightsFilter
-	var restFilterID *uuid.UUID
+	var authorizedRestaurantIDs []uuid.UUID
 
 	if rid := qp.Get("restaurant_id"); rid != "" {
 		parsedID, err := uuid.Parse(rid)
 		if err != nil {
 			return errs.New(errs.InvalidArgument, fmt.Errorf("invalid restaurant_id: %w", err))
 		}
-		filter.RestaurantID = &rid
-		restFilterID = &parsedID
 
 		// Enforce tenant authorization: caller must belong to the restaurant's organization
 		rest, err := a.restaurantBus.QueryByID(ctx, parsedID)
@@ -120,10 +120,43 @@ func (a *app) queryInsights(ctx context.Context, w http.ResponseWriter, r *http.
 			return fmt.Errorf("query restaurant: %w", err)
 		}
 
-		claims := mid.GetClaims(ctx)
 		if !claims.IsOrgAuthorized(rest.OrganizationID) {
 			return errs.New(errs.PermissionDenied, fmt.Errorf("user not authorized for this organization"))
 		}
+
+		filter.RestaurantIDs = []uuid.UUID{parsedID}
+		authorizedRestaurantIDs = []uuid.UUID{parsedID}
+	} else {
+		// When no restaurant is specified, scope strictly to all restaurants in caller's authorized organization(s)
+		for _, orgIDStr := range claims.OrganizationIDs {
+			orgID, err := uuid.Parse(orgIDStr)
+			if err != nil {
+				continue
+			}
+			rests, err := a.restaurantBus.Query(ctx, restaurantbus.QueryFilter{
+				OrganizationID: &orgID,
+			}, restaurantbus.DefaultOrderBy, page.MustParse("1", "100"))
+			if err != nil {
+				return fmt.Errorf("query restaurants for org: %w", err)
+			}
+			for _, r := range rests {
+				authorizedRestaurantIDs = append(authorizedRestaurantIDs, r.ID)
+			}
+		}
+
+		if len(authorizedRestaurantIDs) == 0 {
+			return web.Respond(ctx, w, AppInsights{
+				Summary:       AppSalesSummary{},
+				SalesOverTime: []AppTimeSeriesPoint{},
+				TopItems:      []AppTopItemMetric{},
+				TopCategories: []AppTopCategoryMetric{},
+				TopAddons:     []AppTopAddonMetric{},
+				OrderTypes:    []AppOrderTypeMetric{},
+				PeakHours:     []AppHourlyMetric{},
+			}, http.StatusOK)
+		}
+
+		filter.RestaurantIDs = authorizedRestaurantIDs
 	}
 
 	if sd := qp.Get("start_date"); sd != "" {
@@ -158,19 +191,44 @@ func (a *app) queryInsights(ctx context.Context, w http.ResponseWriter, r *http.
 		return fmt.Errorf("query order metrics: %w", err)
 	}
 
-	// 2. Query catalog metadata for category mapping
-	menuItems, err := a.menuItemBus.QueryAll(ctx, menuitembus.QueryFilter{
-		RestaurantID: restFilterID,
-	}, order.By{Field: menuitembus.OrderByID, Direction: order.ASC})
-	if err != nil {
-		return fmt.Errorf("query menu items: %w", err)
-	}
+	// 2. Query catalog metadata for category mapping across authorized restaurants
+	var menuItems []menuitembus.MenuItem
+	var categories []categorybus.Category
 
-	categories, err := a.categoryBus.QueryAll(ctx, categorybus.QueryFilter{
-		RestaurantID: restFilterID,
-	}, order.By{Field: categorybus.OrderByID, Direction: order.ASC})
-	if err != nil {
-		return fmt.Errorf("query categories: %w", err)
+	if len(authorizedRestaurantIDs) == 1 {
+		restID := authorizedRestaurantIDs[0]
+		menuItems, err = a.menuItemBus.QueryAll(ctx, menuitembus.QueryFilter{
+			RestaurantID: &restID,
+		}, order.By{Field: menuitembus.OrderByID, Direction: order.ASC})
+		if err != nil {
+			return fmt.Errorf("query menu items: %w", err)
+		}
+
+		categories, err = a.categoryBus.QueryAll(ctx, categorybus.QueryFilter{
+			RestaurantID: &restID,
+		}, order.By{Field: categorybus.OrderByID, Direction: order.ASC})
+		if err != nil {
+			return fmt.Errorf("query categories: %w", err)
+		}
+	} else {
+		for _, restID := range authorizedRestaurantIDs {
+			rID := restID
+			mis, err := a.menuItemBus.QueryAll(ctx, menuitembus.QueryFilter{
+				RestaurantID: &rID,
+			}, order.By{Field: menuitembus.OrderByID, Direction: order.ASC})
+			if err != nil {
+				return fmt.Errorf("query menu items for rest %s: %w", rID, err)
+			}
+			menuItems = append(menuItems, mis...)
+
+			cats, err := a.categoryBus.QueryAll(ctx, categorybus.QueryFilter{
+				RestaurantID: &rID,
+			}, order.By{Field: categorybus.OrderByID, Direction: order.ASC})
+			if err != nil {
+				return fmt.Errorf("query categories for rest %s: %w", rID, err)
+			}
+			categories = append(categories, cats...)
+		}
 	}
 
 	// 3. Build in-memory lookup maps
