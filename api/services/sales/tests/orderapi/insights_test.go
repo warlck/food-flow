@@ -61,8 +61,21 @@ func insights200(sd apitest.SeedData) []apitest.Table {
 				if len(gotResp.TopItems) == 0 {
 					return "expected non-empty TopItems"
 				}
+				for _, ti := range gotResp.TopItems {
+					if ti.CategoryName == "" {
+						return fmt.Sprintf("expected non-empty CategoryName for item %s (%s)", ti.MenuItemID, ti.MenuItemName)
+					}
+				}
 				if len(gotResp.TopCategories) == 0 {
 					return "expected non-empty TopCategories"
+				}
+				for _, tc := range gotResp.TopCategories {
+					if tc.CategoryName == "" {
+						return fmt.Sprintf("expected non-empty CategoryName for category %s", tc.CategoryID)
+					}
+					if tc.TotalRevenue <= 0 {
+						return fmt.Sprintf("expected positive revenue for category %s, got %.2f", tc.CategoryName, tc.TotalRevenue)
+					}
 				}
 				if len(gotResp.TopAddons) == 0 {
 					return "expected non-empty TopAddons"
@@ -107,6 +120,12 @@ func insights200(sd apitest.SeedData) []apitest.Table {
 				if math.Abs(netPlusFeesTax-gotResp.Summary.TotalCollected) > 0.01 {
 					return fmt.Sprintf("identity 2 failed: NetSales (%.2f) + Deliv (%.2f) + Tax (%.2f) != TotalCollected (%.2f)",
 						gotResp.Summary.NetSales, gotResp.Summary.TotalDeliveryFees, gotResp.Summary.TotalTax, gotResp.Summary.TotalCollected)
+				}
+
+				for _, ti := range gotResp.TopItems {
+					if ti.CategoryName == "" {
+						return fmt.Sprintf("expected non-empty CategoryName for item %s (%s)", ti.MenuItemID, ti.MenuItemName)
+					}
 				}
 
 				return ""

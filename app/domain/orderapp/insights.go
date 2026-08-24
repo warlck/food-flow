@@ -16,7 +16,6 @@ import (
 	"github.com/warlck/food-flow/business/domain/orderbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/order"
-	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
@@ -156,39 +155,19 @@ func (a *app) queryInsights(ctx context.Context, w http.ResponseWriter, r *http.
 		return fmt.Errorf("query order metrics: %w", err)
 	}
 
-	// 2. Batch query catalog metadata for category mapping (paged loop to support large catalogs without truncation)
-	var menuItems []menuitembus.MenuItem
-	menuPageNum := 1
-	for {
-		pg := page.MustParse(fmt.Sprintf("%d", menuPageNum), "100")
-		batch, err := a.menuItemBus.Query(ctx, menuitembus.QueryFilter{
-			RestaurantID: restFilterID,
-		}, order.By{Field: menuitembus.OrderByID, Direction: order.ASC}, pg)
-		if err != nil {
-			return fmt.Errorf("query menu items: %w", err)
-		}
-		menuItems = append(menuItems, batch...)
-		if len(batch) < 100 {
-			break
-		}
-		menuPageNum++
+	// 2. Query catalog metadata for category mapping
+	menuItems, err := a.menuItemBus.QueryAll(ctx, menuitembus.QueryFilter{
+		RestaurantID: restFilterID,
+	}, order.By{Field: menuitembus.OrderByID, Direction: order.ASC})
+	if err != nil {
+		return fmt.Errorf("query menu items: %w", err)
 	}
 
-	var categories []categorybus.Category
-	catPageNum := 1
-	for {
-		pg := page.MustParse(fmt.Sprintf("%d", catPageNum), "100")
-		batch, err := a.categoryBus.Query(ctx, categorybus.QueryFilter{
-			RestaurantID: restFilterID,
-		}, order.By{Field: categorybus.OrderByID, Direction: order.ASC}, pg)
-		if err != nil {
-			return fmt.Errorf("query categories: %w", err)
-		}
-		categories = append(categories, batch...)
-		if len(batch) < 100 {
-			break
-		}
-		catPageNum++
+	categories, err := a.categoryBus.QueryAll(ctx, categorybus.QueryFilter{
+		RestaurantID: restFilterID,
+	}, order.By{Field: categorybus.OrderByID, Direction: order.ASC})
+	if err != nil {
+		return fmt.Errorf("query categories: %w", err)
 	}
 
 	// 3. Build in-memory lookup maps
