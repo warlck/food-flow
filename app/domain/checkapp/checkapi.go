@@ -44,8 +44,9 @@ func (a *api) liveness(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		GOMAXPROCS: runtime.GOMAXPROCS(0),
 	}
 
-	// TODO: LOG WHEN NOT OK ONLY to avoid spamming the logs
-	// a.log.Info(ctx, "liveness", "info", info, "status", "ok")
+	if info.Status != "up" {
+		a.log.Info(ctx, "liveness failure", "info", info, "status", "not ok")
+	}
 
 	return web.Respond(ctx, w, info, http.StatusOK)
 }
