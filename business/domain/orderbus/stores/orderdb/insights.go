@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/business/domain/orderbus"
@@ -23,10 +24,16 @@ func toSafeMoney(val float64) money.Money {
 }
 
 // applyInsightsFilter appends WHERE constraints for insights queries.
-func (s *Store) applyInsightsFilter(filter orderbus.InsightsFilter, data map[string]any, buf *bytes.Buffer, prefix string) {
+func (s *Store) applyInsightsFilter(filter orderbus.InsightsFilter, data map[string]any, buf *bytes.Buffer, prefix string, excludeCancelled bool) {
 	var wc []string
 
-	if filter.RestaurantID != nil && *filter.RestaurantID != "" {
+	if len(filter.RestaurantIDs) == 1 {
+		data["insights_restaurant_id"] = filter.RestaurantIDs[0]
+		wc = append(wc, fmt.Sprintf("%srestaurant_id = :insights_restaurant_id", prefix))
+	} else if len(filter.RestaurantIDs) > 1 {
+		data["insights_restaurant_ids"] = filter.RestaurantIDs
+		wc = append(wc, fmt.Sprintf("%srestaurant_id IN (:insights_restaurant_ids)", prefix))
+	} else if filter.RestaurantID != nil && *filter.RestaurantID != "" {
 		data["insights_restaurant_id"] = *filter.RestaurantID
 		wc = append(wc, fmt.Sprintf("%srestaurant_id = :insights_restaurant_id", prefix))
 	}
@@ -41,14 +48,13 @@ func (s *Store) applyInsightsFilter(filter orderbus.InsightsFilter, data map[str
 		wc = append(wc, fmt.Sprintf("%sdate_created <= :insights_end_date", prefix))
 	}
 
+	if excludeCancelled {
+		wc = append(wc, fmt.Sprintf("%sorder_status != 'cancelled'", prefix))
+	}
+
 	if len(wc) > 0 {
 		buf.WriteString(" WHERE ")
-		for i, w := range wc {
-			if i > 0 {
-				buf.WriteString(" AND ")
-			}
-			buf.WriteString(w)
-		}
+		buf.WriteString(strings.Join(wc, " AND "))
 	}
 }
 
@@ -71,7 +77,7 @@ func (s *Store) QuerySalesSummary(ctx context.Context, filter orderbus.InsightsF
 		orders AS o`
 
 	buf := bytes.NewBufferString(q)
-	s.applyInsightsFilter(filter, data, buf, "o.")
+	s.applyInsightsFilter(filter, data, buf, "o.", false)
 
 	var row struct {
 		TotalOrders       int     `db:"total_orders"`
@@ -85,7 +91,7 @@ func (s *Store) QuerySalesSummary(ctx context.Context, filter orderbus.InsightsF
 		TotalCollected    float64 `db:"total_collected"`
 	}
 
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &row); err != nil {
+	if err := sqldb.NamedQueryStructUsingIn(ctx, s.log, s.db, buf.String(), data, &row); err != nil {
 		return orderbus.SalesSummary{}, fmt.Errorf("query sales summary: %w", err)
 	}
 
@@ -125,7 +131,7 @@ func (s *Store) QuerySalesOverTime(ctx context.Context, filter orderbus.Insights
 		orders AS o`
 
 	buf := bytes.NewBufferString(q)
-	s.applyInsightsFilter(filter, data, buf, "o.")
+	s.applyInsightsFilter(filter, data, buf, "o.", false)
 	buf.WriteString(" GROUP BY TO_CHAR(o.date_created, 'YYYY-MM-DD') ORDER BY date ASC")
 
 	var rows []struct {
@@ -136,7 +142,7 @@ func (s *Store) QuerySalesOverTime(ctx context.Context, filter orderbus.Insights
 		OrderCount     int     `db:"order_count"`
 	}
 
-	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &rows); err != nil {
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, buf.String(), data, &rows); err != nil {
 		return nil, fmt.Errorf("query sales over time: %w", err)
 	}
 
@@ -177,12 +183,7 @@ func (s *Store) QueryTopItemSales(ctx context.Context, filter orderbus.InsightsF
 		orders AS o ON o.order_id = oi.order_id`
 
 	buf := bytes.NewBufferString(q)
-	s.applyInsightsFilter(filter, data, buf, "o.")
-	if len(data) == 1 {
-		buf.WriteString(" WHERE o.order_status != 'cancelled'")
-	} else {
-		buf.WriteString(" AND o.order_status != 'cancelled'")
-	}
+	s.applyInsightsFilter(filter, data, buf, "o.", true)
 	buf.WriteString(" GROUP BY oi.menu_item_id, oi.menu_item_name ORDER BY total_revenue DESC LIMIT :insights_limit")
 
 	var rows []struct {
@@ -192,7 +193,7 @@ func (s *Store) QueryTopItemSales(ctx context.Context, filter orderbus.InsightsF
 		TotalRevenue float64   `db:"total_revenue"`
 	}
 
-	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &rows); err != nil {
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, buf.String(), data, &rows); err != nil {
 		return nil, fmt.Errorf("query top item sales: %w", err)
 	}
 
@@ -225,12 +226,7 @@ func (s *Store) QueryAllItemSales(ctx context.Context, filter orderbus.InsightsF
 		orders AS o ON o.order_id = oi.order_id`
 
 	buf := bytes.NewBufferString(q)
-	s.applyInsightsFilter(filter, data, buf, "o.")
-	if len(data) == 0 {
-		buf.WriteString(" WHERE o.order_status != 'cancelled'")
-	} else {
-		buf.WriteString(" AND o.order_status != 'cancelled'")
-	}
+	s.applyInsightsFilter(filter, data, buf, "o.", true)
 	buf.WriteString(" GROUP BY oi.menu_item_id, oi.menu_item_name ORDER BY total_revenue DESC")
 
 	var rows []struct {
@@ -240,7 +236,7 @@ func (s *Store) QueryAllItemSales(ctx context.Context, filter orderbus.InsightsF
 		TotalRevenue float64   `db:"total_revenue"`
 	}
 
-	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &rows); err != nil {
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, buf.String(), data, &rows); err != nil {
 		return nil, fmt.Errorf("query all item sales: %w", err)
 	}
 
@@ -277,12 +273,7 @@ func (s *Store) QueryTopAddonSales(ctx context.Context, filter orderbus.Insights
 		orders AS o ON o.order_id = oi.order_id`
 
 	buf := bytes.NewBufferString(q)
-	s.applyInsightsFilter(filter, data, buf, "o.")
-	if len(data) == 1 {
-		buf.WriteString(" WHERE o.order_status != 'cancelled'")
-	} else {
-		buf.WriteString(" AND o.order_status != 'cancelled'")
-	}
+	s.applyInsightsFilter(filter, data, buf, "o.", true)
 	buf.WriteString(" GROUP BY oia.addon_id, oia.addon_name ORDER BY total_revenue DESC LIMIT :insights_limit")
 
 	var rows []struct {
@@ -292,7 +283,7 @@ func (s *Store) QueryTopAddonSales(ctx context.Context, filter orderbus.Insights
 		TotalRevenue float64   `db:"total_revenue"`
 	}
 
-	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &rows); err != nil {
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, buf.String(), data, &rows); err != nil {
 		return nil, fmt.Errorf("query top addons: %w", err)
 	}
 
@@ -322,7 +313,7 @@ func (s *Store) QueryOrderTypes(ctx context.Context, filter orderbus.InsightsFil
 		orders AS o`
 
 	buf := bytes.NewBufferString(q)
-	s.applyInsightsFilter(filter, data, buf, "o.")
+	s.applyInsightsFilter(filter, data, buf, "o.", false)
 	buf.WriteString(" GROUP BY o.order_type ORDER BY count DESC")
 
 	var rows []struct {
@@ -331,7 +322,7 @@ func (s *Store) QueryOrderTypes(ctx context.Context, filter orderbus.InsightsFil
 		TotalRevenue float64 `db:"total_revenue"`
 	}
 
-	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &rows); err != nil {
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, buf.String(), data, &rows); err != nil {
 		return nil, fmt.Errorf("query order types: %w", err)
 	}
 
@@ -370,7 +361,7 @@ func (s *Store) QueryPeakHours(ctx context.Context, filter orderbus.InsightsFilt
 		orders AS o`
 
 	buf := bytes.NewBufferString(q)
-	s.applyInsightsFilter(filter, data, buf, "o.")
+	s.applyInsightsFilter(filter, data, buf, "o.", false)
 	buf.WriteString(" GROUP BY EXTRACT(HOUR FROM o.date_created) ORDER BY hour ASC")
 
 	var rows []struct {
@@ -379,7 +370,7 @@ func (s *Store) QueryPeakHours(ctx context.Context, filter orderbus.InsightsFilt
 		TotalRevenue float64 `db:"total_revenue"`
 	}
 
-	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &rows); err != nil {
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, buf.String(), data, &rows); err != nil {
 		return nil, fmt.Errorf("query peak hours: %w", err)
 	}
 

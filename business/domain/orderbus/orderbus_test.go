@@ -1878,6 +1878,31 @@ func orderMetrics(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.T
 				return ""
 			},
 		},
+		{
+			Name:    "order-metrics-with-multiple-restaurant-filter",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				restIDs := []uuid.UUID{sd.Restaurants[0].ID, sd.Restaurants[1].ID}
+				metrics, err := busDomain.Order.QueryOrderMetrics(ctx, orderbus.InsightsFilter{
+					RestaurantIDs: restIDs,
+				})
+				if err != nil {
+					return fmt.Errorf("query metrics: %w", err)
+				}
+
+				if metrics.Summary.TotalOrders <= 0 {
+					return fmt.Errorf("expected positive total orders across multiple restaurants, got %d", metrics.Summary.TotalOrders)
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("unexpected error: %v", got)
+				}
+				return ""
+			},
+		},
 	}
 
 	return table

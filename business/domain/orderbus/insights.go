@@ -9,9 +9,10 @@ import (
 
 // InsightsFilter holds filtering criteria for analytics queries.
 type InsightsFilter struct {
-	RestaurantID *string
-	StartDate    *time.Time
-	EndDate      *time.Time
+	RestaurantID  *string
+	RestaurantIDs []uuid.UUID
+	StartDate     *time.Time
+	EndDate       *time.Time
 }
 
 // SalesSummary represents aggregate KPI figures for a given date range.
