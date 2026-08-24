@@ -76,6 +76,10 @@ func insights200(sd apitest.SeedData) []apitest.Table {
 					if tc.TotalRevenue <= 0 {
 						return fmt.Sprintf("expected positive revenue for category %s, got %.2f", tc.CategoryName, tc.TotalRevenue)
 					}
+					// Verify percentage precision (rounded to 2 decimal places)
+					if math.Abs(tc.Percentage-math.Round(tc.Percentage*100)/100) > 0.0001 {
+						return fmt.Sprintf("expected percentage to be rounded to 2 decimal places, got %f", tc.Percentage)
+					}
 				}
 				if len(gotResp.TopAddons) == 0 {
 					return "expected non-empty TopAddons"
@@ -126,6 +130,27 @@ func insights200(sd apitest.SeedData) []apitest.Table {
 					if ti.CategoryName == "" {
 						return fmt.Sprintf("expected non-empty CategoryName for item %s (%s)", ti.MenuItemID, ti.MenuItemName)
 					}
+				}
+
+				return ""
+			},
+		},
+		{
+			Name:       "insights-date-only-boundary",
+			URL:        "/v1/insights?start_date=2026-01-01&end_date=2026-12-31",
+			Token:      sd.Admins[0].Token,
+			StatusCode: http.StatusOK,
+			Method:     http.MethodGet,
+			GotResp:    &orderapp.AppInsights{},
+			ExpResp:    &orderapp.AppInsights{},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*orderapp.AppInsights)
+				if !exists {
+					return "error occurred: could not cast response"
+				}
+
+				if gotResp.Summary.TotalOrders <= 0 {
+					return fmt.Sprintf("expected positive total orders for full year date-only filter, got %d", gotResp.Summary.TotalOrders)
 				}
 
 				return ""

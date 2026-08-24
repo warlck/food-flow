@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"sort"
 	"time"
@@ -128,11 +129,12 @@ func (a *app) queryInsights(ctx context.Context, w http.ResponseWriter, r *http.
 	if sd := qp.Get("start_date"); sd != "" {
 		parsedDate, err := time.Parse(time.RFC3339, sd)
 		if err != nil {
-			// Fallback to YYYY-MM-DD
+			// Fallback to YYYY-MM-DD (start of day UTC)
 			parsedDate, err = time.Parse("2006-01-02", sd)
 			if err != nil {
 				return errs.New(errs.InvalidArgument, fmt.Errorf("invalid start_date format: %w", err))
 			}
+			parsedDate = time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 0, 0, 0, 0, time.UTC)
 		}
 		filter.StartDate = &parsedDate
 	}
@@ -140,11 +142,12 @@ func (a *app) queryInsights(ctx context.Context, w http.ResponseWriter, r *http.
 	if ed := qp.Get("end_date"); ed != "" {
 		parsedDate, err := time.Parse(time.RFC3339, ed)
 		if err != nil {
-			// Fallback to YYYY-MM-DD
+			// Fallback to YYYY-MM-DD (end of day 23:59:59.999999999 UTC)
 			parsedDate, err = time.Parse("2006-01-02", ed)
 			if err != nil {
 				return errs.New(errs.InvalidArgument, fmt.Errorf("invalid end_date format: %w", err))
 			}
+			parsedDate = time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 23, 59, 59, 999999999, time.UTC)
 		}
 		filter.EndDate = &parsedDate
 	}
@@ -242,7 +245,7 @@ func (a *app) queryInsights(ctx context.Context, w http.ResponseWriter, r *http.
 	for _, agg := range catTotals {
 		var pct float64
 		if totalCategoryRevenue > 0 {
-			pct = (agg.revenue / totalCategoryRevenue) * 100
+			pct = math.Round((agg.revenue/totalCategoryRevenue)*10000) / 100
 		}
 		appTopCategories = append(appTopCategories, AppTopCategoryMetric{
 			CategoryID:   agg.id.String(),
