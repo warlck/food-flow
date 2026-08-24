@@ -36,4 +36,5 @@ func Test_Order(t *testing.T) {
 
 	test.Run(t, insights200(sd), "insights-200")
 	test.Run(t, insights401(sd), "insights-401")
+	test.Run(t, insights404(sd), "insights-404")
 }
