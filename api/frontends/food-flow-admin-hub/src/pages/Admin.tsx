@@ -3297,6 +3297,7 @@ function SalesInsightsSection({
         rawDate: pt.date,
         grossSales: pt.grossSales,
         netSales: pt.netSales,
+        totalCollected: pt.totalCollected,
         orders: pt.orderCount,
         aov: pt.averageOrder,
       };
@@ -3390,13 +3391,13 @@ function SalesInsightsSection({
           <div className="mt-2 text-xl font-extrabold tracking-tight text-[#111827]">
             {loading ? <div className="h-6 w-20 animate-pulse rounded bg-gray-200" /> : formatCurrency(insights?.summary.grossSales ?? 0)}
           </div>
-          <div className="mt-1 text-[11px] text-[#9CA3AF]">Incl. tax & delivery</div>
+          <div className="mt-1 text-[11px] text-[#9CA3AF]">Before discounts</div>
         </div>
 
-        {/* Net Revenue */}
+        {/* Net Sales */}
         <div className="admin-stat-card rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#6B7280]">Net Revenue</span>
+            <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#6B7280]">Net Sales</span>
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#E6F4EA] text-[#137333]">
               <Sparkles size={14} />
             </div>
@@ -3404,7 +3405,7 @@ function SalesInsightsSection({
           <div className="mt-2 text-xl font-extrabold tracking-tight text-[#111827]">
             {loading ? <div className="h-6 w-20 animate-pulse rounded bg-gray-200" /> : formatCurrency(insights?.summary.netSales ?? 0)}
           </div>
-          <div className="mt-1 text-[11px] text-[#9CA3AF]">After discounts</div>
+          <div className="mt-1 text-[11px] text-[#9CA3AF]">Gross − Discounts</div>
         </div>
 
         {/* Total Orders */}

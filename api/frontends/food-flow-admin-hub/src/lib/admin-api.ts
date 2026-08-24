@@ -517,12 +517,14 @@ export interface AdminSalesSummary {
   totalDiscounts: number;
   totalDeliveryFees: number;
   totalTax: number;
+  totalCollected: number;
 }
 
 export interface AdminTimeSeriesPoint {
   date: string;
   grossSales: number;
   netSales: number;
+  totalCollected: number;
   orderCount: number;
   averageOrder: number;
 }
