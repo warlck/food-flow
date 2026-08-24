@@ -14,6 +14,10 @@ import CheckoutMobile from "./pages/CheckoutMobile";
 import CheckoutDesktop from "./pages/CheckoutDesktop";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import OrderTracking from "./pages/OrderTracking";
+import Contact from "./pages/Contact";
+import Support from "./pages/Support";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +41,11 @@ const App = () => (
             <Route path="/track-order/:orderId" element={<OrderTracking />} />
             <Route path="/order-tracking" element={<OrderTracking />} />
             <Route path="/order-tracking/:orderId" element={<OrderTracking />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/support" element={<Support />} />
+            <Route path="/faq" element={<Support />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
