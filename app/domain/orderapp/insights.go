@@ -2,6 +2,7 @@ package orderapp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -9,9 +10,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
+	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
+	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/order"
 	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/foundation/web"
@@ -28,15 +31,17 @@ type AppSalesSummary struct {
 	TotalDiscounts    float64 `json:"totalDiscounts"`
 	TotalDeliveryFees float64 `json:"totalDeliveryFees"`
 	TotalTax          float64 `json:"totalTax"`
+	TotalCollected    float64 `json:"totalCollected"`
 }
 
 // AppTimeSeriesPoint represents daily revenue and order metrics.
 type AppTimeSeriesPoint struct {
-	Date         string  `json:"date"`
-	GrossSales   float64 `json:"grossSales"`
-	NetSales     float64 `json:"netSales"`
-	OrderCount   int     `json:"orderCount"`
-	AverageOrder float64 `json:"averageOrder"`
+	Date           string  `json:"date"`
+	GrossSales     float64 `json:"grossSales"`
+	NetSales       float64 `json:"netSales"`
+	TotalCollected float64 `json:"totalCollected"`
+	OrderCount     int     `json:"orderCount"`
+	AverageOrder   float64 `json:"averageOrder"`
 }
 
 // AppTopItemMetric represents best-selling menu items.
@@ -105,6 +110,20 @@ func (a *app) queryInsights(ctx context.Context, w http.ResponseWriter, r *http.
 		}
 		filter.RestaurantID = &rid
 		restFilterID = &parsedID
+
+		// Enforce tenant authorization: caller must belong to the restaurant's organization
+		rest, err := a.restaurantBus.QueryByID(ctx, parsedID)
+		if err != nil {
+			if errors.Is(err, restaurantbus.ErrNotFound) {
+				return errs.New(errs.NotFound, fmt.Errorf("restaurant not found"))
+			}
+			return fmt.Errorf("query restaurant: %w", err)
+		}
+
+		claims := mid.GetClaims(ctx)
+		if !claims.IsOrgAuthorized(rest.OrganizationID) {
+			return errs.New(errs.PermissionDenied, fmt.Errorf("user not authorized for this organization"))
+		}
 	}
 
 	if sd := qp.Get("start_date"); sd != "" {
@@ -137,21 +156,39 @@ func (a *app) queryInsights(ctx context.Context, w http.ResponseWriter, r *http.
 		return fmt.Errorf("query order metrics: %w", err)
 	}
 
-	// 2. Batch query catalog metadata for category mapping (zero N+1)
-	unpaged := page.MustParse("1", "100")
-
-	menuItems, err := a.menuItemBus.Query(ctx, menuitembus.QueryFilter{
-		RestaurantID: restFilterID,
-	}, order.By{Field: menuitembus.OrderByID, Direction: order.ASC}, unpaged)
-	if err != nil {
-		return fmt.Errorf("query menu items: %w", err)
+	// 2. Batch query catalog metadata for category mapping (paged loop to support large catalogs without truncation)
+	var menuItems []menuitembus.MenuItem
+	menuPageNum := 1
+	for {
+		pg := page.MustParse(fmt.Sprintf("%d", menuPageNum), "100")
+		batch, err := a.menuItemBus.Query(ctx, menuitembus.QueryFilter{
+			RestaurantID: restFilterID,
+		}, order.By{Field: menuitembus.OrderByID, Direction: order.ASC}, pg)
+		if err != nil {
+			return fmt.Errorf("query menu items: %w", err)
+		}
+		menuItems = append(menuItems, batch...)
+		if len(batch) < 100 {
+			break
+		}
+		menuPageNum++
 	}
 
-	categories, err := a.categoryBus.Query(ctx, categorybus.QueryFilter{
-		RestaurantID: restFilterID,
-	}, order.By{Field: categorybus.OrderByID, Direction: order.ASC}, unpaged)
-	if err != nil {
-		return fmt.Errorf("query categories: %w", err)
+	var categories []categorybus.Category
+	catPageNum := 1
+	for {
+		pg := page.MustParse(fmt.Sprintf("%d", catPageNum), "100")
+		batch, err := a.categoryBus.Query(ctx, categorybus.QueryFilter{
+			RestaurantID: restFilterID,
+		}, order.By{Field: categorybus.OrderByID, Direction: order.ASC}, pg)
+		if err != nil {
+			return fmt.Errorf("query categories: %w", err)
+		}
+		categories = append(categories, batch...)
+		if len(batch) < 100 {
+			break
+		}
+		catPageNum++
 	}
 
 	// 3. Build in-memory lookup maps
@@ -250,11 +287,12 @@ func (a *app) queryInsights(ctx context.Context, w http.ResponseWriter, r *http.
 	appTimeSeries := make([]AppTimeSeriesPoint, len(metrics.SalesOverTime))
 	for i, p := range metrics.SalesOverTime {
 		appTimeSeries[i] = AppTimeSeriesPoint{
-			Date:         p.Date,
-			GrossSales:   p.GrossSales.Value(),
-			NetSales:     p.NetSales.Value(),
-			OrderCount:   p.OrderCount,
-			AverageOrder: p.AverageOrder.Value(),
+			Date:           p.Date,
+			GrossSales:     p.GrossSales.Value(),
+			NetSales:       p.NetSales.Value(),
+			TotalCollected: p.TotalCollected.Value(),
+			OrderCount:     p.OrderCount,
+			AverageOrder:   p.AverageOrder.Value(),
 		}
 	}
 
@@ -298,6 +336,7 @@ func (a *app) queryInsights(ctx context.Context, w http.ResponseWriter, r *http.
 			TotalDiscounts:    metrics.Summary.TotalDiscounts.Value(),
 			TotalDeliveryFees: metrics.Summary.TotalDeliveryFees.Value(),
 			TotalTax:          metrics.Summary.TotalTax.Value(),
+			TotalCollected:    metrics.Summary.TotalCollected.Value(),
 		},
 		SalesOverTime: appTimeSeries,
 		TopItems:      appTopItems,
