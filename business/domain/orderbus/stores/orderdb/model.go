@@ -26,8 +26,8 @@ type dbOrder struct {
 	DeliveryFee           float64   `db:"delivery_fee"`
 	Tax                   float64   `db:"tax"`
 	Total                 float64   `db:"total"`
-	SpecialInstructions   string    `db:"special_instructions"`
-	StripePaymentIntentID string    `db:"stripe_payment_intent_id"`
+	SpecialInstructions   *string   `db:"special_instructions"`
+	StripePaymentIntentID *string   `db:"stripe_payment_intent_id"`
 	DateCreated           time.Time `db:"date_created"`
 	DateUpdated           time.Time `db:"date_updated"`
 }
@@ -40,7 +40,7 @@ type dbOrderItem struct {
 	MenuItemName        string    `db:"menu_item_name"`
 	MenuItemPrice       float64   `db:"menu_item_price"`
 	Quantity            int       `db:"quantity"`
-	SpecialInstructions string    `db:"special_instructions"`
+	SpecialInstructions *string   `db:"special_instructions"`
 	DateCreated         time.Time `db:"date_created"`
 }
 
@@ -63,7 +63,7 @@ type dbDeliveryAddress struct {
 	City                 string    `db:"city"`
 	State                string    `db:"state"`
 	PostalCode           string    `db:"postal_code"`
-	DeliveryInstructions string    `db:"delivery_instructions"`
+	DeliveryInstructions *string   `db:"delivery_instructions"`
 	Latitude             *float64  `db:"latitude"`
 	Longitude            *float64  `db:"longitude"`
 	DateCreated          time.Time `db:"date_created"`
@@ -75,6 +75,16 @@ func toDBOrder(bus orderbus.Order) dbOrder {
 	var promoCode *string
 	if bus.PromoCode != "" {
 		promoCode = &bus.PromoCode
+	}
+
+	var specialInstructions *string
+	if bus.SpecialInstructions != "" {
+		specialInstructions = &bus.SpecialInstructions
+	}
+
+	var stripePaymentIntentID *string
+	if bus.StripePaymentIntentID != "" {
+		stripePaymentIntentID = &bus.StripePaymentIntentID
 	}
 
 	return dbOrder{
@@ -93,8 +103,8 @@ func toDBOrder(bus orderbus.Order) dbOrder {
 		DeliveryFee:           bus.DeliveryFee.Value(),
 		Tax:                   bus.Tax.Value(),
 		Total:                 bus.Total.Value(),
-		SpecialInstructions:   bus.SpecialInstructions,
-		StripePaymentIntentID: bus.StripePaymentIntentID,
+		SpecialInstructions:   specialInstructions,
+		StripePaymentIntentID: stripePaymentIntentID,
 		DateCreated:           bus.DateCreated.UTC(),
 		DateUpdated:           bus.DateUpdated.UTC(),
 	}
@@ -131,6 +141,16 @@ func toBusOrder(dbo dbOrder, items []dbOrderItem, addons []dbOrderItemAddon, add
 		promoCodeStr = *dbo.PromoCode
 	}
 
+	var specialInstructionsStr string
+	if dbo.SpecialInstructions != nil {
+		specialInstructionsStr = *dbo.SpecialInstructions
+	}
+
+	var stripePaymentIntentIDStr string
+	if dbo.StripePaymentIntentID != nil {
+		stripePaymentIntentIDStr = *dbo.StripePaymentIntentID
+	}
+
 	order := orderbus.Order{
 		ID:                    dbo.ID,
 		RestaurantID:          dbo.RestaurantID,
@@ -147,8 +167,8 @@ func toBusOrder(dbo dbOrder, items []dbOrderItem, addons []dbOrderItemAddon, add
 		DeliveryFee:           deliveryFee,
 		Tax:                   tax,
 		Total:                 total,
-		SpecialInstructions:   dbo.SpecialInstructions,
-		StripePaymentIntentID: dbo.StripePaymentIntentID,
+		SpecialInstructions:   specialInstructionsStr,
+		StripePaymentIntentID: stripePaymentIntentIDStr,
 		DateCreated:           dbo.DateCreated.In(time.Local),
 		DateUpdated:           dbo.DateUpdated.In(time.Local),
 		Items:                 make([]orderbus.OrderItem, len(items)),
@@ -174,6 +194,11 @@ func toBusOrder(dbo dbOrder, items []dbOrderItem, addons []dbOrderItemAddon, add
 }
 
 func toDBOrderItem(bus orderbus.OrderItem, orderID uuid.UUID) dbOrderItem {
+	var specialInstructions *string
+	if bus.SpecialInstructions != "" {
+		specialInstructions = &bus.SpecialInstructions
+	}
+
 	return dbOrderItem{
 		ID:                  bus.ID,
 		OrderID:             orderID,
@@ -181,7 +206,7 @@ func toDBOrderItem(bus orderbus.OrderItem, orderID uuid.UUID) dbOrderItem {
 		MenuItemName:        bus.MenuItemName,
 		MenuItemPrice:       bus.MenuItemPrice.Value(),
 		Quantity:            bus.Quantity,
-		SpecialInstructions: bus.SpecialInstructions,
+		SpecialInstructions: specialInstructions,
 		DateCreated:         bus.DateCreated.UTC(),
 	}
 }
@@ -194,6 +219,11 @@ func toBusOrderItem(dbo dbOrderItem) orderbus.OrderItem {
 		price = money.Money{}
 	}
 
+	var specialInstructionsStr string
+	if dbo.SpecialInstructions != nil {
+		specialInstructionsStr = *dbo.SpecialInstructions
+	}
+
 	return orderbus.OrderItem{
 		ID:                  dbo.ID,
 		OrderID:             dbo.OrderID,
@@ -201,7 +231,7 @@ func toBusOrderItem(dbo dbOrderItem) orderbus.OrderItem {
 		MenuItemName:        dbo.MenuItemName,
 		MenuItemPrice:       price,
 		Quantity:            dbo.Quantity,
-		SpecialInstructions: dbo.SpecialInstructions,
+		SpecialInstructions: specialInstructionsStr,
 		DateCreated:         dbo.DateCreated.In(time.Local),
 	}
 }
@@ -238,6 +268,11 @@ func toBusOrderItemAddon(dbo dbOrderItemAddon) orderbus.OrderItemAddon {
 }
 
 func toDBDeliveryAddress(bus orderbus.DeliveryAddress, orderID uuid.UUID) dbDeliveryAddress {
+	var deliveryInstructions *string
+	if bus.DeliveryInstructions != "" {
+		deliveryInstructions = &bus.DeliveryInstructions
+	}
+
 	return dbDeliveryAddress{
 		ID:                   bus.ID,
 		OrderID:              orderID,
@@ -245,7 +280,7 @@ func toDBDeliveryAddress(bus orderbus.DeliveryAddress, orderID uuid.UUID) dbDeli
 		City:                 bus.City,
 		State:                bus.State,
 		PostalCode:           bus.PostalCode,
-		DeliveryInstructions: bus.DeliveryInstructions,
+		DeliveryInstructions: deliveryInstructions,
 		Latitude:             bus.Latitude,
 		Longitude:            bus.Longitude,
 		DateCreated:          bus.DateCreated.UTC(),
@@ -253,6 +288,11 @@ func toDBDeliveryAddress(bus orderbus.DeliveryAddress, orderID uuid.UUID) dbDeli
 }
 
 func toBusDeliveryAddress(dbo dbDeliveryAddress, orderID uuid.UUID) orderbus.DeliveryAddress {
+	var deliveryInstructionsStr string
+	if dbo.DeliveryInstructions != nil {
+		deliveryInstructionsStr = *dbo.DeliveryInstructions
+	}
+
 	return orderbus.DeliveryAddress{
 		ID:                   dbo.ID,
 		OrderID:              orderID,
@@ -260,7 +300,7 @@ func toBusDeliveryAddress(dbo dbDeliveryAddress, orderID uuid.UUID) orderbus.Del
 		City:                 dbo.City,
 		State:                dbo.State,
 		PostalCode:           dbo.PostalCode,
-		DeliveryInstructions: dbo.DeliveryInstructions,
+		DeliveryInstructions: deliveryInstructionsStr,
 		Latitude:             dbo.Latitude,
 		Longitude:            dbo.Longitude,
 		DateCreated:          dbo.DateCreated.In(time.Local),
