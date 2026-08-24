@@ -16,6 +16,9 @@ func toSafeMoney(val float64) money.Money {
 	if val < 0 || math.IsNaN(val) || math.IsInf(val, 0) {
 		val = 0
 	}
+	if val > 1_000_000_000 {
+		val = 1_000_000_000
+	}
 	return money.MustParse(math.Round(val*100) / 100)
 }
 
@@ -58,11 +61,12 @@ func (s *Store) QuerySalesSummary(ctx context.Context, filter orderbus.InsightsF
 		COALESCE(COUNT(1), 0) AS total_orders,
 		COALESCE(COUNT(CASE WHEN o.order_status = 'completed' THEN 1 END), 0) AS completed_orders,
 		COALESCE(COUNT(CASE WHEN o.order_status = 'cancelled' THEN 1 END), 0) AS cancelled_orders,
-		COALESCE(SUM(CASE WHEN o.order_status != 'cancelled' THEN o.total ELSE 0 END), 0) AS gross_sales,
+		COALESCE(SUM(CASE WHEN o.order_status != 'cancelled' THEN o.subtotal ELSE 0 END), 0) AS gross_sales,
 		COALESCE(SUM(CASE WHEN o.order_status != 'cancelled' THEN GREATEST(0, (o.subtotal - o.discount)) ELSE 0 END), 0) AS net_sales,
 		COALESCE(SUM(CASE WHEN o.order_status != 'cancelled' THEN o.discount ELSE 0 END), 0) AS total_discounts,
 		COALESCE(SUM(CASE WHEN o.order_status != 'cancelled' THEN o.delivery_fee ELSE 0 END), 0) AS total_delivery_fees,
-		COALESCE(SUM(CASE WHEN o.order_status != 'cancelled' THEN o.tax ELSE 0 END), 0) AS total_tax
+		COALESCE(SUM(CASE WHEN o.order_status != 'cancelled' THEN o.tax ELSE 0 END), 0) AS total_tax,
+		COALESCE(SUM(CASE WHEN o.order_status != 'cancelled' THEN o.total ELSE 0 END), 0) AS total_collected
 	FROM
 		orders AS o`
 
@@ -78,6 +82,7 @@ func (s *Store) QuerySalesSummary(ctx context.Context, filter orderbus.InsightsF
 		TotalDiscounts    float64 `db:"total_discounts"`
 		TotalDeliveryFees float64 `db:"total_delivery_fees"`
 		TotalTax          float64 `db:"total_tax"`
+		TotalCollected    float64 `db:"total_collected"`
 	}
 
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &row); err != nil {
@@ -87,7 +92,7 @@ func (s *Store) QuerySalesSummary(ctx context.Context, filter orderbus.InsightsF
 	var aov float64
 	validOrders := row.TotalOrders - row.CancelledOrders
 	if validOrders > 0 {
-		aov = row.GrossSales / float64(validOrders)
+		aov = row.TotalCollected / float64(validOrders)
 	}
 
 	return orderbus.SalesSummary{
@@ -100,6 +105,7 @@ func (s *Store) QuerySalesSummary(ctx context.Context, filter orderbus.InsightsF
 		TotalDiscounts:    toSafeMoney(row.TotalDiscounts),
 		TotalDeliveryFees: toSafeMoney(row.TotalDeliveryFees),
 		TotalTax:          toSafeMoney(row.TotalTax),
+		TotalCollected:    toSafeMoney(row.TotalCollected),
 	}, nil
 }
 
@@ -110,8 +116,9 @@ func (s *Store) QuerySalesOverTime(ctx context.Context, filter orderbus.Insights
 	const q = `
 	SELECT
 		TO_CHAR(o.date_created, 'YYYY-MM-DD') AS date,
-		COALESCE(SUM(CASE WHEN o.order_status != 'cancelled' THEN o.total ELSE 0 END), 0) AS gross_sales,
+		COALESCE(SUM(CASE WHEN o.order_status != 'cancelled' THEN o.subtotal ELSE 0 END), 0) AS gross_sales,
 		COALESCE(SUM(CASE WHEN o.order_status != 'cancelled' THEN GREATEST(0, (o.subtotal - o.discount)) ELSE 0 END), 0) AS net_sales,
+		COALESCE(SUM(CASE WHEN o.order_status != 'cancelled' THEN o.total ELSE 0 END), 0) AS total_collected,
 		COALESCE(COUNT(1), 0) AS order_count
 	FROM
 		orders AS o`
@@ -121,10 +128,11 @@ func (s *Store) QuerySalesOverTime(ctx context.Context, filter orderbus.Insights
 	buf.WriteString(" GROUP BY TO_CHAR(o.date_created, 'YYYY-MM-DD') ORDER BY date ASC")
 
 	var rows []struct {
-		Date       string  `db:"date"`
-		GrossSales float64 `db:"gross_sales"`
-		NetSales   float64 `db:"net_sales"`
-		OrderCount int     `db:"order_count"`
+		Date           string  `db:"date"`
+		GrossSales     float64 `db:"gross_sales"`
+		NetSales       float64 `db:"net_sales"`
+		TotalCollected float64 `db:"total_collected"`
+		OrderCount     int     `db:"order_count"`
 	}
 
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &rows); err != nil {
@@ -135,14 +143,15 @@ func (s *Store) QuerySalesOverTime(ctx context.Context, filter orderbus.Insights
 	for i, r := range rows {
 		var aov float64
 		if r.OrderCount > 0 {
-			aov = r.GrossSales / float64(r.OrderCount)
+			aov = r.TotalCollected / float64(r.OrderCount)
 		}
 		points[i] = orderbus.TimeSeriesPoint{
-			Date:         r.Date,
-			GrossSales:   toSafeMoney(r.GrossSales),
-			NetSales:     toSafeMoney(r.NetSales),
-			OrderCount:   r.OrderCount,
-			AverageOrder: toSafeMoney(aov),
+			Date:           r.Date,
+			GrossSales:     toSafeMoney(r.GrossSales),
+			NetSales:       toSafeMoney(r.NetSales),
+			TotalCollected: toSafeMoney(r.TotalCollected),
+			OrderCount:     r.OrderCount,
+			AverageOrder:   toSafeMoney(aov),
 		}
 	}
 

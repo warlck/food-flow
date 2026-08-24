@@ -1601,8 +1601,44 @@ func orderMetrics(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.T
 					return err
 				}
 
-				if metrics.Summary.TotalOrders < 0 {
-					return errors.New("expected non-negative total orders")
+				if metrics.Summary.TotalOrders <= 0 {
+					return errors.New("expected positive total orders")
+				}
+
+				// Accounting Identity 1: GrossSales - Discounts == NetSales
+				grossMinusDisc := metrics.Summary.GrossSales.Value() - metrics.Summary.TotalDiscounts.Value()
+				if math.Abs(grossMinusDisc-metrics.Summary.NetSales.Value()) > 0.01 {
+					return fmt.Errorf("identity 1 failed: GrossSales (%.2f) - Discounts (%.2f) != NetSales (%.2f)",
+						metrics.Summary.GrossSales.Value(), metrics.Summary.TotalDiscounts.Value(), metrics.Summary.NetSales.Value())
+				}
+
+				// Accounting Identity 2: NetSales + DeliveryFees + Tax == TotalCollected
+				netPlusFeesTax := metrics.Summary.NetSales.Value() + metrics.Summary.TotalDeliveryFees.Value() + metrics.Summary.TotalTax.Value()
+				if math.Abs(netPlusFeesTax-metrics.Summary.TotalCollected.Value()) > 0.01 {
+					return fmt.Errorf("identity 2 failed: NetSales (%.2f) + Deliv (%.2f) + Tax (%.2f) != TotalCollected (%.2f)",
+						metrics.Summary.NetSales.Value(), metrics.Summary.TotalDeliveryFees.Value(), metrics.Summary.TotalTax.Value(), metrics.Summary.TotalCollected.Value())
+				}
+
+				// Accounting Identity 3: AOV == TotalCollected / CompletedOrders
+				if metrics.Summary.CompletedOrders > 0 {
+					expectedAOV := metrics.Summary.TotalCollected.Value() / float64(metrics.Summary.CompletedOrders)
+					if math.Abs(expectedAOV-metrics.Summary.AverageOrderValue.Value()) > 0.01 {
+						return fmt.Errorf("identity 3 failed: AOV (%.2f) != TotalCollected (%.2f) / CompletedOrders (%d) = %.2f",
+							metrics.Summary.AverageOrderValue.Value(), metrics.Summary.TotalCollected.Value(), metrics.Summary.CompletedOrders, expectedAOV)
+					}
+				}
+
+				if len(metrics.SalesOverTime) == 0 {
+					return errors.New("expected non-empty SalesOverTime")
+				}
+				if len(metrics.TopItems) == 0 {
+					return errors.New("expected non-empty TopItems")
+				}
+				if len(metrics.OrderTypes) == 0 {
+					return errors.New("expected non-empty OrderTypes")
+				}
+				if len(metrics.PeakHours) == 0 {
+					return errors.New("expected non-empty PeakHours")
 				}
 
 				return nil
@@ -1627,8 +1663,22 @@ func orderMetrics(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.T
 					return err
 				}
 
-				if metrics.Summary.TotalOrders < 0 {
-					return errors.New("expected non-negative total orders")
+				if metrics.Summary.TotalOrders <= 0 {
+					return errors.New("expected positive total orders")
+				}
+
+				// Accounting Identity 1: GrossSales - Discounts == NetSales
+				grossMinusDisc := metrics.Summary.GrossSales.Value() - metrics.Summary.TotalDiscounts.Value()
+				if math.Abs(grossMinusDisc-metrics.Summary.NetSales.Value()) > 0.01 {
+					return fmt.Errorf("identity 1 failed: GrossSales (%.2f) - Discounts (%.2f) != NetSales (%.2f)",
+						metrics.Summary.GrossSales.Value(), metrics.Summary.TotalDiscounts.Value(), metrics.Summary.NetSales.Value())
+				}
+
+				// Accounting Identity 2: NetSales + DeliveryFees + Tax == TotalCollected
+				netPlusFeesTax := metrics.Summary.NetSales.Value() + metrics.Summary.TotalDeliveryFees.Value() + metrics.Summary.TotalTax.Value()
+				if math.Abs(netPlusFeesTax-metrics.Summary.TotalCollected.Value()) > 0.01 {
+					return fmt.Errorf("identity 2 failed: NetSales (%.2f) + Deliv (%.2f) + Tax (%.2f) != TotalCollected (%.2f)",
+						metrics.Summary.NetSales.Value(), metrics.Summary.TotalDeliveryFees.Value(), metrics.Summary.TotalTax.Value(), metrics.Summary.TotalCollected.Value())
 				}
 
 				return nil

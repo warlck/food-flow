@@ -25,15 +25,17 @@ type SalesSummary struct {
 	TotalDiscounts    money.Money
 	TotalDeliveryFees money.Money
 	TotalTax          money.Money
+	TotalCollected    money.Money
 }
 
 // TimeSeriesPoint represents daily sales performance in a timeline.
 type TimeSeriesPoint struct {
-	Date         string
-	GrossSales   money.Money
-	NetSales     money.Money
-	OrderCount   int
-	AverageOrder money.Money
+	Date           string
+	GrossSales     money.Money
+	NetSales       money.Money
+	TotalCollected money.Money
+	OrderCount     int
+	AverageOrder   money.Money
 }
 
 // ItemSalesMetric represents order-level sales numbers for a menu item.
