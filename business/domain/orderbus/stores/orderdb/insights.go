@@ -90,8 +90,9 @@ func (s *Store) QuerySalesSummary(ctx context.Context, filter orderbus.InsightsF
 	}
 
 	var aov float64
-	validOrders := row.TotalOrders - row.CancelledOrders
-	if validOrders > 0 {
+	if row.CompletedOrders > 0 {
+		aov = row.TotalCollected / float64(row.CompletedOrders)
+	} else if validOrders := row.TotalOrders - row.CancelledOrders; validOrders > 0 {
 		aov = row.TotalCollected / float64(validOrders)
 	}
 
@@ -119,7 +120,7 @@ func (s *Store) QuerySalesOverTime(ctx context.Context, filter orderbus.Insights
 		COALESCE(SUM(CASE WHEN o.order_status != 'cancelled' THEN o.subtotal ELSE 0 END), 0) AS gross_sales,
 		COALESCE(SUM(CASE WHEN o.order_status != 'cancelled' THEN GREATEST(0, (o.subtotal - o.discount)) ELSE 0 END), 0) AS net_sales,
 		COALESCE(SUM(CASE WHEN o.order_status != 'cancelled' THEN o.total ELSE 0 END), 0) AS total_collected,
-		COALESCE(COUNT(1), 0) AS order_count
+		COALESCE(COUNT(CASE WHEN o.order_status != 'cancelled' THEN 1 END), 0) AS order_count
 	FROM
 		orders AS o`
 

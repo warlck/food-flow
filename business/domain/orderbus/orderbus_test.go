@@ -1762,6 +1762,122 @@ func orderMetrics(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.T
 				return ""
 			},
 		},
+		{
+			Name:    "order-metrics-adversarial-mixed-status-aov",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				rest, err := restaurantbus.TestSeedRestaurants(ctx, 1, busDomain.Restaurant, sd.Restaurants[0].OrganizationID)
+				if err != nil {
+					return err
+				}
+				cats, err := categorybus.TestSeedCategories(ctx, 1, rest[0].ID, busDomain.Category)
+				if err != nil {
+					return err
+				}
+				items, err := menuitembus.TestSeedMenuItems(ctx, 1, cats[0].ID, rest[0].ID, busDomain.MenuItem)
+				if err != nil {
+					return err
+				}
+
+				// 1. Completed order ($50)
+				no1 := orderbus.NewOrder{
+					RestaurantID:  rest[0].ID.String(),
+					CustomerName:  "Completed Customer",
+					CustomerEmail: "comp@example.com",
+					CustomerPhone: "555-1111",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: items[0].ID.String(),
+							Quantity:   2,
+						},
+					},
+				}
+				ord1, err := busDomain.Order.Create(ctx, no1)
+				if err != nil {
+					return fmt.Errorf("create ord1: %w", err)
+				}
+				us1 := orderbus.UpdateOrderStatus{
+					OrderStatus: orderbus.OrderStatusCompleted,
+				}
+				if err := busDomain.Order.UpdateStatus(ctx, ord1.ID, us1); err != nil {
+					return fmt.Errorf("update ord1 to completed: %w", err)
+				}
+
+				// 2. Cancelled order ($50) on same restaurant / date
+				no2 := orderbus.NewOrder{
+					RestaurantID:  rest[0].ID.String(),
+					CustomerName:  "Cancelled Customer",
+					CustomerEmail: "canc@example.com",
+					CustomerPhone: "555-2222",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: items[0].ID.String(),
+							Quantity:   2,
+						},
+					},
+				}
+				ord2, err := busDomain.Order.Create(ctx, no2)
+				if err != nil {
+					return fmt.Errorf("create ord2: %w", err)
+				}
+				us2 := orderbus.UpdateOrderStatus{
+					OrderStatus: orderbus.OrderStatusCancelled,
+				}
+				if err := busDomain.Order.UpdateStatus(ctx, ord2.ID, us2); err != nil {
+					return fmt.Errorf("update ord2 to cancelled: %w", err)
+				}
+
+				restIDStr := rest[0].ID.String()
+				filter := orderbus.InsightsFilter{
+					RestaurantID: &restIDStr,
+				}
+				metrics, err := busDomain.Order.QueryOrderMetrics(ctx, filter)
+				if err != nil {
+					return fmt.Errorf("query metrics: %w", err)
+				}
+
+				if metrics.Summary.TotalOrders != 2 {
+					return fmt.Errorf("expected TotalOrders == 2, got %d", metrics.Summary.TotalOrders)
+				}
+				if metrics.Summary.CompletedOrders != 1 {
+					return fmt.Errorf("expected CompletedOrders == 1, got %d", metrics.Summary.CompletedOrders)
+				}
+				if metrics.Summary.CancelledOrders != 1 {
+					return fmt.Errorf("expected CancelledOrders == 1, got %d", metrics.Summary.CancelledOrders)
+				}
+
+				if math.Abs(metrics.Summary.TotalCollected.Value()-ord1.Total.Value()) > 0.01 {
+					return fmt.Errorf("expected TotalCollected == %.2f, got %.2f", ord1.Total.Value(), metrics.Summary.TotalCollected.Value())
+				}
+
+				if math.Abs(metrics.Summary.AverageOrderValue.Value()-ord1.Total.Value()) > 0.01 {
+					return fmt.Errorf("expected AOV == %.2f, got %.2f", ord1.Total.Value(), metrics.Summary.AverageOrderValue.Value())
+				}
+
+				if len(metrics.SalesOverTime) != 1 {
+					return fmt.Errorf("expected 1 SalesOverTime point, got %d", len(metrics.SalesOverTime))
+				}
+				pt := metrics.SalesOverTime[0]
+				if pt.OrderCount != 1 {
+					return fmt.Errorf("expected SalesOverTime OrderCount == 1, got %d", pt.OrderCount)
+				}
+				if math.Abs(pt.AverageOrder.Value()-ord1.Total.Value()) > 0.01 {
+					return fmt.Errorf("expected SalesOverTime AverageOrder == %.2f, got %.2f", ord1.Total.Value(), pt.AverageOrder.Value())
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("unexpected error: %v", got)
+				}
+				return ""
+			},
+		},
 	}
 
 	return table
