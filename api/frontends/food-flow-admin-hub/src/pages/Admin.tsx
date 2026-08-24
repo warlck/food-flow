@@ -3209,6 +3209,7 @@ function SalesInsightsSection({
   const [insights, setInsights] = useState<AdminInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
 
   // Sync selectedRestId if currentRestaurantId changes initially
   useEffect(() => {
@@ -3325,6 +3326,20 @@ function SalesInsightsSection({
           <p className="mt-1 max-w-2xl text-[13px] text-[#6B7280]">
             Track revenue velocity, order volumes, average ticket size, peak dining hours, and best-performing menu items.
           </p>
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3 py-1 text-xs font-semibold text-[#374151] shadow-xs">
+              <ShoppingBag size={13} className="text-[#2563EB]" />
+              <span>{insights?.summary.totalOrders ?? 0} total orders</span>
+              <span className="text-[#9CA3AF]">•</span>
+              <span className="font-bold text-[#10B981]">{insights?.summary.completedOrders ?? 0} completed</span>
+              {Boolean(insights?.summary.cancelledOrders) && (
+                <>
+                  <span className="text-[#9CA3AF]">•</span>
+                  <span className="text-[#EF4444]">{insights?.summary.cancelledOrders} cancelled</span>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -3378,9 +3393,9 @@ function SalesInsightsSection({
         </div>
       </section>
 
-      {/* KPI Cards Grid */}
+      {/* KPI Cards Grid (Structured in Accounting Flow) */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-        {/* Gross Sales */}
+        {/* 1. Gross Sales */}
         <div className="admin-stat-card rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#6B7280]">Gross Sales</span>
@@ -3391,10 +3406,24 @@ function SalesInsightsSection({
           <div className="mt-2 text-xl font-extrabold tracking-tight text-[#111827]">
             {loading ? <div className="h-6 w-20 animate-pulse rounded bg-gray-200" /> : formatCurrency(insights?.summary.grossSales ?? 0)}
           </div>
-          <div className="mt-1 text-[11px] text-[#9CA3AF]">Before discounts</div>
+          <div className="mt-1 text-[11px] text-[#9CA3AF]">Menu before discounts</div>
         </div>
 
-        {/* Net Sales */}
+        {/* 2. Discounts */}
+        <div className="admin-stat-card rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#6B7280]">Discounts</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FEF3C7] text-[#D97706]">
+              <Tag size={14} />
+            </div>
+          </div>
+          <div className="mt-2 text-xl font-extrabold tracking-tight text-[#111827]">
+            {loading ? <div className="h-6 w-16 animate-pulse rounded bg-gray-200" /> : formatCurrency(insights?.summary.totalDiscounts ?? 0)}
+          </div>
+          <div className="mt-1 text-[11px] text-[#9CA3AF]">Promo savings deducted</div>
+        </div>
+
+        {/* 3. Net Sales */}
         <div className="admin-stat-card rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#6B7280]">Net Sales</span>
@@ -3408,54 +3437,7 @@ function SalesInsightsSection({
           <div className="mt-1 text-[11px] text-[#9CA3AF]">Gross − Discounts</div>
         </div>
 
-        {/* Total Orders */}
-        <div className="admin-stat-card rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#6B7280]">Total Orders</span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EFF6FF] text-[#2563EB]">
-              <ShoppingBag size={14} />
-            </div>
-          </div>
-          <div className="mt-2 text-xl font-extrabold tracking-tight text-[#111827]">
-            {loading ? <div className="h-6 w-12 animate-pulse rounded bg-gray-200" /> : insights?.summary.totalOrders ?? 0}
-          </div>
-          <div className="mt-1 text-[11px] text-[#6B7280]">
-            <span className="font-semibold text-[#10B981]">{insights?.summary.completedOrders ?? 0} completed</span>
-            {Boolean(insights?.summary.cancelledOrders) && (
-              <span className="text-[#EF4444]"> • {insights?.summary.cancelledOrders} cancelled</span>
-            )}
-          </div>
-        </div>
-
-        {/* Average Order Value (AOV) */}
-        <div className="admin-stat-card rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#6B7280]">Avg Ticket (AOV)</span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F3E8FF] text-[#7C3AED]">
-              <ReceiptText size={14} />
-            </div>
-          </div>
-          <div className="mt-2 text-xl font-extrabold tracking-tight text-[#111827]">
-            {loading ? <div className="h-6 w-16 animate-pulse rounded bg-gray-200" /> : formatCurrency(insights?.summary.averageOrderValue ?? 0)}
-          </div>
-          <div className="mt-1 text-[11px] text-[#9CA3AF]">Per completed order</div>
-        </div>
-
-        {/* Discounts */}
-        <div className="admin-stat-card rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#6B7280]">Discounts</span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FEF3C7] text-[#D97706]">
-              <Tag size={14} />
-            </div>
-          </div>
-          <div className="mt-2 text-xl font-extrabold tracking-tight text-[#111827]">
-            {loading ? <div className="h-6 w-16 animate-pulse rounded bg-gray-200" /> : formatCurrency(insights?.summary.totalDiscounts ?? 0)}
-          </div>
-          <div className="mt-1 text-[11px] text-[#9CA3AF]">Promo savings applied</div>
-        </div>
-
-        {/* Fees & Taxes */}
+        {/* 4. Fees & Taxes */}
         <div className="admin-stat-card rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#6B7280]">Fees & Taxes</span>
@@ -3470,6 +3452,96 @@ function SalesInsightsSection({
             {formatCurrency(insights?.summary.totalDeliveryFees ?? 0)} deliv • {formatCurrency(insights?.summary.totalTax ?? 0)} tax
           </div>
         </div>
+
+        {/* 5. Total Collected (Gross Inflow) */}
+        <div className="admin-stat-card rounded-2xl border border-[#FED7C7] bg-[#FFFDFC] p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#FF4500]">Total Collected</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FFF1EB] text-[#FF4500]">
+              <CreditCard size={14} />
+            </div>
+          </div>
+          <div className="mt-2 text-xl font-extrabold tracking-tight text-[#FF4500]">
+            {loading ? <div className="h-6 w-20 animate-pulse rounded bg-gray-200" /> : formatCurrency(insights?.summary.totalCollected ?? 0)}
+          </div>
+          <div className="mt-1 text-[11px] font-medium text-[#6B7280]">Net + Fees & Taxes</div>
+        </div>
+
+        {/* 6. Average Order Value (AOV) */}
+        <div className="admin-stat-card rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#6B7280]">Avg Ticket (AOV)</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F3E8FF] text-[#7C3AED]">
+              <ReceiptText size={14} />
+            </div>
+          </div>
+          <div className="mt-2 text-xl font-extrabold tracking-tight text-[#111827]">
+            {loading ? <div className="h-6 w-16 animate-pulse rounded bg-gray-200" /> : formatCurrency(insights?.summary.averageOrderValue ?? 0)}
+          </div>
+          <div className="mt-1 text-[11px] text-[#9CA3AF]">
+            {insights?.summary.completedOrders ? `${insights.summary.completedOrders} completed orders` : 'Per completed order'}
+          </div>
+        </div>
+      </div>
+
+      {/* Accounting Flow & Formula Legend Guide */}
+      <div className="rounded-2xl border border-[#E5E7EB] bg-gradient-to-r from-[#FAFAFA] to-white p-4 shadow-xs">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-bold text-[#374151]">
+            <HelpCircle size={14} className="text-[#FF4500]" />
+            <span>Accounting Flow & Calculation Formulas</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowLegend((prev) => !prev)}
+            className="flex items-center gap-1 text-[11px] font-semibold text-[#6B7280] hover:text-[#111827]"
+          >
+            <span>{showLegend ? 'Hide guide' : 'Show formula guide'}</span>
+            <ChevronDown size={13} className={`transition-transform duration-200 ${showLegend ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+        {showLegend && (
+          <div className="mt-3 grid grid-cols-1 gap-2.5 border-t border-[#E5E7EB] pt-3 text-xs text-[#6B7280] md:grid-cols-3">
+            <div className="rounded-xl border border-[#F3F4F6] bg-white p-3 shadow-2xs">
+              <div className="font-bold text-[#111827] mb-1 flex items-center gap-1.5">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#FFF1EB] text-[10px] font-extrabold text-[#FF4500]">1</span>
+                <span>Core Food Revenue</span>
+              </div>
+              <div className="font-mono text-[11px] font-semibold text-[#FF4500] bg-[#FFF7F3] px-2 py-0.5 rounded-md inline-block mb-1.5">
+                Gross Sales − Discounts = Net Sales
+              </div>
+              <p className="text-[11px] leading-relaxed text-[#6B7280]">
+                <strong>Gross Sales</strong> is menu base prices before discounts. Subtracting promo <strong>Discounts</strong> yields <strong>Net Sales</strong> (food revenue kept by the restaurant).
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-[#F3F4F6] bg-white p-3 shadow-2xs">
+              <div className="font-bold text-[#111827] mb-1 flex items-center gap-1.5">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#EFF6FF] text-[10px] font-extrabold text-[#2563EB]">2</span>
+                <span>Gross Cash Inflow</span>
+              </div>
+              <div className="font-mono text-[11px] font-semibold text-[#2563EB] bg-[#EFF6FF] px-2 py-0.5 rounded-md inline-block mb-1.5">
+                Net Sales + Fees & Taxes = Total Collected
+              </div>
+              <p className="text-[11px] leading-relaxed text-[#6B7280]">
+                Adding delivery courier fees and government sales taxes to Net Sales gives <strong>Total Collected</strong> (gross cash processed via payment gateway).
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-[#F3F4F6] bg-white p-3 shadow-2xs">
+              <div className="font-bold text-[#111827] mb-1 flex items-center gap-1.5">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#F3E8FF] text-[10px] font-extrabold text-[#7C3AED]">3</span>
+                <span>Average Ticket (AOV)</span>
+              </div>
+              <div className="font-mono text-[11px] font-semibold text-[#7C3AED] bg-[#F5F3FF] px-2 py-0.5 rounded-md inline-block mb-1.5">
+                Total Collected ÷ Completed Orders = AOV
+              </div>
+              <p className="text-[11px] leading-relaxed text-[#6B7280]">
+                Average dollar amount paid per completed order. Measures combo meal selections and add-on attachment rates.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Charts Row: Area Velocity + Donut Fulfillment */}
