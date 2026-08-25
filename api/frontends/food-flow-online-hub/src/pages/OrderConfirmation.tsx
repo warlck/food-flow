@@ -98,7 +98,7 @@ const OrderConfirmation: React.FC = () => {
           <XCircle className="w-16 h-16 text-red-500 mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Order Not Found</h1>
           <p className="text-gray-600 mb-6">{error || 'Unable to find order details'}</p>
-          <Button onClick={() => navigate(restaurantId ? `/restaurant/${restaurantId}` : '/')} className="bg-food-primary hover:bg-food-accent">
+          <Button onClick={() => navigate('/')} className="bg-food-primary hover:bg-food-accent">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Home
           </Button>

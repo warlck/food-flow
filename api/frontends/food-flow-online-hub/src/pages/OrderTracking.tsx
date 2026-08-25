@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { useCart } from '@/context/CartContext';
+import { useRestaurantContext } from '@/hooks/useRestaurantContext';
+import { useActiveRestaurant } from '@/context/RestaurantContext';
 import {
   Package,
   Search,
@@ -56,6 +57,27 @@ const ORDER_STATUS_COLORS: Record<string, string> = {
   completed: 'bg-green-100 text-green-800 border-green-300',
   cancelled: 'bg-red-100 text-red-800 border-red-300',
 };
+
+interface StepConfig {
+  key: string;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const DELIVERY_STEPS: StepConfig[] = [
+  { key: 'placed', label: 'Order Placed', description: 'Received by restaurant', icon: Package },
+  { key: 'preparing', label: 'Preparing', description: 'Kitchen is cooking your food', icon: ChefHat },
+  { key: 'out_for_delivery', label: 'Out for Delivery', description: 'Courier on the way to you', icon: Bike },
+  { key: 'completed', label: 'Delivered', description: 'Enjoy your meal!', icon: Home },
+];
+
+const PICKUP_STEPS: StepConfig[] = [
+  { key: 'placed', label: 'Order Placed', description: 'Received by restaurant', icon: Package },
+  { key: 'preparing', label: 'Preparing', description: 'Kitchen is cooking your food', icon: ChefHat },
+  { key: 'ready', label: 'Ready for Pickup', description: 'Ready at restaurant counter', icon: Store },
+  { key: 'completed', label: 'Picked Up', description: 'Order completed', icon: CheckCircle2 },
+];
 
 function getStepIndex(status: string, isDelivery: boolean): number {
   switch (status) {
@@ -254,7 +276,7 @@ const OrderTracking: React.FC = () => {
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Not Found</h2>
                 <p className="text-gray-600 max-w-md mx-auto mb-6">{error}</p>
                 <Button
-                  onClick={() => navigate(restaurantId ? `/restaurant/${restaurantId}` : '/')}
+                  onClick={() => navigate('/')}
                   variant="outline"
                   className="border-food-primary text-food-primary hover:bg-food-primary/10"
                 >
