@@ -43,14 +43,14 @@ const StatsBar: React.FC = () => {
               <dt className="mt-3 text-sm font-semibold text-white sm:text-base">
                 {stat.label}
               </dt>
-              <p className="mt-1 text-xs leading-relaxed text-gray-500 sm:text-sm">{stat.sub}</p>
+              <p className="mt-1 text-xs leading-relaxed text-gray-400 sm:text-sm font-medium">{stat.sub}</p>
             </div>
           ))}
         </dl>
 
         {/* Format marquee */}
         <div className="mt-16 border-t border-white/10 pt-10">
-          <p className="mb-6 text-center text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
+          <p className="mb-6 text-center text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
             Built for every kind of kitchen
           </p>
 

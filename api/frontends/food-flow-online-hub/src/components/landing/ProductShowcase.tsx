@@ -40,7 +40,7 @@ const ProductShowcase: React.FC = () => {
           <h2 className="mt-4 text-display-sm font-extrabold text-white">
             Two screens. One source of truth.
           </h2>
-          <p className="mt-5 text-lg leading-relaxed text-gray-400">
+          <p className="mt-5 text-lg leading-relaxed text-gray-300">
             Your team works the dashboard while guests order from their own phones. Both
             sides stay in sync, order by order.
           </p>
@@ -55,7 +55,7 @@ const ProductShowcase: React.FC = () => {
               <span className="h-3 w-3 rounded-full bg-amber-400/70" />
               <span className="h-3 w-3 rounded-full bg-emerald-400/70" />
               <div className="ml-4 flex-1">
-                <div className="mx-auto w-full max-w-xs truncate rounded-md bg-black/30 px-3 py-1 text-center text-[11px] text-gray-500">
+                <div className="mx-auto w-full max-w-xs truncate rounded-md bg-black/30 px-3 py-1 text-center text-[11px] text-gray-300 font-medium">
                   app.foodflow.sg/dashboard
                 </div>
               </div>
@@ -70,7 +70,7 @@ const ProductShowcase: React.FC = () => {
                     key={kpi.label}
                     className="rounded-xl border border-white/10 bg-white/[0.04] p-4"
                   >
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                       {kpi.label}
                     </p>
                     <p className="mt-2 text-2xl font-bold tabular-nums text-white">
@@ -90,7 +90,7 @@ const ProductShowcase: React.FC = () => {
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
                   <div className="mb-5 flex items-center justify-between">
                     <p className="text-sm font-semibold text-white">Revenue, last 14 days</p>
-                    <span className="rounded-md bg-white/[0.06] px-2 py-1 text-[10px] font-semibold text-gray-400">
+                    <span className="rounded-md bg-white/[0.06] px-2 py-1 text-[10px] font-semibold text-gray-300">
                       Daily
                     </span>
                   </div>
@@ -141,7 +141,7 @@ const ProductShowcase: React.FC = () => {
                           <p className="truncate text-xs font-bold text-white">
                             {order.id} &middot; {order.table}
                           </p>
-                          <p className="text-[11px] tabular-nums text-gray-500">{order.total}</p>
+                          <p className="text-[11px] tabular-nums text-gray-400 font-medium">{order.total}</p>
                         </div>
                         <span
                           className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 ring-inset ${STATUS_TONE[order.tone]}`}

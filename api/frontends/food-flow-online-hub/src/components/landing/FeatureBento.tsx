@@ -54,7 +54,7 @@ const FeatureBento: React.FC = () => {
             Everything a modern restaurant
             <br className="hidden sm:block" /> actually needs.
           </h2>
-          <p className="mt-5 text-lg leading-relaxed text-gray-400">
+          <p className="mt-5 text-lg leading-relaxed text-gray-300">
             One system for menus, ordering, payments and reporting &mdash; instead of four
             vendors and a spreadsheet.
           </p>
@@ -67,7 +67,7 @@ const FeatureBento: React.FC = () => {
             <h3 className="text-2xl font-bold tracking-tight text-white">
               Zero commission, permanently
             </h3>
-            <p className="mt-3 max-w-lg text-sm leading-relaxed text-gray-400">
+            <p className="mt-3 max-w-lg text-sm leading-relaxed text-gray-300">
               Aggregators take 25&ndash;30% of every order. FoodFlow charges a flat
               subscription, so a busier month makes you more money instead of a bigger bill.
             </p>
@@ -76,19 +76,19 @@ const FeatureBento: React.FC = () => {
             <div className="mt-8 space-y-4">
               <div>
                 <div className="mb-2 flex items-baseline justify-between text-xs font-semibold">
-                  <span className="text-gray-500">Typical aggregator &mdash; you keep</span>
-                  <span className="tabular-nums text-gray-400">$720 of $1,000</span>
+                  <span className="text-gray-300">Typical aggregator &mdash; you keep</span>
+                  <span className="tabular-nums text-gray-200">$720 of $1,000</span>
                 </div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-white/[0.06]">
-                  <div className="h-full w-[72%] rounded-full bg-gray-600" />
+                <div className="h-2.5 overflow-hidden rounded-full bg-white/[0.08]">
+                  <div className="h-full w-[72%] rounded-full bg-gray-500" />
                 </div>
               </div>
               <div>
                 <div className="mb-2 flex items-baseline justify-between text-xs font-semibold">
                   <span className="text-white">FoodFlow &mdash; you keep</span>
-                  <span className="tabular-nums text-food-secondary">$1,000 of $1,000</span>
+                  <span className="tabular-nums text-food-secondary font-bold">$1,000 of $1,000</span>
                 </div>
-                <div className="relative h-2.5 overflow-hidden rounded-full bg-white/[0.06]">
+                <div className="relative h-2.5 overflow-hidden rounded-full bg-white/[0.08]">
                   <div className="h-full w-full rounded-full bg-gradient-to-r from-food-secondary via-food-accent to-food-primary" />
                   <div
                     aria-hidden="true"
@@ -103,7 +103,7 @@ const FeatureBento: React.FC = () => {
           <Tile>
             <TileIcon icon={Radio} />
             <h3 className="text-xl font-bold tracking-tight text-white">Live order tracking</h3>
-            <p className="mt-3 text-sm leading-relaxed text-gray-400">
+            <p className="mt-3 text-sm leading-relaxed text-gray-300">
               Diners follow their order from confirmed to ready without calling the counter.
             </p>
 
@@ -126,7 +126,7 @@ const FeatureBento: React.FC = () => {
                       <span className="absolute h-2 w-2 rounded-full bg-food-secondary animate-pulse-ring" />
                     )}
                   </span>
-                  <span className={stage.done ? 'font-medium text-white' : 'text-gray-500'}>
+                  <span className={stage.done ? 'font-medium text-white' : 'text-gray-300 font-medium'}>
                     {stage.label}
                   </span>
                 </li>
@@ -138,7 +138,7 @@ const FeatureBento: React.FC = () => {
           <Tile>
             <TileIcon icon={CreditCard} />
             <h3 className="text-xl font-bold tracking-tight text-white">Payments built in</h3>
-            <p className="mt-3 text-sm leading-relaxed text-gray-400">
+            <p className="mt-3 text-sm leading-relaxed text-gray-300">
               Cards and PayNow settle to your own account, secured by Stripe. No terminal
               rental, no chasing cash.
             </p>
@@ -146,7 +146,7 @@ const FeatureBento: React.FC = () => {
               {['Visa', 'Mastercard', 'Amex', 'PayNow', 'Apple Pay'].map((method) => (
                 <span
                   key={method}
-                  className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-gray-300"
+                  className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-gray-200"
                 >
                   {method}
                 </span>
@@ -158,7 +158,7 @@ const FeatureBento: React.FC = () => {
           <Tile>
             <TileIcon icon={QrCode} />
             <h3 className="text-xl font-bold tracking-tight text-white">QR table ordering</h3>
-            <p className="mt-3 text-sm leading-relaxed text-gray-400">
+            <p className="mt-3 text-sm leading-relaxed text-gray-300">
               One code per table turns every seat into a self-serve till. Guests order and
               pay without waiting for staff.
             </p>
@@ -171,7 +171,7 @@ const FeatureBento: React.FC = () => {
           <Tile>
             <TileIcon icon={UtensilsCrossed} />
             <h3 className="text-xl font-bold tracking-tight text-white">Menus you control</h3>
-            <p className="mt-3 text-sm leading-relaxed text-gray-400">
+            <p className="mt-3 text-sm leading-relaxed text-gray-300">
               Change prices, hide sold-out dishes and launch specials instantly. No
               reprints, no waiting on a vendor.
             </p>
@@ -184,12 +184,12 @@ const FeatureBento: React.FC = () => {
                   key={item.name}
                   className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-xs"
                 >
-                  <span className="font-semibold text-gray-200">{item.name}</span>
+                  <span className="font-semibold text-gray-100">{item.name}</span>
                   <span
                     className={
                       item.good
                         ? 'font-bold text-emerald-300'
-                        : 'font-bold text-gray-500'
+                        : 'font-bold text-gray-400'
                     }
                   >
                     {item.state}
@@ -205,7 +205,7 @@ const FeatureBento: React.FC = () => {
             <h3 className="text-2xl font-bold tracking-tight text-white">
               Know what actually sells
             </h3>
-            <p className="mt-3 max-w-lg text-sm leading-relaxed text-gray-400">
+            <p className="mt-3 max-w-lg text-sm leading-relaxed text-gray-300">
               Revenue, average order value, peak hours and top items &mdash; computed from
               your own orders, not an aggregator&apos;s black box.
             </p>
@@ -218,7 +218,7 @@ const FeatureBento: React.FC = () => {
                     className="w-full rounded-t-md bg-gradient-to-t from-food-primary/25 to-food-primary transition-all duration-500 group-hover:from-food-primary/40"
                     style={{ height: `${Math.round(height * 0.9)}px` }}
                   />
-                  <span className="text-[10px] font-medium text-gray-600">
+                  <span className="text-[10px] font-semibold text-gray-300">
                     {['M', 'T', 'W', 'T', 'F', 'S', 'S'][index]}
                   </span>
                 </div>

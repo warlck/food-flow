@@ -54,7 +54,7 @@ const FinalCTA: React.FC = () => {
           </Button>
         </div>
 
-        <p className="mt-8 text-sm text-gray-400">
+        <p className="mt-8 text-sm text-gray-300 font-medium">
           No setup fee &middot; No lock-in contract &middot; No commission per order
         </p>
       </div>

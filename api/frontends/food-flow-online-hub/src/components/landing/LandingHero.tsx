@@ -58,7 +58,7 @@ const LandingHero: React.FC = () => {
               <span className="text-gradient-brand">Your margins.</span>
             </h1>
 
-            <p className="mx-auto mt-8 max-w-xl text-lg leading-relaxed text-gray-400 sm:text-xl lg:mx-0">
+            <p className="mx-auto mt-8 max-w-xl text-lg leading-relaxed text-gray-300 sm:text-xl lg:mx-0">
               FoodFlow is the ordering platform restaurants own end to end. Launch a
               branded storefront, take QR and online orders, and keep{' '}
               <span className="font-semibold text-white">every dollar</span> of every
@@ -90,7 +90,7 @@ const LandingHero: React.FC = () => {
             </div>
 
             {/* Trust row */}
-            <ul className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-gray-500 lg:justify-start">
+            <ul className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-gray-300 lg:justify-start">
               <li className="flex items-center gap-2">
                 <BadgePercent className="h-4 w-4 text-food-secondary" />
                 0% commission
@@ -106,11 +106,11 @@ const LandingHero: React.FC = () => {
             </ul>
 
             {/* Secondary path for diners */}
-            <p className="mt-8 text-sm text-gray-500">
+            <p className="mt-8 text-sm text-gray-400">
               Placed an order?{' '}
               <Link
                 to="/track-order"
-                className="inline-flex items-center gap-1 font-semibold text-gray-300 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white hover:decoration-food-primary"
+                className="inline-flex items-center gap-1 font-semibold text-gray-200 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white hover:decoration-food-primary"
               >
                 <Package className="h-4 w-4" />
                 Track it here
@@ -125,7 +125,7 @@ const LandingHero: React.FC = () => {
                 {/* Ticket header */}
                 <div className="flex items-center justify-between border-b border-white/10 pb-5">
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-widest text-gray-500">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
                       Incoming order
                     </p>
                     <p className="mt-1 text-lg font-bold text-white">Table 12</p>
@@ -144,15 +144,15 @@ const LandingHero: React.FC = () => {
                   ].map((item) => (
                     <li key={item.name} className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-3">
-                        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/[0.08] text-xs font-bold text-gray-300">
+                        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/[0.08] text-xs font-bold text-gray-200">
                           {item.qty}
                         </span>
                         <div>
                           <p className="font-semibold text-white">{item.name}</p>
-                          <p className="text-xs text-gray-500">{item.note}</p>
+                          <p className="text-xs text-gray-400">{item.note}</p>
                         </div>
                       </div>
-                      <span className="font-semibold tabular-nums text-gray-300">
+                      <span className="font-semibold tabular-nums text-gray-200">
                         ${item.price}
                       </span>
                     </li>
@@ -161,11 +161,11 @@ const LandingHero: React.FC = () => {
 
                 {/* Totals: the pitch, quantified */}
                 <div className="space-y-2.5 border-t border-white/10 pt-5 text-sm">
-                  <div className="flex items-center justify-between text-gray-400">
+                  <div className="flex items-center justify-between text-gray-300">
                     <span>Order total</span>
                     <span className="font-semibold tabular-nums text-white">$24.70</span>
                   </div>
-                  <div className="flex items-center justify-between text-gray-400">
+                  <div className="flex items-center justify-between text-gray-300">
                     <span>Platform commission</span>
                     <span className="font-semibold tabular-nums text-emerald-300">
                       &minus;$0.00
@@ -191,7 +191,7 @@ const LandingHero: React.FC = () => {
               </div>
               <div className="pr-1">
                 <p className="text-sm font-bold leading-tight text-white">Scan to order</p>
-                <p className="text-xs text-gray-400">No app download</p>
+                <p className="text-xs text-gray-300">No app download</p>
               </div>
             </div>
           </div>

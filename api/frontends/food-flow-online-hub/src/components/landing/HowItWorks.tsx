@@ -55,7 +55,7 @@ const HowItWorks: React.FC = () => {
           <h2 className="mt-4 text-display-sm font-extrabold text-white">
             Live by tomorrow&apos;s lunch service.
           </h2>
-          <p className="mt-5 text-lg leading-relaxed text-gray-400">
+          <p className="mt-5 text-lg leading-relaxed text-gray-300">
             No hardware to buy, no integrations to schedule, no engineer required. Four
             steps between signing up and taking your first paid order.
           </p>
@@ -78,11 +78,11 @@ const HowItWorks: React.FC = () => {
                     <Icon className="h-7 w-7 text-food-primary" />
                   </div>
 
-                  <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-gray-600">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-food-primary/90">
                     {step.detail}
                   </p>
                   <h3 className="text-xl font-bold tracking-tight text-white">{step.title}</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-gray-400">{step.body}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-gray-300">{step.body}</p>
                 </li>
               );
             })}
