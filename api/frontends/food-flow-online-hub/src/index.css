@@ -91,6 +91,10 @@
 }
 
 @layer base {
+  html {
+    background-color: #07070A;
+  }
+
   * {
     @apply border-border;
   }
