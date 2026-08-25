@@ -192,3 +192,105 @@
     @apply mx-4 sm:mx-6 md:mx-8;
   }
 }
+
+/* ============================================================
+   Marketing landing page primitives (dark "ink" surfaces)
+   ============================================================ */
+@layer utilities {
+  /* Brand gradient text */
+  .text-gradient-brand {
+    background-image: linear-gradient(100deg, #FFB72B 0%, #FF8C42 45%, #FF4500 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Frosted glass card on dark surfaces */
+  .glass-panel {
+    background-color: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .glass-panel-strong {
+    background-color: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+
+  /* Hairline gradient ring that reads as a lit edge */
+  .ring-lit {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.09),
+      0 24px 60px -20px rgba(0, 0, 0, 0.7);
+  }
+
+  /* Blueprint grid background */
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+
+  .bg-grid-fine {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+
+  /* Subtle film grain to stop large dark areas banding */
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
+  }
+
+  /* Radial fade so grids/marquees dissolve at the edges */
+  .mask-fade-x {
+    -webkit-mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
+  }
+
+  .mask-fade-y {
+    -webkit-mask-image: linear-gradient(to bottom, black 45%, transparent);
+    mask-image: linear-gradient(to bottom, black 45%, transparent);
+  }
+
+  .mask-radial {
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, black 40%, transparent 100%);
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, black 40%, transparent 100%);
+  }
+
+  /* Marquee track: duplicate children in markup, translate 50% */
+  .marquee-track {
+    display: flex;
+    width: max-content;
+  }
+
+  /* Pause looping motion on hover for readability */
+  .pause-on-hover:hover * {
+    animation-play-state: paused;
+  }
+}
+
+/* Respect users who ask for less motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-marquee-slow,
+  .animate-aurora,
+  .animate-shimmer,
+  .animate-pulse-ring,
+  .animate-float-y,
+  .animate-rise-in,
+  .floating-cart,
+  .gradient-animation {
+    animation: none !important;
+  }
+
+  .animate-rise-in {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
