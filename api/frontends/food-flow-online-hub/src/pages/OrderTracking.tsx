@@ -155,8 +155,10 @@ const OrderTracking: React.FC = () => {
     } else {
       setOrder(null);
       setLoading(false);
+      setError(null);
+      setActiveRestaurantId(null);
     }
-  }, [orderId, fetchOrder]);
+  }, [orderId, fetchOrder, setActiveRestaurantId]);
 
   // Polling effect
   useEffect(() => {
