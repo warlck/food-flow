@@ -21,7 +21,7 @@ export const MarketingPage: React.FC<MarketingPageProps> = ({
   children,
 }) => {
   return (
-    <Layout>
+    <Layout surface="marketing">
       <div className="relative isolate min-h-[calc(100vh-160px)] bg-ink-950 font-sans text-white selection:bg-food-primary/30 animate-fade-in">
         {/* Background stack */}
         <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">

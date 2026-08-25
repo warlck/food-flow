@@ -4,16 +4,22 @@ import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { useSurface } from '@/hooks/useSurface';
 import { useRestaurantContext } from '@/hooks/useRestaurantContext';
+import { type Surface } from '@/lib/surfaces';
 import { ShoppingCart, Menu, X, Book, ChefHat, Package } from 'lucide-react';
 import { WHATSAPP_URL } from '@/components/landing/constants';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  surface?: Surface;
+}
+
+const Header: React.FC<HeaderProps> = ({ surface: propSurface }) => {
   const { getTotalItems } = useCart();
   const { restaurantId } = useRestaurantContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
-  const surface = useSurface();
+  const hookSurface = useSurface();
+  const surface = propSurface ?? hookSurface;
   const isMarketing = surface === 'marketing';
   const isLandingPage = location.pathname === '/';
 
