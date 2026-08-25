@@ -36,8 +36,8 @@ const Header: React.FC<HeaderProps> = ({ surface: propSurface }) => {
   };
 
   const headerClass = isMarketing
-    ? 'sticky top-0 z-40 border-b border-white/10 bg-ink-950/70 backdrop-blur-xl'
-    : 'sticky top-0 z-40 bg-white shadow-md';
+    ? 'sticky top-0 z-40 border-b border-white/[0.06] bg-black/10 backdrop-blur-md transition-colors'
+    : 'sticky top-0 z-40 bg-white shadow-md border-b border-gray-100';
 
   const navLinkClass = isMarketing
     ? 'text-gray-300 hover:text-white transition-colors flex items-center'

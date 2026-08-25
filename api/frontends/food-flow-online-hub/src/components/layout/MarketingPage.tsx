@@ -21,12 +21,12 @@ export const MarketingPage: React.FC<MarketingPageProps> = ({
   children,
 }) => {
   return (
-    <Layout surface="marketing">
+    <Layout surface="marketing" className="bg-gray-800 text-white">
       <div className="relative isolate min-h-[calc(100vh-160px)] bg-gray-800 font-sans text-white selection:bg-food-primary/30 animate-fade-in">
         {/* Background stack matching FinalCTA ("Stop paying rent on your own customers") */}
         <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-          {/* Warm bloom behind the headline */}
-          <div className="absolute left-1/2 top-0 h-[32rem] w-[48rem] -translate-x-1/2 -translate-y-1/4 rounded-full bg-food-primary/20 blur-[120px]" />
+          {/* Warm bloom behind headline and header */}
+          <div className="absolute left-1/2 -top-24 h-[36rem] w-[52rem] -translate-x-1/2 rounded-full bg-food-primary/20 blur-[120px]" />
           {/* Fine grid overlay with radial mask */}
           <div className="absolute inset-0 bg-grid-fine mask-radial opacity-40" />
           {/* Fade into the footer tone */}
