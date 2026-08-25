@@ -16,6 +16,10 @@ const Footer: React.FC = () => {
   );
   const showBrowseMenu = Boolean(restaurantId && !isCurrentRestaurantPage && !isLandingPage);
 
+  const isTrackOrderPage =
+    location.pathname.startsWith('/track-order') ||
+    location.pathname.startsWith('/order-tracking');
+
   return (
     <footer className="bg-gray-800 text-white mt-auto border-t border-gray-700/50">
       <div className="container mx-auto px-4 py-12 max-w-7xl">
@@ -52,11 +56,13 @@ const Footer: React.FC = () => {
                     </Link>
                   </li>
                 )}
-                <li>
-                  <Link to="/track-order" className="text-gray-400 hover:text-white transition-colors">
-                    Track Order
-                  </Link>
-                </li>
+                {!isTrackOrderPage && (
+                  <li>
+                    <Link to="/track-order" className="text-gray-400 hover:text-white transition-colors">
+                      Track Order
+                    </Link>
+                  </li>
+                )}
               </ul>
             </div>
           </div>

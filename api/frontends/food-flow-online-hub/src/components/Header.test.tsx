@@ -57,26 +57,28 @@ describe('Header Menu & Cart Visibility Matrix', () => {
     expect(screen.getByText('Partner with us')).toBeDefined();
   });
 
-  it('hides BOTH Menu and Cart on /track-order when cart is empty and no order is loaded', () => {
+  it('hides Menu, Cart, and Track Order links on /track-order when cart is empty and no order is loaded', () => {
     renderHeader('/track-order', null, 0, 'stale_id');
 
     expect(screen.queryByText('Menu')).toBeNull();
     expect(document.querySelector('a[href="/cart"]')).toBeNull();
-    expect(screen.getByText('Track Order')).toBeDefined();
+    expect(screen.queryByText('Track Order')).toBeNull();
   });
 
-  it('shows Menu and hides Cart on /track-order/:id when order is active', () => {
+  it('shows Menu and hides Cart and Track Order links on /track-order/:id when order is active', () => {
     renderHeader('/track-order/ord_123', 'rest_order_123', 0, null);
 
     expect(screen.getByText('Menu')).toBeDefined();
     expect(document.querySelector('a[href="/cart"]')).toBeNull();
+    expect(screen.queryByText('Track Order')).toBeNull();
   });
 
-  it('shows Cart on /restaurant/:id and hides Menu on self restaurant page', () => {
+  it('shows Cart and Track Order on /restaurant/:id and hides Menu on self restaurant page', () => {
     vi.mocked(reactRouter.useParams).mockReturnValue({ restaurantId: 'rest_page_123' });
     renderHeader('/restaurant/rest_page_123', null, 1, 'rest_page_123');
 
     expect(screen.queryByText('Menu')).toBeNull(); // self-link suppressed
     expect(document.querySelector('a[href="/cart"]')).not.toBeNull();
+    expect(screen.getByText('Track Order')).toBeDefined();
   });
 });

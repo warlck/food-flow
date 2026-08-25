@@ -29,6 +29,10 @@ const Header: React.FC<HeaderProps> = ({ surface: propSurface }) => {
   );
   const showMenuLink = Boolean(restaurantId && !isCurrentRestaurantPage && !isLandingPage);
 
+  const isTrackOrderPage =
+    location.pathname.startsWith('/track-order') ||
+    location.pathname.startsWith('/order-tracking');
+
   useEffect(() => {
     if (!isLandingPage) {
       setScrolled(false);
@@ -92,10 +96,12 @@ const Header: React.FC<HeaderProps> = ({ surface: propSurface }) => {
               <span>Menu</span>
             </Link>
           )}
-          <Link to="/track-order" className={navLinkClass}>
-            <Package className="mr-1" size={18} />
-            <span>Track Order</span>
-          </Link>
+          {!isTrackOrderPage && (
+            <Link to="/track-order" className={navLinkClass}>
+              <Package className="mr-1" size={18} />
+              <span>Track Order</span>
+            </Link>
+          )}
           {isMarketing && (
             <a
               href={WHATSAPP_URL}
@@ -153,14 +159,16 @@ const Header: React.FC<HeaderProps> = ({ surface: propSurface }) => {
                 <span>Menu</span>
               </Link>
             )}
-            <Link 
-              to="/track-order" 
-              className={`${navLinkClass} p-2`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <Package className="mr-2" size={18} />
-              <span>Track Order</span>
-            </Link>
+            {!isTrackOrderPage && (
+              <Link 
+                to="/track-order" 
+                className={`${navLinkClass} p-2`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Package className="mr-2" size={18} />
+                <span>Track Order</span>
+              </Link>
+            )}
             {isMarketing && (
               <a
                 href={WHATSAPP_URL}
