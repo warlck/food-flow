@@ -2,19 +2,21 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Facebook, Instagram, Twitter, Heart } from 'lucide-react';
 import { useRestaurantContext } from '@/hooks/useRestaurantContext';
+import { useSurface } from '@/hooks/useSurface';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
   const { restaurantId } = useRestaurantContext();
   const location = useLocation();
+  const surface = useSurface();
+  const isMarketing = surface === 'marketing';
 
-  const isLandingPage = location.pathname === '/';
   const isCurrentRestaurantPage = Boolean(
     restaurantId &&
       (location.pathname === `/restaurant/${restaurantId}` ||
         location.pathname === `/mobile-restaurant/${restaurantId}`)
   );
-  const showBrowseMenu = Boolean(restaurantId && !isCurrentRestaurantPage && !isLandingPage);
+  const showBrowseMenu = Boolean(!isMarketing && restaurantId && !isCurrentRestaurantPage);
 
   const isTrackOrderPage =
     location.pathname.startsWith('/track-order') ||

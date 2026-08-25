@@ -65,10 +65,10 @@ describe('Header Menu & Cart Visibility Matrix', () => {
     expect(screen.queryByText('Track Order')).toBeNull();
   });
 
-  it('shows Menu and hides Cart and Track Order links on /track-order/:id when order is active', () => {
+  it('hides Menu, Cart, and Track Order links on /track-order/:id even when order is active', () => {
     renderHeader('/track-order/ord_123', 'rest_order_123', 0, null);
 
-    expect(screen.getByText('Menu')).toBeDefined();
+    expect(screen.queryByText('Menu')).toBeNull();
     expect(document.querySelector('a[href="/cart"]')).toBeNull();
     expect(screen.queryByText('Track Order')).toBeNull();
   });
@@ -78,6 +78,15 @@ describe('Header Menu & Cart Visibility Matrix', () => {
     renderHeader('/restaurant/rest_page_123', null, 1, 'rest_page_123');
 
     expect(screen.queryByText('Menu')).toBeNull(); // self-link suppressed
+    expect(document.querySelector('a[href="/cart"]')).not.toBeNull();
+    expect(screen.getByText('Track Order')).toBeDefined();
+  });
+
+  it('shows Menu, Cart, and Track Order on /cart (app surface) when cart has items', () => {
+    vi.mocked(reactRouter.useParams).mockReturnValue({});
+    renderHeader('/cart', null, 2, 'cart_rest_123');
+
+    expect(screen.getByText('Menu')).toBeDefined();
     expect(document.querySelector('a[href="/cart"]')).not.toBeNull();
     expect(screen.getByText('Track Order')).toBeDefined();
   });

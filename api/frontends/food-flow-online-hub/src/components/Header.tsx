@@ -27,7 +27,7 @@ const Header: React.FC<HeaderProps> = ({ surface: propSurface }) => {
       (location.pathname === `/restaurant/${restaurantId}` ||
         location.pathname === `/mobile-restaurant/${restaurantId}`)
   );
-  const showMenuLink = Boolean(restaurantId && !isCurrentRestaurantPage && !isLandingPage);
+  const showMenuLink = Boolean(!isMarketing && restaurantId && !isCurrentRestaurantPage);
 
   const isTrackOrderPage =
     location.pathname.startsWith('/track-order') ||
