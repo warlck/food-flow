@@ -28,8 +28,8 @@ const ProductShowcase: React.FC = () => {
   return (
     <section className="relative isolate overflow-hidden border-t border-white/10 bg-transparent py-24 lg:py-32">
       <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-        {/* Subtle warm bloom */}
-        <div className="absolute left-1/2 top-1/3 h-[34rem] w-[54rem] -translate-x-1/2 rounded-full bg-food-primary/[0.10] blur-[140px]" />
+        {/* Subtle warm bloom positioned lower to seamlessly transition into FinalCTA */}
+        <div className="absolute left-1/2 bottom-[-4rem] h-[36rem] w-[56rem] -translate-x-1/2 rounded-full bg-food-primary/[0.09] blur-[150px]" />
       </div>
 
       <div className="container mx-auto max-w-7xl px-4">
