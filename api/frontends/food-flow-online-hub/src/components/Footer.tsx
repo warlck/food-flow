@@ -8,12 +8,13 @@ const Footer: React.FC = () => {
   const { restaurantId } = useRestaurantContext();
   const location = useLocation();
 
+  const isLandingPage = location.pathname === '/';
   const isCurrentRestaurantPage = Boolean(
     restaurantId &&
       (location.pathname === `/restaurant/${restaurantId}` ||
         location.pathname === `/mobile-restaurant/${restaurantId}`)
   );
-  const showBrowseMenu = Boolean(restaurantId && !isCurrentRestaurantPage);
+  const showBrowseMenu = Boolean(restaurantId && !isCurrentRestaurantPage && !isLandingPage);
 
   return (
     <footer className="bg-gray-800 text-white mt-auto border-t border-gray-700/50">

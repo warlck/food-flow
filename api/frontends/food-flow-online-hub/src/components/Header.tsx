@@ -22,13 +22,12 @@ const Header: React.FC<HeaderProps> = ({ surface: propSurface }) => {
   const surface = propSurface ?? hookSurface;
   const isMarketing = surface === 'marketing';
   const isLandingPage = location.pathname === '/';
-
   const isCurrentRestaurantPage = Boolean(
     restaurantId &&
       (location.pathname === `/restaurant/${restaurantId}` ||
         location.pathname === `/mobile-restaurant/${restaurantId}`)
   );
-  const showMenuLink = Boolean(restaurantId && !isCurrentRestaurantPage);
+  const showMenuLink = Boolean(restaurantId && !isCurrentRestaurantPage && !isLandingPage);
 
   useEffect(() => {
     if (!isLandingPage) {
