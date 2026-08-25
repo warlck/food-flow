@@ -22,13 +22,15 @@ export const MarketingPage: React.FC<MarketingPageProps> = ({
 }) => {
   return (
     <Layout surface="marketing">
-      <div className="relative isolate min-h-[calc(100vh-160px)] bg-ink-950 font-sans text-white selection:bg-food-primary/30 animate-fade-in">
-        {/* Background stack */}
+      <div className="relative isolate min-h-[calc(100vh-160px)] bg-gray-800 font-sans text-white selection:bg-food-primary/30 animate-fade-in">
+        {/* Background stack matching FinalCTA ("Stop paying rent on your own customers") */}
         <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 left-1/2 h-[38rem] w-[38rem] -translate-x-1/2 rounded-full bg-food-primary/20 blur-[120px]" />
-          <div className="absolute -right-32 top-24 h-[24rem] w-[24rem] rounded-full bg-food-secondary/15 blur-[110px]" />
-          <div className="absolute inset-0 bg-grid mask-fade-y opacity-60" />
-          <div className="absolute inset-0 bg-noise opacity-[0.15] mix-blend-soft-light" />
+          {/* Warm bloom behind the headline */}
+          <div className="absolute left-1/2 top-0 h-[32rem] w-[48rem] -translate-x-1/2 -translate-y-1/4 rounded-full bg-food-primary/20 blur-[120px]" />
+          {/* Fine grid overlay with radial mask */}
+          <div className="absolute inset-0 bg-grid-fine mask-radial opacity-40" />
+          {/* Fade into the footer tone */}
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-gray-800" />
         </div>
 
         <div className={`container mx-auto px-4 py-12 md:py-16 ${maxWidth}`}>
