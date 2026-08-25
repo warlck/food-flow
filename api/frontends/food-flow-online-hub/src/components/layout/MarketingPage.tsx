@@ -22,7 +22,7 @@ export const MarketingPage: React.FC<MarketingPageProps> = ({
 }) => {
   return (
     <Layout surface="marketing" className="bg-gray-800 text-white">
-      <div className="relative isolate min-h-[calc(100vh-160px)] bg-gray-800 font-sans text-white selection:bg-food-primary/30 animate-fade-in">
+      <div className="relative isolate min-h-[calc(100vh-160px)] bg-gray-800 font-sans text-white selection:bg-food-primary/30 animate-fade-in -mt-[65px] pt-[65px]">
         {/* Background stack matching FinalCTA ("Stop paying rent on your own customers") */}
         <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
           {/* Warm bloom behind headline and header */}
