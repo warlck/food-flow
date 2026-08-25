@@ -57,27 +57,6 @@ const ORDER_STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-800 border-red-300',
 };
 
-interface StepConfig {
-  key: string;
-  label: string;
-  description: string;
-  icon: React.ComponentType<{ className?: string }>;
-}
-
-const DELIVERY_STEPS: StepConfig[] = [
-  { key: 'placed', label: 'Order Placed', description: 'Received by restaurant', icon: Package },
-  { key: 'preparing', label: 'Preparing', description: 'Kitchen is cooking your food', icon: ChefHat },
-  { key: 'out_for_delivery', label: 'Out for Delivery', description: 'Courier on the way to you', icon: Bike },
-  { key: 'completed', label: 'Delivered', description: 'Enjoy your meal!', icon: Home },
-];
-
-const PICKUP_STEPS: StepConfig[] = [
-  { key: 'placed', label: 'Order Placed', description: 'Received by restaurant', icon: Package },
-  { key: 'preparing', label: 'Preparing', description: 'Kitchen is cooking your food', icon: ChefHat },
-  { key: 'ready', label: 'Ready for Pickup', description: 'Ready at restaurant counter', icon: Store },
-  { key: 'completed', label: 'Picked Up', description: 'Order completed', icon: CheckCircle2 },
-];
-
 function getStepIndex(status: string, isDelivery: boolean): number {
   switch (status) {
     case 'pending':
@@ -100,15 +79,22 @@ const OrderTracking: React.FC = () => {
   const { orderId } = useParams<{ orderId?: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { restaurantId } = useCart();
+  const { setActiveRestaurantId } = useActiveRestaurant();
 
   const [inputOrderId, setInputOrderId] = useState(orderId || '');
   const [order, setOrder] = useState<Order | null>(null);
+  const { restaurantId } = useRestaurantContext(order?.restaurantId);
   const [loading, setLoading] = useState<boolean>(!!orderId);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+
+  useEffect(() => {
+    return () => {
+      setActiveRestaurantId(null);
+    };
+  }, [setActiveRestaurantId]);
 
   const fetchOrder = useCallback(async (id: string, isBackground = false) => {
     if (!id) return;
@@ -122,18 +108,22 @@ const OrderTracking: React.FC = () => {
     try {
       const data = await orderService.getOrder(id);
       setOrder(data);
+      if (data?.restaurantId) {
+        setActiveRestaurantId(data.restaurantId);
+      }
       setLastRefreshedAt(new Date());
     } catch (err) {
       console.error('Error fetching order:', err);
       if (!isBackground) {
         setError(err instanceof Error ? err.message : 'Could not find order. Please verify your Order ID.');
         setOrder(null);
+        setActiveRestaurantId(null);
       }
     } finally {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [setActiveRestaurantId]);
 
   // Sync initial param
   useEffect(() => {
@@ -197,71 +187,96 @@ const OrderTracking: React.FC = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8 max-w-4xl min-h-[75vh]">
-        {/* Search Header Card */}
-        <Card className="mb-8 border-gray-200 shadow-sm bg-gradient-to-r from-orange-50 to-amber-50 dark:from-gray-800 dark:to-gray-900">
-          <CardContent className="pt-6">
-            <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row items-center gap-3">
+      <div className="min-h-screen bg-gray-50 text-gray-900 pb-16">
+        {/* Dark masthead band */}
+        <div className="relative isolate overflow-hidden bg-ink-950 text-white pt-10 pb-16 px-4 mb-8">
+          <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+            <div className="absolute -top-40 left-1/2 h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-food-primary/20 blur-[120px]" />
+            <div className="absolute inset-0 bg-grid mask-fade-y opacity-60" />
+            <div className="absolute inset-0 bg-noise opacity-[0.15] mix-blend-soft-light" />
+            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-gray-50/10" />
+          </div>
+
+          <div className="container mx-auto max-w-4xl">
+            <div className="text-center mb-8">
+              <div className="mb-2 text-xs font-bold uppercase tracking-wider text-food-primary">
+                Live Status
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-2">
+                Track your order
+              </h1>
+              <p className="text-gray-400 text-sm sm:text-base max-w-md mx-auto">
+                Follow real-time milestones from kitchen preparation to your doorstep.
+              </p>
+            </div>
+
+            {/* Search Bar inside masthead */}
+            <form
+              onSubmit={handleSearchSubmit}
+              className="glass-panel-strong ring-lit rounded-2xl p-2 sm:p-2.5 flex flex-col sm:flex-row items-center gap-2 max-w-2xl mx-auto"
+            >
               <div className="relative flex-1 w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input
                   type="text"
                   placeholder="Enter Order ID (e.g., 550e8400-e29b-41d4-a716-446655440000)"
                   value={inputOrderId}
                   onChange={(e) => setInputOrderId(e.target.value)}
-                  className="pl-10 bg-white dark:bg-gray-800 h-12 text-base shadow-inner border-gray-300 focus-visible:ring-food-primary"
+                  className="pl-11 bg-transparent border-0 text-white placeholder:text-gray-500 h-12 text-base focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none"
                 />
               </div>
               <Button
                 type="submit"
-                className="w-full sm:w-auto h-12 px-6 bg-food-primary hover:bg-food-accent text-white font-semibold flex items-center justify-center gap-2"
+                className="w-full sm:w-auto h-12 px-6 bg-food-primary hover:bg-food-accent text-white font-semibold flex items-center justify-center gap-2 rounded-xl shadow-lg shadow-food-primary/25"
               >
                 <Search className="w-4 h-4" />
                 Track Order
               </Button>
             </form>
-          </CardContent>
-        </Card>
-
-        {/* Loading State */}
-        {loading && (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-12 h-12 animate-spin text-food-primary mb-4" />
-            <p className="text-gray-600 font-medium">Fetching order status...</p>
           </div>
-        )}
+        </div>
 
-        {/* Error / Not Found State */}
-        {!loading && error && (
-          <Card className="text-center py-12 border-red-200 bg-red-50/50">
-            <CardContent>
-              <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Not Found</h2>
-              <p className="text-gray-600 max-w-md mx-auto mb-6">{error}</p>
-              <Button
-                onClick={() => navigate(restaurantId ? `/restaurant/${restaurantId}` : '/')}
-                variant="outline"
-                className="border-food-primary text-food-primary hover:bg-food-primary/10"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Home
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        {/* Content Section */}
+        <div className="container mx-auto px-4 max-w-4xl">
+          {/* Loading State */}
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="w-12 h-12 animate-spin text-food-primary mb-4" />
+              <p className="text-gray-600 font-medium">Fetching order status...</p>
+            </div>
+          )}
 
-        {/* No Order Selected Prompt */}
-        {!loading && !error && !order && !orderId && (
-          <Card className="text-center py-16 border-dashed border-2">
-            <CardContent>
-              <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">Track Your Food Order Live</h2>
-              <p className="text-gray-500 max-w-md mx-auto mb-6">
-                Enter your unique Order ID in the search bar above to see live updates, estimated time, and order details.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+          {/* Error / Not Found State */}
+          {!loading && error && (
+            <Card className="text-center py-12 border-red-200 bg-red-50/50">
+              <CardContent>
+                <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Not Found</h2>
+                <p className="text-gray-600 max-w-md mx-auto mb-6">{error}</p>
+                <Button
+                  onClick={() => navigate(restaurantId ? `/restaurant/${restaurantId}` : '/')}
+                  variant="outline"
+                  className="border-food-primary text-food-primary hover:bg-food-primary/10"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Home
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* No Order Selected Prompt */}
+          {!loading && !error && !order && !orderId && (
+            <Card className="text-center py-16 border-dashed border-2 bg-white">
+              <CardContent>
+                <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-gray-800 mb-2">Track Your Food Order Live</h2>
+                <p className="text-gray-500 max-w-md mx-auto mb-6">
+                  Enter your unique Order ID in the search bar above to see live updates, estimated time, and order details.
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
         {/* Order Tracking Dashboard */}
         {!loading && !error && order && (
@@ -551,21 +566,33 @@ const OrderTracking: React.FC = () => {
                 </Card>
 
                 {/* Back / Re-order Action Card */}
-                <Card className="border-gray-200 shadow-sm bg-gray-50">
+                <Card className="border-gray-200 shadow-sm bg-white">
                   <CardContent className="pt-6 space-y-3">
-                    <Button
-                      onClick={() => navigate(restaurantId ? `/restaurant/${restaurantId}` : '/')}
-                      className="w-full bg-food-primary hover:bg-food-accent text-white font-semibold"
-                    >
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      Back to Restaurant Menu
-                    </Button>
+                    {restaurantId ? (
+                      <Button
+                        onClick={() => navigate(`/restaurant/${restaurantId}`)}
+                        className="w-full bg-food-primary hover:bg-food-accent text-white font-semibold"
+                      >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Restaurant Menu
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => navigate('/')}
+                        variant="outline"
+                        className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold"
+                      >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Home
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               </div>
             </div>
           </div>
         )}
+        </div>
       </div>
     </Layout>
   );
