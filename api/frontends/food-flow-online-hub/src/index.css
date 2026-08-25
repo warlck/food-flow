@@ -100,7 +100,8 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    background-color: #07070A;
+    color: #FFFFFF;
   }
 }
 

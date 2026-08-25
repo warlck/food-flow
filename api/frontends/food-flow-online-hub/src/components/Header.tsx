@@ -16,12 +16,10 @@ const Header: React.FC<HeaderProps> = ({ surface: propSurface }) => {
   const { getTotalItems } = useCart();
   const { restaurantId } = useRestaurantContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const hookSurface = useSurface();
   const surface = propSurface ?? hookSurface;
   const isMarketing = surface === 'marketing';
-  const isLandingPage = location.pathname === '/';
   const isCurrentRestaurantPage = Boolean(
     restaurantId &&
       (location.pathname === `/restaurant/${restaurantId}` ||
@@ -33,45 +31,13 @@ const Header: React.FC<HeaderProps> = ({ surface: propSurface }) => {
     location.pathname.startsWith('/track-order') ||
     location.pathname.startsWith('/order-tracking');
 
-  useEffect(() => {
-    if (!isLandingPage) {
-      setScrolled(false);
-      return;
-    }
-
-    let ticking = false;
-    const onScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          setScrolled(window.scrollY > 24);
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-    setScrolled(window.scrollY > 24);
-
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-    };
-  }, [isLandingPage]);
-
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
 
-  let headerClass = 'sticky top-0 z-40 transition-colors duration-300 ';
-  if (isMarketing) {
-    if (isLandingPage && !scrolled) {
-      headerClass += 'bg-transparent border-b border-transparent';
-    } else {
-      headerClass += 'border-b border-white/10 bg-ink-950/70 backdrop-blur-xl';
-    }
-  } else {
-    headerClass += 'bg-white shadow-md';
-  }
+  const headerClass = isMarketing
+    ? 'sticky top-0 z-40 border-b border-white/10 bg-ink-950/70 backdrop-blur-xl'
+    : 'sticky top-0 z-40 bg-white shadow-md';
 
   const navLinkClass = isMarketing
     ? 'text-gray-300 hover:text-white transition-colors flex items-center'
