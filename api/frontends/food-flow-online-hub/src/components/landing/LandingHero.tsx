@@ -20,7 +20,7 @@ import { SALES_MAILTO, WHATSAPP_URL } from './constants';
  */
 const LandingHero: React.FC = () => {
   return (
-    <section className="relative isolate overflow-hidden bg-ink-950">
+    <section className="relative isolate overflow-hidden bg-ink-950 -mt-[65px] pt-[65px]">
       {/* ── Background layers ─────────────────────────────────────────── */}
       <div aria-hidden="true" className="absolute inset-0 -z-10">
         {/* Aurora blobs */}
@@ -41,7 +41,7 @@ const LandingHero: React.FC = () => {
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-ink-950" />
       </div>
 
-      <div className="container mx-auto max-w-7xl px-4 pb-24 pt-20 sm:pb-28 lg:pb-36 lg:pt-28">
+      <div className="container mx-auto max-w-7xl px-4 pb-24 pt-16 sm:pb-28 lg:pb-36 lg:pt-24">
         <div className="grid items-center gap-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-12">
           {/* ── Copy column ─────────────────────────────────────────── */}
           <div className="animate-rise-in text-center lg:text-left">
