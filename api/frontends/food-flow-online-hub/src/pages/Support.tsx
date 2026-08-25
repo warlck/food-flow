@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Layout from '@/components/Layout';
+import MarketingPage from '@/components/layout/MarketingPage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,7 +14,6 @@ import {
   MessageSquare,
   Mail,
   Search,
-  ArrowLeft,
   ChevronRight,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -22,9 +21,9 @@ import { Input } from '@/components/ui/input';
 
 interface FAQItem {
   id: string;
+  category: string;
   question: string;
   answer: string;
-  category: string;
 }
 
 const faqs: FAQItem[] = [
@@ -83,125 +82,114 @@ const Support: React.FC = () => {
   );
 
   return (
-    <Layout>
-      <div className="container mx-auto px-4 py-12 max-w-4xl">
-        {/* Back Link */}
-        <div className="mb-6">
-          <Link
-            to="/"
-            className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-food-primary transition-colors"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Home
-          </Link>
-        </div>
-
-        {/* Hero Header */}
-        <div className="text-center mb-10">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">Help & Support</h1>
-          <p className="mt-3 text-lg text-gray-600 max-w-2xl mx-auto">
-            Find answers to frequently asked questions, track your orders, or reach out to our team in Singapore.
-          </p>
-        </div>
-
-        {/* Quick Action Banner */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-          <Card className="bg-food-primary/5 border-food-primary/20 hover:border-food-primary transition-colors">
-            <CardHeader className="p-5 pb-3">
-              <div className="flex items-center space-x-3">
-                <Package className="h-6 w-6 text-food-primary" />
-                <CardTitle className="text-base">Track Order</CardTitle>
+    <MarketingPage
+      title="Help & Support"
+      description="Find answers to frequently asked questions, track your orders, or reach out to our team in Singapore."
+      icon={HelpCircle}
+    >
+      {/* Quick Action Banner */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+        <Card className="glass-panel ring-lit border-white/10 hover:border-food-primary/40 transition-colors text-white">
+          <CardHeader className="p-5 pb-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-lg bg-food-primary/15 flex items-center justify-center text-food-primary">
+                <Package className="h-5 w-5" />
               </div>
-            </CardHeader>
-            <CardContent className="p-5 pt-0">
-              <p className="text-xs text-gray-600 mb-3">Check live delivery progress of your food.</p>
-              <Button asChild size="sm" className="w-full bg-food-primary hover:bg-food-primary/90 text-white">
-                <Link to="/track-order">
-                  Track Now <ChevronRight className="h-3 w-3 ml-1" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-green-50/50 border-green-200 hover:border-green-400 transition-colors">
-            <CardHeader className="p-5 pb-3">
-              <div className="flex items-center space-x-3">
-                <MessageSquare className="h-6 w-6 text-green-600" />
-                <CardTitle className="text-base">WhatsApp</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="p-5 pt-0">
-              <p className="text-xs text-gray-600 mb-3">Quick chat with our support team.</p>
-              <Button asChild size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white">
-                <a href="https://wa.me/6583715877" target="_blank" rel="noopener noreferrer">
-                  Chat Now <ChevronRight className="h-3 w-3 ml-1" />
-                </a>
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-blue-50/50 border-blue-200 hover:border-blue-400 transition-colors">
-            <CardHeader className="p-5 pb-3">
-              <div className="flex items-center space-x-3">
-                <Mail className="h-6 w-6 text-blue-600" />
-                <CardTitle className="text-base">Contact Us</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="p-5 pt-0">
-              <p className="text-xs text-gray-600 mb-3">View all support & direct channels.</p>
-              <Button asChild size="sm" variant="outline" className="w-full border-blue-600 text-blue-700 hover:bg-blue-50">
-                <Link to="/contact">
-                  Contact Page <ChevronRight className="h-3 w-3 ml-1" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Search Input */}
-        <div className="relative mb-8">
-          <Search className="absolute left-3.5 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            type="text"
-            placeholder="Search FAQs (e.g. delivery, payments, cancel, tracking)..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-11 bg-white"
-          />
-        </div>
-
-        {/* FAQ Accordion List */}
-        <div className="bg-white rounded-xl border p-6 shadow-sm mb-10">
-          <div className="flex items-center space-x-2 mb-4 pb-2 border-b">
-            <HelpCircle className="h-5 w-5 text-food-primary" />
-            <h2 className="text-lg font-semibold text-gray-900">Frequently Asked Questions</h2>
-          </div>
-
-          {filteredFaqs.length > 0 ? (
-            <Accordion type="single" collapsible className="w-full">
-              {filteredFaqs.map((faq) => (
-                <AccordionItem key={faq.id} value={faq.id}>
-                  <AccordionTrigger className="text-left font-medium text-gray-800 hover:text-food-primary py-4">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-gray-600 leading-relaxed text-sm">
-                    {faq.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          ) : (
-            <div className="text-center py-8 text-gray-500 text-sm">
-              No matching FAQs found for &ldquo;{searchQuery}&rdquo;. Feel free to{' '}
-              <Link to="/contact" className="text-food-primary font-medium underline">
-                contact us
-              </Link>{' '}
-              directly!
+              <CardTitle className="text-base text-white">Track Order</CardTitle>
             </div>
-          )}
-        </div>
+          </CardHeader>
+          <CardContent className="p-5 pt-0">
+            <p className="text-xs text-gray-400 mb-3">Check live delivery progress of your food.</p>
+            <Button asChild size="sm" className="w-full bg-food-primary hover:bg-food-primary/90 text-white font-semibold">
+              <Link to="/track-order">
+                Track Now <ChevronRight className="h-3 w-3 ml-1" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-panel ring-lit border-white/10 hover:border-green-500/40 transition-colors text-white">
+          <CardHeader className="p-5 pb-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-lg bg-green-500/15 flex items-center justify-center text-green-400">
+                <MessageSquare className="h-5 w-5" />
+              </div>
+              <CardTitle className="text-base text-white">WhatsApp</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 pt-0">
+            <p className="text-xs text-gray-400 mb-3">Quick chat with our support team.</p>
+            <Button asChild size="sm" className="w-full bg-green-600 hover:bg-green-500 text-white font-semibold">
+              <a href="https://wa.me/6583715877" target="_blank" rel="noopener noreferrer">
+                Chat Now <ChevronRight className="h-3 w-3 ml-1" />
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-panel ring-lit border-white/10 hover:border-blue-500/40 transition-colors text-white">
+          <CardHeader className="p-5 pb-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center text-blue-400">
+                <Mail className="h-5 w-5" />
+              </div>
+              <CardTitle className="text-base text-white">Contact Us</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 pt-0">
+            <p className="text-xs text-gray-400 mb-3">View all support & direct channels.</p>
+            <Button asChild size="sm" variant="outline" className="w-full border-white/20 bg-white/5 text-white hover:bg-white/15 hover:text-white">
+              <Link to="/contact">
+                Contact Page <ChevronRight className="h-3 w-3 ml-1" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
-    </Layout>
+
+      {/* Search Input */}
+      <div className="relative mb-8">
+        <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
+        <Input
+          type="text"
+          placeholder="Search FAQs (e.g. delivery, payments, cancel, tracking)..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 h-12 glass-panel border-white/10 text-white placeholder:text-gray-500 focus-visible:ring-food-primary"
+        />
+      </div>
+
+      {/* FAQ Accordion List */}
+      <div className="glass-panel ring-lit rounded-2xl p-6 sm:p-8 mb-10 border-white/10">
+        <div className="flex items-center space-x-2.5 mb-6 pb-4 border-b border-white/10">
+          <HelpCircle className="h-5 w-5 text-food-primary" />
+          <h2 className="text-lg font-bold text-white">Frequently Asked Questions</h2>
+        </div>
+
+        {filteredFaqs.length > 0 ? (
+          <Accordion type="single" collapsible className="w-full">
+            {filteredFaqs.map((faq) => (
+              <AccordionItem key={faq.id} value={faq.id} className="border-b border-white/10">
+                <AccordionTrigger className="text-left font-medium text-white hover:text-food-primary py-4 hover:no-underline">
+                  {faq.question}
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-300 leading-relaxed text-sm pb-4">
+                  {faq.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        ) : (
+          <div className="text-center py-8 text-gray-400 text-sm">
+            No matching FAQs found for &ldquo;{searchQuery}&rdquo;. Feel free to{' '}
+            <Link to="/contact" className="text-food-primary font-medium underline hover:text-orange-400">
+              contact us
+            </Link>{' '}
+            directly!
+          </div>
+        )}
+      </div>
+    </MarketingPage>
   );
 };
 
