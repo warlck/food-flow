@@ -9,8 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { useRestaurantContext } from '@/hooks/useRestaurantContext';
-import { useActiveRestaurant } from '@/context/RestaurantContext';
 import {
   Package,
   Search,
@@ -101,22 +99,14 @@ const OrderTracking: React.FC = () => {
   const { orderId } = useParams<{ orderId?: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { setActiveRestaurantId } = useActiveRestaurant();
 
   const [inputOrderId, setInputOrderId] = useState(orderId || '');
   const [order, setOrder] = useState<Order | null>(null);
-  const { restaurantId } = useRestaurantContext(order?.restaurantId);
   const [loading, setLoading] = useState<boolean>(!!orderId);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
-
-  useEffect(() => {
-    return () => {
-      setActiveRestaurantId(null);
-    };
-  }, [setActiveRestaurantId]);
 
   const fetchOrder = useCallback(async (id: string, isBackground = false) => {
     if (!id) return;
@@ -130,22 +120,18 @@ const OrderTracking: React.FC = () => {
     try {
       const data = await orderService.getOrder(id);
       setOrder(data);
-      if (data?.restaurantId) {
-        setActiveRestaurantId(data.restaurantId);
-      }
       setLastRefreshedAt(new Date());
     } catch (err) {
       console.error('Error fetching order:', err);
       if (!isBackground) {
         setError(err instanceof Error ? err.message : 'Could not find order. Please verify your Order ID.');
         setOrder(null);
-        setActiveRestaurantId(null);
       }
     } finally {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [setActiveRestaurantId]);
+  }, []);
 
   // Sync initial param
   useEffect(() => {
@@ -156,9 +142,8 @@ const OrderTracking: React.FC = () => {
       setOrder(null);
       setLoading(false);
       setError(null);
-      setActiveRestaurantId(null);
     }
-  }, [orderId, fetchOrder, setActiveRestaurantId]);
+  }, [orderId, fetchOrder]);
 
   // Polling effect
   useEffect(() => {
@@ -592,9 +577,9 @@ const OrderTracking: React.FC = () => {
                 {/* Back / Re-order Action Card */}
                 <Card className="border-gray-200 shadow-sm bg-white">
                   <CardContent className="pt-6 space-y-3">
-                    {restaurantId ? (
+                    {order.restaurantId ? (
                       <Button
-                        onClick={() => navigate(`/restaurant/${restaurantId}`)}
+                        onClick={() => navigate(`/restaurant/${order.restaurantId}`)}
                         className="w-full bg-food-primary hover:bg-food-accent text-white font-semibold"
                       >
                         <ArrowLeft className="w-4 h-4 mr-2" />

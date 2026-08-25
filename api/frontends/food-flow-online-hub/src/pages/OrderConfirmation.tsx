@@ -5,8 +5,6 @@ import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Clock, MapPin, Phone, Mail, Package, Loader2, ArrowLeft } from 'lucide-react';
-import { useRestaurantContext } from '@/hooks/useRestaurantContext';
-import { useActiveRestaurant } from '@/context/RestaurantContext';
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   pending: 'Pending',
@@ -32,9 +30,7 @@ const OrderConfirmation: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { setActiveRestaurantId } = useActiveRestaurant();
   const [order, setOrder] = useState<Order | null>(null);
-  const { restaurantId } = useRestaurantContext(order?.restaurantId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,17 +39,10 @@ const OrderConfirmation: React.FC = () => {
   const paymentIntentClientSecret = searchParams.get('payment_intent_client_secret');
 
   useEffect(() => {
-    return () => {
-      setActiveRestaurantId(null);
-    };
-  }, [setActiveRestaurantId]);
-
-  useEffect(() => {
     const fetchOrder = async () => {
       if (!orderId) {
         setError('Order ID not found');
         setLoading(false);
-        setActiveRestaurantId(null);
         return;
       }
 
@@ -65,20 +54,16 @@ const OrderConfirmation: React.FC = () => {
 
         const data = await orderService.getOrder(orderId);
         setOrder(data);
-        if (data?.restaurantId) {
-          setActiveRestaurantId(data.restaurantId);
-        }
       } catch (err) {
         console.error('Failed to fetch order:', err);
         setError('Failed to load order details');
-        setActiveRestaurantId(null);
       } finally {
         setLoading(false);
       }
     };
 
     fetchOrder();
-  }, [orderId, paymentIntentClientSecret, redirectStatus, setActiveRestaurantId]);
+  }, [orderId, paymentIntentClientSecret, redirectStatus]);
 
   if (loading) {
     return (
@@ -293,7 +278,7 @@ const OrderConfirmation: React.FC = () => {
           </Button>
 
           <Button
-            onClick={() => navigate(restaurantId ? `/restaurant/${restaurantId}` : '/')}
+            onClick={() => navigate(order?.restaurantId ? `/restaurant/${order.restaurantId}` : '/')}
             variant="outline"
             className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-100"
           >
