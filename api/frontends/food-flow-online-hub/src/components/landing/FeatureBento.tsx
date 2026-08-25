@@ -40,7 +40,10 @@ const TileIcon: React.FC<{ icon: React.ElementType }> = ({ icon: Icon }) => (
 const FeatureBento: React.FC = () => {
   return (
     <section className="relative isolate overflow-hidden border-t border-white/10 bg-ink-900 py-24 lg:py-32">
-      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-noise opacity-[0.12] mix-blend-soft-light" />
+      <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div className="absolute right-1/4 top-1/3 h-[32rem] w-[44rem] rounded-full bg-food-primary/[0.07] blur-[140px]" />
+        <div className="absolute inset-0 bg-noise opacity-[0.12] mix-blend-soft-light" />
+      </div>
 
       <div className="container mx-auto max-w-7xl px-4">
         <header className="mx-auto max-w-3xl text-center">

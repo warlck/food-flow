@@ -27,9 +27,14 @@ const STATUS_TONE: Record<string, string> = {
 const ProductShowcase: React.FC = () => {
   return (
     <section className="relative isolate overflow-hidden bg-ink-950 py-24 lg:py-32">
-      <div aria-hidden="true" className="absolute inset-0 -z-10">
-        <div className="absolute left-1/2 top-1/3 h-[32rem] w-[52rem] -translate-x-1/2 rounded-full bg-food-primary/10 blur-[130px]" />
+      <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        {/* Warm bloom behind the center */}
+        <div className="absolute left-1/2 top-1/3 h-[32rem] w-[52rem] -translate-x-1/2 rounded-full bg-food-primary/[0.12] blur-[130px]" />
+        {/* Warm bloom near bottom bridging into FinalCTA */}
+        <div className="absolute left-1/2 bottom-0 h-[30rem] w-[50rem] -translate-x-1/2 rounded-full bg-food-primary/[0.14] blur-[130px]" />
         <div className="absolute inset-0 bg-grid opacity-25" />
+        {/* Smooth transition gradient feathering into the gray-800 tone of FinalCTA */}
+        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent via-ink-950/50 to-gray-800" />
       </div>
 
       <div className="container mx-auto max-w-7xl px-4">

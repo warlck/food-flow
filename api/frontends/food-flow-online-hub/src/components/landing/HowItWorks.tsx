@@ -43,7 +43,10 @@ const STEPS: Step[] = [
 const HowItWorks: React.FC = () => {
   return (
     <section className="relative isolate overflow-hidden bg-ink-950 py-24 lg:py-32">
-      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-grid opacity-30" />
+      <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div className="absolute left-1/4 top-1/2 h-[34rem] w-[46rem] -translate-y-1/2 rounded-full bg-food-primary/[0.08] blur-[140px]" />
+        <div className="absolute inset-0 bg-grid opacity-30" />
+      </div>
 
       <div className="container mx-auto max-w-7xl px-4">
         <header className="mx-auto max-w-3xl text-center">

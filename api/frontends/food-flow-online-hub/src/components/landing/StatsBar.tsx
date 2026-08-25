@@ -28,7 +28,10 @@ const FORMATS = [
 const StatsBar: React.FC = () => {
   return (
     <section className="relative isolate overflow-hidden border-y border-white/10 bg-ink-900">
-      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-grid-fine opacity-40" />
+      <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div className="absolute -right-20 -top-20 h-[22rem] w-[22rem] rounded-full bg-food-primary/[0.08] blur-[100px]" />
+        <div className="absolute inset-0 bg-grid-fine opacity-40" />
+      </div>
 
       <div className="container mx-auto max-w-7xl px-4 py-16 lg:py-20">
         {/* Numbers */}

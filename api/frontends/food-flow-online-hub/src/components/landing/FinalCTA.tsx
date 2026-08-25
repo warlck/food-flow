@@ -10,9 +10,9 @@ import { SALES_MAILTO, WHATSAPP_URL } from './constants';
 const FinalCTA: React.FC = () => {
   return (
     <section className="relative isolate overflow-hidden bg-gray-800 py-24 lg:py-32">
-      <div aria-hidden="true" className="absolute inset-0 -z-10">
+      <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
         {/* Warm bloom behind the headline */}
-        <div className="absolute left-1/2 top-0 h-[30rem] w-[46rem] -translate-x-1/2 -translate-y-1/3 rounded-full bg-food-primary/20 blur-[120px]" />
+        <div className="absolute left-1/2 -top-12 h-[34rem] w-[50rem] -translate-x-1/2 rounded-full bg-food-primary/20 blur-[120px]" />
         <div className="absolute inset-0 bg-grid-fine mask-radial opacity-40" />
         {/* Fade into the footer tone */}
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-gray-800" />
