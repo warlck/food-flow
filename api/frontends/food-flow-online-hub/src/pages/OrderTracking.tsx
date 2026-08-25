@@ -123,7 +123,7 @@ const OrderTracking: React.FC = () => {
     } catch (err) {
       console.error('Error fetching order:', err);
       if (!isBackground) {
-        setError(err instanceof Error ? err.message : 'Could not find order. Please verify your Order ID.');
+        setError('Order not found');
         setOrder(null);
       }
     } finally {
@@ -267,11 +267,12 @@ const OrderTracking: React.FC = () => {
             <div className="glass-panel rounded-2xl p-10 text-center border border-red-500/30 bg-red-950/20">
               <AlertTriangle className="w-14 h-14 text-red-400 mx-auto mb-4" />
               <h2 className="text-2xl font-bold text-white mb-2">Order Not Found</h2>
-              <p className="text-gray-300 max-w-md mx-auto mb-6">{error}</p>
+              <p className="text-gray-300 max-w-md mx-auto mb-6">
+                We could not find the order you were looking for.
+              </p>
               <Button
                 onClick={() => navigate('/')}
-                variant="outline"
-                className="border-white/20 text-white hover:bg-white/10 rounded-xl"
+                className="border border-white/20 bg-white/10 hover:bg-white/20 text-white rounded-xl h-11 px-6 font-semibold transition-colors"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Home

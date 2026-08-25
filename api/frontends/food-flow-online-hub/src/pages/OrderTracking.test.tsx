@@ -73,4 +73,17 @@ describe('OrderTracking Component', () => {
       expect(screen.getByText(/ORDER-12/i)).toBeDefined();
     });
   });
+
+  it('displays Order Not Found and Back to Home button on fetch failure', async () => {
+    vi.mocked(orderService.getOrder).mockRejectedValue(new Error('Network error'));
+    vi.mocked(reactRouter.useParams).mockReturnValue({ orderId: 'not-found-id' });
+
+    render(<OrderTracking />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Order Not Found/i)).toBeDefined();
+      expect(screen.getByText(/We could not find the order/i)).toBeDefined();
+      expect(screen.getAllByText(/Back to Home/i).length).toBeGreaterThanOrEqual(1);
+    });
+  });
 });
