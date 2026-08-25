@@ -20,9 +20,9 @@ import { SALES_MAILTO, WHATSAPP_URL } from './constants';
  */
 const LandingHero: React.FC = () => {
   return (
-    <section className="relative isolate overflow-hidden bg-ink-950 pt-[65px]">
+    <section className="relative isolate overflow-hidden bg-transparent pt-[65px]">
       {/* ── Background layers ─────────────────────────────────────────── */}
-      <div aria-hidden="true" className="absolute inset-0 -z-10">
+      <div aria-hidden="true" className="absolute inset-0 -z-10 pointer-events-none">
         {/* Aurora blobs */}
         <div className="absolute -top-40 left-1/2 h-[38rem] w-[38rem] -translate-x-1/2 rounded-full bg-food-primary/25 blur-[120px] animate-aurora" />
         <div
@@ -33,12 +33,8 @@ const LandingHero: React.FC = () => {
           className="absolute -left-24 bottom-0 h-[24rem] w-[24rem] rounded-full bg-orange-600/20 blur-[110px] animate-aurora"
           style={{ animationDelay: '-8s' }}
         />
-        {/* Blueprint grid, dissolved towards the bottom */}
-        <div className="absolute inset-0 bg-grid mask-fade-y opacity-70" />
         {/* Grain */}
-        <div className="absolute inset-0 bg-noise opacity-[0.15] mix-blend-soft-light" />
-        {/* Hand off cleanly to the next (light) section */}
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-ink-950" />
+        <div className="absolute inset-0 bg-noise opacity-[0.12] mix-blend-soft-light" />
       </div>
 
       <div className="container mx-auto max-w-7xl px-4 pb-24 pt-16 sm:pb-28 lg:pb-36 lg:pt-24">

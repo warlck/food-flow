@@ -26,11 +26,10 @@ const STATUS_TONE: Record<string, string> = {
  */
 const ProductShowcase: React.FC = () => {
   return (
-    <section className="relative isolate overflow-hidden border-t border-white/10 bg-ink-900 py-24 lg:py-32">
+    <section className="relative isolate overflow-hidden border-t border-white/10 bg-transparent py-24 lg:py-32">
       <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
         {/* Subtle warm bloom */}
         <div className="absolute left-1/2 top-1/3 h-[34rem] w-[54rem] -translate-x-1/2 rounded-full bg-food-primary/[0.10] blur-[140px]" />
-        <div className="absolute inset-0 bg-grid opacity-25" />
       </div>
 
       <div className="container mx-auto max-w-7xl px-4">

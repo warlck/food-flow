@@ -16,13 +16,18 @@ import FinalCTA from '@/components/landing/FinalCTA';
  */
 const Landing: React.FC = () => {
   return (
-    <Layout>
-      <div className="relative isolate bg-ink-950 font-sans text-white selection:bg-food-primary/30 -mt-[65px]">
-        {/* Subtle, consistent warm reddish background hue across the whole landing canvas */}
+    <Layout surface="marketing" className="bg-gray-800 text-white">
+      <div className="relative isolate min-h-screen bg-gray-800 font-sans text-white selection:bg-food-primary/30 -mt-[65px] animate-fade-in">
+        {/* Background stack matching MarketingPage & Track Order */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute top-[18%] -left-32 h-[48rem] w-[48rem] rounded-full bg-food-primary/[0.07] blur-[150px]" />
-          <div className="absolute top-[42%] -right-32 h-[52rem] w-[52rem] rounded-full bg-orange-600/[0.06] blur-[160px]" />
-          <div className="absolute top-[68%] -left-24 h-[46rem] w-[46rem] rounded-full bg-food-primary/[0.07] blur-[150px]" />
+          {/* Warm bloom behind hero headline and header */}
+          <div className="absolute left-1/2 -top-24 h-[40rem] w-[56rem] -translate-x-1/2 rounded-full bg-food-primary/20 blur-[120px]" />
+          {/* Continuous warm ambient glows down the landing canvas */}
+          <div className="absolute top-[28%] -left-32 h-[48rem] w-[48rem] rounded-full bg-food-primary/[0.12] blur-[150px]" />
+          <div className="absolute top-[52%] -right-32 h-[52rem] w-[52rem] rounded-full bg-orange-600/[0.10] blur-[160px]" />
+          <div className="absolute top-[76%] -left-24 h-[46rem] w-[46rem] rounded-full bg-food-primary/[0.12] blur-[150px]" />
+          {/* Fine grid overlay with radial mask */}
+          <div className="absolute inset-0 bg-grid-fine opacity-40" />
         </div>
 
         <LandingHero />
