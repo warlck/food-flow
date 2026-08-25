@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/context/CartContext";
 import { RestaurantContextProvider } from "@/context/RestaurantContextProvider";
 
+import { ScrollToTop } from "@/components/ScrollToTop";
+
 import Landing from "./pages/Landing";
 import Restaurant from "./pages/Restaurant";
 import NotFound from "./pages/NotFound";
@@ -31,6 +33,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <ScrollToTop />
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/restaurant/:restaurantId" element={<Restaurant />} />
