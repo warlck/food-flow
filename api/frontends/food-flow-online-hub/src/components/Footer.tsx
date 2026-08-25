@@ -1,13 +1,19 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Facebook, Instagram, Twitter, Heart } from 'lucide-react';
-import { useCart } from '@/context/CartContext';
+import { useRestaurantContext } from '@/hooks/useRestaurantContext';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
-  const { restaurantId } = useCart();
+  const { restaurantId } = useRestaurantContext();
   const location = useLocation();
-  const isLandingPage = location.pathname === '/';
+
+  const isCurrentRestaurantPage = Boolean(
+    restaurantId &&
+      (location.pathname === `/restaurant/${restaurantId}` ||
+        location.pathname === `/mobile-restaurant/${restaurantId}`)
+  );
+  const showBrowseMenu = Boolean(restaurantId && !isCurrentRestaurantPage);
 
   return (
     <footer className="bg-gray-800 text-white mt-auto border-t border-gray-700/50">
@@ -38,7 +44,7 @@ const Footer: React.FC = () => {
             <div className="w-full md:w-auto">
               <h3 className="font-bold text-lg mb-5 text-white">For Customers</h3>
               <ul className="space-y-3">
-                {!isLandingPage && restaurantId && (
+                {showBrowseMenu && (
                   <li>
                     <Link to={`/restaurant/${restaurantId}`} className="text-gray-400 hover:text-white transition-colors">
                       Browse Menu

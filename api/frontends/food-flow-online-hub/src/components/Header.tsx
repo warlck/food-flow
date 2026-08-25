@@ -1,27 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
+import { useSurface } from '@/hooks/useSurface';
+import { useRestaurantContext } from '@/hooks/useRestaurantContext';
 import { ShoppingCart, Menu, X, Book, ChefHat, Package } from 'lucide-react';
 import { WHATSAPP_URL } from '@/components/landing/constants';
 
 const Header: React.FC = () => {
-  const { getTotalItems, restaurantId } = useCart();
+  const { getTotalItems } = useCart();
+  const { restaurantId } = useRestaurantContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const surface = useSurface();
+  const isMarketing = surface === 'marketing';
   const isLandingPage = location.pathname === '/';
+
+  const isCurrentRestaurantPage = Boolean(
+    restaurantId &&
+      (location.pathname === `/restaurant/${restaurantId}` ||
+        location.pathname === `/mobile-restaurant/${restaurantId}`)
+  );
+  const showMenuLink = Boolean(restaurantId && !isCurrentRestaurantPage);
+
+  useEffect(() => {
+    if (!isLandingPage) {
+      setScrolled(false);
+      return;
+    }
+
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setScrolled(window.scrollY > 24);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    setScrolled(window.scrollY > 24);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, [isLandingPage]);
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
 
-  // The landing page hero is a dark, full-bleed surface, so the header switches
-  // to a translucent dark treatment there and stays light everywhere else.
-  const headerClass = isLandingPage
-    ? 'sticky top-0 z-40 border-b border-white/10 bg-ink-950/70 backdrop-blur-xl'
-    : 'sticky top-0 z-40 bg-white shadow-md';
+  let headerClass = 'sticky top-0 z-40 transition-colors duration-300 ';
+  if (isMarketing) {
+    if (isLandingPage && !scrolled) {
+      headerClass += 'bg-transparent border-b border-transparent';
+    } else {
+      headerClass += 'border-b border-white/10 bg-ink-950/70 backdrop-blur-xl';
+    }
+  } else {
+    headerClass += 'bg-white shadow-md';
+  }
 
-  const navLinkClass = isLandingPage
+  const navLinkClass = isMarketing
     ? 'text-gray-300 hover:text-white transition-colors flex items-center'
     : 'text-gray-700 hover:text-food-primary transition-colors flex items-center';
 
@@ -29,16 +72,16 @@ const Header: React.FC = () => {
     <header className={headerClass}>
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         {/* Logo */}
-        <Link to={restaurantId ? `/restaurant/${restaurantId}` : "/"} className="flex items-center">
+        <Link to={!isMarketing && restaurantId ? `/restaurant/${restaurantId}` : "/"} className="flex items-center">
           <div className="text-food-primary font-bold text-2xl flex items-center">
             <ChefHat className="mr-2" size={32} />
-            <span className={isLandingPage ? 'text-white' : undefined}>FoodFlow</span>
+            <span className={isMarketing ? 'text-white' : undefined}>FoodFlow</span>
           </div>
         </Link>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-6">
-          {!isLandingPage && restaurantId && (
+          {showMenuLink && (
             <Link to={`/restaurant/${restaurantId}`} className={navLinkClass}>
               <Book className="mr-1" size={18} />
               <span>Menu</span>
@@ -48,12 +91,12 @@ const Header: React.FC = () => {
             <Package className="mr-1" size={18} />
             <span>Track Order</span>
           </Link>
-          {isLandingPage && (
+          {isMarketing && (
             <a
               href={WHATSAPP_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg bg-food-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-orange-600"
+              className="rounded-lg bg-food-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-food-primary focus:ring-offset-2 focus:ring-offset-ink-950"
             >
               Partner with us
             </a>
@@ -61,7 +104,7 @@ const Header: React.FC = () => {
         </nav>
 
         {/* Cart Button */}
-        {!isLandingPage && (
+        {!isMarketing && (
           <Link to="/cart">
             <Button variant="outline" className="ml-4 relative">
               <ShoppingCart className="h-5 w-5" />
@@ -78,7 +121,7 @@ const Header: React.FC = () => {
         <Button
           variant="ghost"
           size="icon"
-          className={isLandingPage ? 'md:hidden text-white hover:bg-white/10 hover:text-white' : 'md:hidden'}
+          className={isMarketing ? 'md:hidden text-white hover:bg-white/10 hover:text-white' : 'md:hidden'}
           onClick={toggleMobileMenu}
         >
           {mobileMenuOpen ? <X /> : <Menu />}
@@ -89,13 +132,13 @@ const Header: React.FC = () => {
       {mobileMenuOpen && (
         <div
           className={
-            isLandingPage
+            isMarketing
               ? 'md:hidden border-t border-white/10 bg-ink-950/95 backdrop-blur-xl py-4 px-4 animate-fade-in'
               : 'md:hidden bg-white border-t py-4 px-4 shadow-lg animate-fade-in'
           }
         >
           <nav className="flex flex-col space-y-4">
-            {!isLandingPage && restaurantId && (
+            {showMenuLink && (
               <Link 
                 to={`/mobile-restaurant/${restaurantId}`} 
                 className={`${navLinkClass} p-2`}
@@ -113,7 +156,7 @@ const Header: React.FC = () => {
               <Package className="mr-2" size={18} />
               <span>Track Order</span>
             </Link>
-            {isLandingPage && (
+            {isMarketing && (
               <a
                 href={WHATSAPP_URL}
                 target="_blank"
