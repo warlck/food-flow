@@ -9,7 +9,7 @@ import { SALES_MAILTO, WHATSAPP_URL } from './constants';
  */
 const FinalCTA: React.FC = () => {
   return (
-    <section className="relative isolate overflow-hidden bg-gray-800 py-24 lg:py-32">
+    <section className="relative isolate overflow-hidden border-t border-gray-700/50 bg-gray-800 py-24 lg:py-32">
       <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
         {/* Warm bloom behind the headline */}
         <div className="absolute left-1/2 -top-12 h-[34rem] w-[50rem] -translate-x-1/2 rounded-full bg-food-primary/20 blur-[120px]" />

@@ -17,7 +17,7 @@ import FinalCTA from '@/components/landing/FinalCTA';
 const Landing: React.FC = () => {
   return (
     <Layout>
-      <div className="relative isolate overflow-hidden bg-ink-950 font-sans text-white selection:bg-food-primary/30">
+      <div className="relative isolate bg-ink-950 font-sans text-white selection:bg-food-primary/30 -mt-[65px]">
         {/* Subtle, consistent warm reddish background hue across the whole landing canvas */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
           <div className="absolute top-[18%] -left-32 h-[48rem] w-[48rem] rounded-full bg-food-primary/[0.07] blur-[150px]" />

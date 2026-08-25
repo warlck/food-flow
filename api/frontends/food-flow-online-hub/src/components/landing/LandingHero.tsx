@@ -20,7 +20,7 @@ import { SALES_MAILTO, WHATSAPP_URL } from './constants';
  */
 const LandingHero: React.FC = () => {
   return (
-    <section className="relative isolate overflow-hidden bg-ink-950 -mt-[65px] pt-[65px]">
+    <section className="relative isolate overflow-hidden bg-ink-950 pt-[65px]">
       {/* ── Background layers ─────────────────────────────────────────── */}
       <div aria-hidden="true" className="absolute inset-0 -z-10">
         {/* Aurora blobs */}
