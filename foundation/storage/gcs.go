@@ -13,7 +13,6 @@ import (
 	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	credentialspb "cloud.google.com/go/iam/credentials/apiv1/credentialspb"
 	gcs "cloud.google.com/go/storage"
-	"google.golang.org/api/option"
 )
 
 // gcsSigner signs V4 upload URLs for Google Cloud Storage. Cloud Run and GCE
@@ -54,7 +53,7 @@ func newGCSSigner(ctx context.Context, cfg Config) (*gcsSigner, error) {
 		return nil, fmt.Errorf("gcs backend: creating storage client: %w", err)
 	}
 
-	signing, err := credentials.NewIamCredentialsClient(ctx, option.WithEndpoint("iamcredentials.googleapis.com"))
+	signing, err := credentials.NewIamCredentialsClient(ctx)
 	if err != nil {
 		objects.Close()
 		return nil, fmt.Errorf("gcs backend: creating iam credentials client: %w", err)
