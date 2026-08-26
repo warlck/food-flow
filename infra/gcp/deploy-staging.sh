@@ -13,8 +13,9 @@ WORKLOAD_SERVICE_ACCOUNT=${GCP_WORKLOAD_SERVICE_ACCOUNT:-staging-workload@${PROJ
 MIGRATION_JOB=${GCP_MIGRATION_JOB:-staging-db-migrate}
 IMAGE_PLATFORM=${GCP_IMAGE_PLATFORM:-linux/amd64}
 RUN_MIGRATION=${GCP_RUN_MIGRATION:-true}
-AUTH_SECRET_NAME=${GCP_AUTH_SECRET:-food-flow-auth-keys}
-AUTH_ACTIVE_KID=${GCP_AUTH_ACTIVE_KID:-}
+AUTH_SECRET_NAME=${GCP_AUTH_SECRET:-staging-auth-keys}
+AUTH_ACTIVE_KID=${GCP_AUTH_ACTIVE_KID:-54bb2165-71e1-41a6-af3e-7da4a0e1e2c1}
+IMAGE_BUCKET=${GCP_IMAGE_BUCKET:-food-flow-staging-images-${PROJECT_ID}}
 REGISTRY="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}"
 VERSION=$(git rev-parse --short HEAD 2>/dev/null || echo "latest")
 BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -126,7 +127,8 @@ gcloud run deploy staging-sales \
     --subnet "${SUBNET}" \
     --vpc-egress private-ranges-only \
     --service-account "${WORKLOAD_SERVICE_ACCOUNT}" \
-    --update-env-vars "SALES_DB_HOST=${POSTGRES_HOST}" \
+    --update-env-vars "SALES_DB_HOST=${POSTGRES_HOST},SALES_IMAGES_BACKEND=gcs,SALES_IMAGES_BUCKET=${IMAGE_BUCKET},SALES_IMAGES_SERVICE_ACCOUNT=${WORKLOAD_SERVICE_ACCOUNT},SALES_IMAGES_PUBLIC_BASE_URL=https://storage.googleapis.com/${IMAGE_BUCKET}" \
+    --set-secrets "SALES_DB_PASSWORD=staging-postgres-password:latest,SALES_STRIPE_SECRET_KEY=staging-stripe-secret-key:latest,SALES_STRIPE_WEBHOOK_SECRET=staging-stripe-webhook-secret:latest" \
     --min-instances 0 \
     --max-instances 1 \
     --cpu-throttling \
@@ -141,6 +143,7 @@ AUTH_URL=$(gcloud run services describe staging-auth --project "${PROJECT_ID}" -
 echo "Auth URL: ${AUTH_URL}"
 
 echo "=> Building Storefront Service..."
+STRIPE_PUB_KEY=${VITE_STRIPE_PUBLISHABLE_KEY:-$(gcloud secrets versions access latest --secret=staging-stripe-publishable-key --project="${PROJECT_ID}" 2>/dev/null || echo "dummy")}
 docker buildx build \
     --platform "${IMAGE_PLATFORM}" \
     -f infra/docker/dockerfile.frontend \
@@ -148,7 +151,7 @@ docker buildx build \
     --build-arg "BUILD_REF=${VERSION}" \
     --build-arg "BUILD_DATE=${BUILD_DATE}" \
     --build-arg VITE_API_URL="" \
-    --build-arg "VITE_STRIPE_PUBLISHABLE_KEY=${VITE_STRIPE_PUBLISHABLE_KEY:-dummy}" \
+    --build-arg "VITE_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUB_KEY}" \
     --push \
     .
 
