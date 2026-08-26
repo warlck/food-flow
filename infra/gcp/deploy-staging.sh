@@ -188,7 +188,7 @@ gcloud run deploy staging-admin \
     --region "${REGION}" \
     --port 8080 \
     --ingress all \
-    --no-allow-unauthenticated \
+    --allow-unauthenticated \
     --network "${NETWORK}" \
     --subnet "${SUBNET}" \
     --vpc-egress private-ranges-only \
