@@ -90,4 +90,10 @@ Finding problems and writing the report are two different jobs. Always do the fi
   7. **Verification Log**: the exact build, vet, format, lint, typecheck, and test commands run, with their outcomes.
   8. **Pre-Merge Checklist**: remaining gates (declined suggestions, follow-up branches, reseed/deploy steps).
 
-
+## Frontend UX & UI Design Invariants
+- **Lean Error States (No Leaky Parsing)**:
+  * When handling failed entity lookups or client error states (e.g., order tracking, missing menus, 404s), avoid overengineered client-side error parsing cascades, string sanitizers, or regex filters.
+  * Render clean, human-friendly static domain copy directly (e.g., *"Order Not Found"*, *"We could not find the order you were looking for."*). Never leak raw backend validation JSON arrays (e.g. `[{"field":"...", "error":"..."}]`) or internal server errors to user interfaces.
+- **Dark Surface UI Component Theming**:
+  * Default library component variants (e.g., Shadcn `variant="outline"`) bind light `bg-background` (`#ffffff`) by default.
+  * On dark surfaces (`bg-gray-800`, `bg-ink-950`), never rely on unthemed outline variants that produce solid white boxes. Explicitly style buttons and cards with dark glass tokens (e.g. `border border-white/20 bg-white/10 hover:bg-white/20 text-white rounded-xl` or brand primary styles).
