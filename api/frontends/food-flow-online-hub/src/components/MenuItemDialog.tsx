@@ -87,7 +87,8 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
   const handleAddonIncrement = (addon: Addon) => {
     setAddonQuantities((prev) => {
       const current = prev[addon.id] || 0;
-      if (current < addon.maxQuantity) {
+      const max = addon.maxQuantity && addon.maxQuantity > 0 ? addon.maxQuantity : 10;
+      if (current < max) {
         return { ...prev, [addon.id]: current + 1 };
       }
       return prev;
@@ -154,10 +155,9 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
 
   if (!item || !activeItem) return null;
 
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto bg-white text-gray-900">
         <DialogHeader>
           <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-3 bg-muted">
             <img
@@ -176,7 +176,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
           </div>
 
           <div className="flex items-baseline justify-between gap-3">
-            <DialogTitle className="text-xl font-bold">{item.category}</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-gray-900">{item.category}</DialogTitle>
             {cheapestPrice !== null && (
               <div className="text-lg font-semibold text-food-primary">
                 ${cheapestPrice.toFixed(2)}
@@ -190,7 +190,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
 
           {itemsInCategory.length > 1 && (
             <div className="mt-4">
-              <Label className="mb-2 block">Choose an item</Label>
+              <Label className="mb-2 block text-gray-900 font-medium">Choose an item</Label>
 
               <RadioGroup value={activeItem.id} onValueChange={handleSelectMenuItem}>
                 {itemsInCategory.map((mi) => {
@@ -224,7 +224,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                         className={`flex-1 cursor-pointer ${!mi.available ? 'cursor-not-allowed' : ''}`}
                       >
                         <div className="flex items-center justify-between gap-3">
-                          <span className="font-medium">{mi.name}</span>
+                          <span className="font-medium text-gray-900">{mi.name}</span>
                           <span className="text-sm text-gray-500">{deltaLabel}</span>
                         </div>
 
@@ -253,47 +253,54 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
         {activeItem.addons && activeItem.addons.length > 0 && (
           <div className="mt-4">
             <Separator className="mb-4" />
-            <h3 className="font-semibold text-lg mb-3">Add-ons (Optional)</h3>
+            <h3 className="font-semibold text-lg mb-3 text-gray-900">Add-ons (Optional)</h3>
             <div className="space-y-3">
-              {activeItem.addons.map((addon) => (
-                <div
-                  key={addon.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex-1">
-                    <div className="font-medium">{addon.name}</div>
-                    {addon.description && (
-                      <div className="text-sm text-gray-500">{addon.description}</div>
-                    )}
-                    <div className="text-sm font-semibold text-food-primary">
-                      +${addon.price.toFixed(2)}
+              {activeItem.addons.map((addon) => {
+                const max = addon.maxQuantity && addon.maxQuantity > 0 ? addon.maxQuantity : 10;
+                const currentQty = addonQuantities[addon.id] || 0;
+
+                return (
+                  <div
+                    key={addon.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">{addon.name}</div>
+                      {addon.description && (
+                        <div className="text-sm text-gray-500">{addon.description}</div>
+                      )}
+                      <div className="text-sm font-semibold text-food-primary">
+                        +${addon.price.toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 rounded-full text-gray-800"
+                        onClick={() => handleAddonDecrement(addon.id)}
+                        disabled={currentQty <= 0}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                      <span className="w-8 text-center font-medium text-gray-900">
+                        {currentQty}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 rounded-full text-gray-800"
+                        onClick={() => handleAddonIncrement(addon)}
+                        disabled={currentQty >= max}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 rounded-full"
-                      onClick={() => handleAddonDecrement(addon.id)}
-                      disabled={!addonQuantities[addon.id]}
-                    >
-                      <Minus className="h-4 w-4" />
-                    </Button>
-                    <span className="w-8 text-center font-medium">
-                      {addonQuantities[addon.id] || 0}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 rounded-full"
-                      onClick={() => handleAddonIncrement(addon)}
-                      disabled={(addonQuantities[addon.id] || 0) >= addon.maxQuantity}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -301,7 +308,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
         {/* Special Instructions Section */}
         <div className="mt-4">
           <Separator className="mb-4" />
-          <h3 className="font-semibold text-lg mb-3">Special Instructions</h3>
+          <h3 className="font-semibold text-lg mb-3 text-gray-900">Special Instructions</h3>
           <Textarea
             placeholder="Add a note for the kitchen (e.g. no onions, extra spicy)..."
             value={specialInstructions}
@@ -314,22 +321,24 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
         <div className="mt-4">
           <Separator className="mb-4" />
           <div className="flex items-center justify-between">
-            <span className="font-semibold">Quantity</span>
+            <span className="font-semibold text-gray-900">Quantity</span>
             <div className="flex items-center gap-3">
               <Button
+                type="button"
                 variant="outline"
                 size="icon"
-                className="h-8 w-8 rounded-full"
+                className="h-8 w-8 rounded-full text-gray-800"
                 onClick={() => setQuantity(q => Math.max(1, q - 1))}
                 disabled={quantity <= 1}
               >
                 <Minus className="h-4 w-4" />
               </Button>
-              <span className="w-8 text-center font-medium text-lg">{quantity}</span>
+              <span className="w-8 text-center font-medium text-lg text-gray-900">{quantity}</span>
               <Button
+                type="button"
                 variant="outline"
                 size="icon"
-                className="h-8 w-8 rounded-full"
+                className="h-8 w-8 rounded-full text-gray-800"
                 onClick={() => setQuantity(q => q + 1)}
               >
                 <Plus className="h-4 w-4" />

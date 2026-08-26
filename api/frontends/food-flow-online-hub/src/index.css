@@ -91,17 +91,12 @@
 }
 
 @layer base {
-  html {
-    background-color: #07070A;
-  }
-
   * {
     @apply border-border;
   }
 
   body {
-    background-color: #07070A;
-    color: #FFFFFF;
+    @apply bg-background text-foreground;
   }
 }
 
