@@ -17,7 +17,7 @@ These rules apply to all agent interactions within this workspace.
 - **Self-Contained & Compilable Commits**: Every individual commit MUST be self-contained, fully compilable, and pass all relevant automated tests in isolation. Never leave test helpers, struct definitions, or dependent logic missing from the commit that introduces code requiring them.
 
 ## Database & Seeding Guidelines
-- **Strict Name Validation**: The business layer strictly validates names for categories, menu items, and addons (e.g., using `^[\p{L}\p{N}' -]{3,100}$`). Do NOT use special characters like double quotes (`"`), parentheses (`()`), or ampersands (`&`) in `name` fields. Place weights, sizing, and details into the `description` fields instead.
+- **Name Validation**: The business layer validates names using `^[\p{L}\p{N} '!/\\?|()\[\]{},.:_-]{3,100}$`, permitting letters, numbers, spaces, apostrophes (`'`), brackets (`()`, `[]`, `{}`), and specific punctuation (`!`, `?`, `/`, `\`, `|`, `_`, `-`, `,`, `.`, `:`). Other characters (e.g. `&`, `"`, angle brackets `<>`) are disallowed. The frontend delegates name validation directly to backend APIs.
 - **Cascade Deletes**: Foreign keys are configured with `ON DELETE CASCADE`. To reset database seeds cleanly, delete the top-level parent record (e.g., `DELETE FROM restaurants WHERE restaurant_id = '...'`) instead of running manual deletions across all child tables.
 
 ## Network & Port Mappings
