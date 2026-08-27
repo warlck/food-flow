@@ -28,8 +28,10 @@ func (n Name) MarshalText() ([]byte, error) {
 
 // =============================================================================
 
-// Updated regex to allow Unicode letters (including accented characters like ñ, é, ü, etc.)
-var nameRegEx = regexp.MustCompile(`^[\p{L}\p{N}' -]{3,100}$`)
+// Allowed characters: Unicode letters (\p{L}), Unicode numbers (\p{N}), spaces, apostrophes ('),
+// brackets ((), [], {}), and specific punctuation (!, ?, /, \, |, _, -, ,, ., :).
+// Length must be between 3 and 100 characters.
+var nameRegEx = regexp.MustCompile(`^[\p{L}\p{N} '!/\\?|()\[\]{},.:_-]{3,100}$`)
 
 // Parse parses the string value and returns a name if the value complies
 // with the rules for a name.
