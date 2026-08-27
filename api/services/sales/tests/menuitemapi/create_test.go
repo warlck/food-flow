@@ -68,6 +68,35 @@ func create201(sd apitest.SeedData) []apitest.Table {
 				return ""
 			},
 		},
+		{
+			Name:       "with-brackets-and-punctuation",
+			URL:        "/v1/menuitems",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusCreated,
+			Input: &menuitemapp.NewMenuItem{
+				CategoryID:   sd.Categories[0].ID.String(),
+				RestaurantID: sd.Restaurants[0].ID.String(),
+				Name:         "Truffle Burger (Double), [Spicy]: Super Hot!",
+				Description:  "Test Description with allowed punctuation",
+				Price:        29.99,
+			},
+			GotResp: &menuitemapp.MenuItem{},
+			ExpResp: &menuitemapp.MenuItem{},
+			CmpFunc: func(got any, exp any) string {
+				gotResp := got.(*menuitemapp.MenuItem)
+				if gotResp.ID == "" {
+					return "id should not be empty"
+				}
+				if gotResp.Name != "Truffle Burger (Double), [Spicy]: Super Hot!" {
+					return "name mismatch"
+				}
+				if gotResp.Price != 29.99 {
+					return "price mismatch"
+				}
+				return ""
+			},
+		},
 	}
 
 	return table
@@ -147,6 +176,69 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &errs.Error{
 				Code:    errs.InvalidArgument,
 				Message: `validate: [{"field":"rank","error":"rank must be 1 or greater"}]`,
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "invalid-name-disallowed-char",
+			URL:        "/v1/menuitems",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input: &menuitemapp.NewMenuItem{
+				CategoryID:   sd.Categories[0].ID.String(),
+				RestaurantID: sd.Restaurants[0].ID.String(),
+				Name:         "Burger & Fries",
+				Price:        19.99,
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code:    errs.InvalidArgument,
+				Message: `parse name: invalid name "Burger & Fries"`,
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "invalid-name-angle-brackets",
+			URL:        "/v1/menuitems",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input: &menuitemapp.NewMenuItem{
+				CategoryID:   sd.Categories[0].ID.String(),
+				RestaurantID: sd.Restaurants[0].ID.String(),
+				Name:         "<script>alert(1)</script>",
+				Price:        19.99,
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code:    errs.InvalidArgument,
+				Message: `parse name: invalid name "<script>alert(1)</script>"`,
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "invalid-name-too-short",
+			URL:        "/v1/menuitems",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input: &menuitemapp.NewMenuItem{
+				CategoryID:   sd.Categories[0].ID.String(),
+				RestaurantID: sd.Restaurants[0].ID.String(),
+				Name:         "ab",
+				Price:        19.99,
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code:    errs.InvalidArgument,
+				Message: `parse name: invalid name "ab"`,
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
