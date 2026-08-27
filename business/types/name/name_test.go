@@ -30,6 +30,12 @@ func Test_Name(t *testing.T) {
 			"St. Louis Ribs",
 			"Special: Wagyu Beef",
 			"Combo 1.5L: Family Pack, (Cold)",
+			"Fish & Chips",
+			"Ben & Jerry's",
+			"Mac & Cheese",
+			"Soup + Salad",
+			"Burger + Soda Combo",
+			"Extra Sauce + Dip",
 			"Coffee / Tea",
 			"Fish \\ Chips",
 			"Combo A | Option B",
@@ -63,9 +69,6 @@ func Test_Name(t *testing.T) {
 			{"Bi", "length 2"},
 			{strings.Repeat("a", 101), "length 101"},
 			{"12\" Pizza", "double quote"},
-			{"Ben & Jerry's", "ampersand"},
-			{"Fish & Chips", "ampersand"},
-			{"Soup + Salad", "plus sign"},
 			{"100% Beef", "percent sign"},
 			{"Combo #1", "hash sign"},
 			{"Lunch @ Diner", "at sign"},
@@ -98,7 +101,7 @@ func Test_Name(t *testing.T) {
 				t.Fatal("expected panic for invalid MustParse, got nil")
 			}
 		}()
-		name.MustParse("Burger & Fries")
+		name.MustParse("Burger #1")
 	})
 
 	t.Run("parse-null", func(t *testing.T) {
@@ -127,7 +130,7 @@ func Test_Name(t *testing.T) {
 		}
 
 		// Invalid non-empty string
-		_, err = name.ParseNull("Kitchen & Bath")
+		_, err = name.ParseNull("Kitchen #1")
 		if err == nil {
 			t.Fatal("expected error for invalid ParseNull, got nil")
 		}
