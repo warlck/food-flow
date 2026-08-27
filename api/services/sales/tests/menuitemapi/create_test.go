@@ -77,7 +77,7 @@ func create201(sd apitest.SeedData) []apitest.Table {
 			Input: &menuitemapp.NewMenuItem{
 				CategoryID:   sd.Categories[0].ID.String(),
 				RestaurantID: sd.Restaurants[0].ID.String(),
-				Name:         "Truffle Burger (Double), [Spicy]: Super Hot!",
+				Name:         "Truffle Burger (Double) + Fries, [Spicy]: Fish & Chips!",
 				Description:  "Test Description with allowed punctuation",
 				Price:        29.99,
 			},
@@ -88,7 +88,7 @@ func create201(sd apitest.SeedData) []apitest.Table {
 				if gotResp.ID == "" {
 					return "id should not be empty"
 				}
-				if gotResp.Name != "Truffle Burger (Double), [Spicy]: Super Hot!" {
+				if gotResp.Name != "Truffle Burger (Double) + Fries, [Spicy]: Fish & Chips!" {
 					return "name mismatch"
 				}
 				if gotResp.Price != 29.99 {
@@ -190,13 +190,13 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &menuitemapp.NewMenuItem{
 				CategoryID:   sd.Categories[0].ID.String(),
 				RestaurantID: sd.Restaurants[0].ID.String(),
-				Name:         "Burger & Fries",
+				Name:         "12\" Pizza",
 				Price:        19.99,
 			},
 			GotResp: &errs.Error{},
 			ExpResp: &errs.Error{
 				Code:    errs.InvalidArgument,
-				Message: `parse name: invalid name "Burger & Fries"`,
+				Message: `parse name: invalid name "12\" Pizza"`,
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)

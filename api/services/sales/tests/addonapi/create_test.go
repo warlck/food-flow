@@ -88,7 +88,7 @@ func create201(sd apitest.SeedData) []apitest.Table {
 			Input: &addonapp.NewAddon{
 				CategoryID:   sd.Categories[0].ID.String(),
 				RestaurantID: sd.Restaurants[0].ID.String(),
-				Name:         "Extra Sauce {Special}, 0.5L (Garlic / Herb)",
+				Name:         "Extra Sauce {Special} + Garlic & Herb, 0.5L (Cold)",
 				Description:  "House blend",
 				Price:        3.50,
 				MaxQuantity:  5,
@@ -100,7 +100,7 @@ func create201(sd apitest.SeedData) []apitest.Table {
 				if !exists {
 					return "got is not *addonapp.Addon"
 				}
-				if gotResp.Name != "Extra Sauce {Special}, 0.5L (Garlic / Herb)" {
+				if gotResp.Name != "Extra Sauce {Special} + Garlic & Herb, 0.5L (Cold)" {
 					return "name mismatch"
 				}
 				if gotResp.Price != 3.50 {
@@ -185,13 +185,13 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &addonapp.NewAddon{
 				CategoryID:   sd.Categories[0].ID.String(),
 				RestaurantID: sd.Restaurants[0].ID.String(),
-				Name:         "Extra Dip + Sauce",
+				Name:         "Extra Dip #1",
 				Price:        2.50,
 			},
 			GotResp: &errs.Error{},
 			ExpResp: &errs.Error{
 				Code:    errs.InvalidArgument,
-				Message: `parse name: invalid name "Extra Dip + Sauce"`,
+				Message: `parse name: invalid name "Extra Dip #1"`,
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
