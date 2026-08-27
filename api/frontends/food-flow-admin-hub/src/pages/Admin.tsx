@@ -43,8 +43,6 @@ type EditorState =
   | { kind: 'promotion'; value?: AdminPromotion }
   | null;
 
-const NAME_PATTERN = /^[\p{L}\p{N}' -]{3,100}$/u;
-
 type Section = 'overview' | 'restaurant' | 'menu' | 'orders' | 'promotions' | 'insights';
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -164,9 +162,6 @@ function initials(name: string) {
   return name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
 }
 
-function validateName(name: string) {
-  if (!NAME_PATTERN.test(name)) throw new Error('Use 3–100 letters, numbers, spaces, apostrophes or hyphens for names.');
-}
 
 const Field = ({ label, htmlFor, required, hint, children }: { label: string; htmlFor: string; required?: boolean; hint?: string; children: React.ReactNode }) => (
   <div className="flex flex-col justify-between h-full space-y-1.5">
@@ -754,7 +749,6 @@ export default function Admin() {
               loading={loading}
               onSave={async (input) => {
                 if (!workspace) return;
-                validateName(input.name);
                 await mutateWorkspace(async () => {
                   await adminApi.updateRestaurant(workspace.restaurant.id, input);
                   const page = await adminApi.listRestaurants();
@@ -968,7 +962,6 @@ export default function Admin() {
           }
           if (kind === 'restaurant') {
             const restaurantInput = input as RestaurantInput;
-            validateName(restaurantInput.name);
             if (existingId) {
               await mutateWorkspace(async () => {
                 await adminApi.updateRestaurant(existingId, restaurantInput);
@@ -992,17 +985,14 @@ export default function Admin() {
           }
           if (kind === 'category' && workspace) {
             const categoryInput = input as CategoryInput;
-            validateName(categoryInput.name);
             await mutateWorkspace(() => existingId ? adminApi.updateCategory(existingId, categoryInput) : adminApi.createCategory(categoryInput), existingId ? 'Category updated' : 'Category created');
           }
           if (kind === 'item' && workspace) {
             const itemInput = input as MenuItemInput;
-            validateName(itemInput.name);
             await mutateWorkspace(() => existingId ? adminApi.updateMenuItem(existingId, itemInput) : adminApi.createMenuItem(itemInput), existingId ? 'Menu item updated' : 'Menu item created');
           }
           if (kind === 'addon' && workspace) {
             const addonInput = input as AddonInput;
-            validateName(addonInput.name);
             await mutateWorkspace(() => existingId ? adminApi.updateAddon(existingId, { name: addonInput.name, description: addonInput.description, price: addonInput.price, maxQuantity: addonInput.maxQuantity, rank: addonInput.rank }) : adminApi.createAddon(addonInput), existingId ? 'Add-on updated' : 'Add-on created');
             setAddonCategory(addonInput.categoryId);
           }
