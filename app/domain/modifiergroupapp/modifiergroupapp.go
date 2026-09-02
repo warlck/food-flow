@@ -136,6 +136,10 @@ func (a *app) query(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		return err.(*errs.Error)
 	}
 
+	if err := a.authorizeScope(ctx, filter); err != nil {
+		return err
+	}
+
 	orderBy, err := order.Parse(orderByFields, qp.OrderBy, defaultOrderBy)
 	if err != nil {
 		return errs.NewFieldErrors("order", err)
@@ -155,6 +159,39 @@ func (a *app) query(ctx context.Context, w http.ResponseWriter, r *http.Request)
 	return web.Respond(ctx, w, result, http.StatusOK)
 }
 
+// authorizeScope verifies the caller's organization owns the restaurant the
+// list query is scoped to. A scoping filter (restaurant_id or menu_item_id)
+// is required so list reads can never enumerate another organization's
+// catalog; a supplied filter is never treated as authorization by itself.
+func (a *app) authorizeScope(ctx context.Context, filter modifiergroupbus.QueryFilter) error {
+	var restaurantID uuid.UUID
+
+	switch {
+	case filter.RestaurantID != nil:
+		restaurantID = *filter.RestaurantID
+	case filter.MenuItemID != nil:
+		item, err := a.menuItemBus.QueryByID(ctx, *filter.MenuItemID)
+		if err != nil {
+			return errs.New(errs.InvalidArgument, fmt.Errorf("menu item lookup: %w", err))
+		}
+		restaurantID = item.RestaurantID
+	default:
+		return errs.Newf(errs.InvalidArgument, "query requires a restaurant_id or menu_item_id filter")
+	}
+
+	rest, err := a.restaurantBus.QueryByID(ctx, restaurantID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(rest.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
+	}
+
+	return nil
+}
+
 // QueryByID retrieves a modifier group by its ID.
 func (a *app) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	groupIDStr := web.Param(r, "modifier_group_id")
@@ -170,6 +207,16 @@ func (a *app) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Requ
 			return errs.New(errs.NotFound, err)
 		}
 		return fmt.Errorf("querybyid: groupID[%s]: %w", groupID, err)
+	}
+
+	rest, err := a.restaurantBus.QueryByID(ctx, group.RestaurantID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(rest.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
 	}
 
 	return web.Respond(ctx, w, ToAppModifierGroup(group), http.StatusOK)

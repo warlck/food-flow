@@ -20,7 +20,11 @@ func Test_ModifierOption(t *testing.T) {
 
 	// -------------------------------------------------------------------------
 
+	test.Run(t, query200(sd), "query-200")
+	test.Run(t, query400(sd), "query-400")
+	test.Run(t, query403(sd), "query-403")
 	test.Run(t, queryByID200(sd), "querybyid-200")
+	test.Run(t, queryByID403(sd), "querybyid-403")
 	test.Run(t, queryByID404(sd), "querybyid-404")
 
 	test.Run(t, update404(sd), "update-404")
