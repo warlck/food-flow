@@ -262,10 +262,11 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
             )}
           </DialogHeader>
 
-          {/* Modifier Groups Section */}
-          {activeItem.modifierGroups && activeItem.modifierGroups.length > 0 && (
+          {/* Modifier Groups Section - unavailable groups are suspended:
+              not presented, no requirement, no selections */}
+          {activeItem.modifierGroups && activeItem.modifierGroups.some((group) => group.available) && (
             <div className="mt-6 space-y-6">
-              {activeItem.modifierGroups.map((group) => {
+              {activeItem.modifierGroups.filter((group) => group.available).map((group) => {
                 const isSingleSelect = group.maxSelections === 1;
                 const isRequired = group.minSelections > 0;
                 const currentSelections = selectedModifiers[group.id] || [];
