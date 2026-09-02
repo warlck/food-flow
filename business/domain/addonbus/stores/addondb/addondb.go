@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -34,9 +33,9 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 func (s *Store) Create(ctx context.Context, addon addonbus.Addon) error {
 	const q = `
 	INSERT INTO addons
-		(addon_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated)
+		(addon_id, menu_item_id, restaurant_id, name, description, price, available, max_quantity, rank, date_created, date_updated)
 	VALUES
-		(:addon_id, :restaurant_id, :name, :description, :price, :available, :max_quantity, :date_created, :date_updated)`
+		(:addon_id, :menu_item_id, :restaurant_id, :name, :description, :price, :available, :max_quantity, :rank, :date_created, :date_updated)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAddon(addon)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -56,6 +55,7 @@ func (s *Store) Update(ctx context.Context, addon addonbus.Addon) error {
 		price = :price,
 		available = :available,
 		max_quantity = :max_quantity,
+		rank = :rank,
 		date_updated = :date_updated
 	WHERE
 		addon_id = :addon_id`
@@ -91,7 +91,7 @@ func (s *Store) Query(ctx context.Context, filter addonbus.QueryFilter, orderBy 
 
 	const q = `
 	SELECT
-		addon_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated
+		addon_id, menu_item_id, restaurant_id, name, description, price, available, max_quantity, rank, date_created, date_updated
 	FROM
 		addons`
 
@@ -120,7 +120,7 @@ func (s *Store) QueryAll(ctx context.Context, filter addonbus.QueryFilter, order
 
 	const q = `
 	SELECT
-		addon_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated
+		addon_id, menu_item_id, restaurant_id, name, description, price, available, max_quantity, rank, date_created, date_updated
 	FROM
 		addons`
 
@@ -175,7 +175,7 @@ func (s *Store) QueryByID(ctx context.Context, addonID uuid.UUID) (addonbus.Addo
 
 	const q = `
 	SELECT
-		addon_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated
+		addon_id, menu_item_id, restaurant_id, name, description, price, available, max_quantity, rank, date_created, date_updated
 	FROM
 		addons
 	WHERE 
@@ -192,92 +192,8 @@ func (s *Store) QueryByID(ctx context.Context, addonID uuid.UUID) (addonbus.Addo
 	return toBusAddon(dbAddn)
 }
 
-// QueryMenuItemAddons gets all assigned addons for a menu item.
-func (s *Store) QueryMenuItemAddons(ctx context.Context, menuItemID uuid.UUID) ([]addonbus.MenuItemAddonInfo, error) {
-	data := struct {
-		MenuItemID uuid.UUID `db:"menu_item_id"`
-	}{
-		MenuItemID: menuItemID,
-	}
-
-	const q = `
-	SELECT
-		a.addon_id,
-		a.restaurant_id,
-		a.name,
-		a.description,
-		a.price,
-		a.available,
-		a.max_quantity,
-		a.date_created,
-		a.date_updated,
-		mia.rank AS association_rank
-	FROM
-		menu_item_addons AS mia
-	JOIN
-		addons AS a ON a.addon_id = mia.addon_id
-	WHERE
-		mia.menu_item_id = :menu_item_id
-	ORDER BY
-		mia.rank ASC NULLS LAST, a.name ASC, a.addon_id ASC`
-
-	var rows []dbMenuItemAddonRow
-	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &rows); err != nil {
-		return nil, fmt.Errorf("namedqueryslice: %w", err)
-	}
-
-	return toBusMenuItemAddons(rows)
-}
-
-// ReplaceMenuItemAddons replaces all addon associations for a menu item in a transaction.
-func (s *Store) ReplaceMenuItemAddons(ctx context.Context, menuItemID uuid.UUID, restaurantID uuid.UUID, assignments []addonbus.ItemAddonAssignment) error {
-	tx, err := s.db.(*sqlx.DB).BeginTxx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	const delQ = `DELETE FROM menu_item_addons WHERE menu_item_id = :menu_item_id`
-	if err := sqldb.NamedExecContext(ctx, s.log, tx, delQ, map[string]any{"menu_item_id": menuItemID}); err != nil {
-		return fmt.Errorf("delete menu_item_addons: %w", err)
-	}
-
-	const insQ = `
-	INSERT INTO menu_item_addons
-		(menu_item_id, addon_id, restaurant_id, rank, date_created)
-	VALUES
-		(:menu_item_id, :addon_id, :restaurant_id, :rank, :date_created)`
-
-	now := time.Now().UTC()
-	for _, a := range assignments {
-		row := struct {
-			MenuItemID   uuid.UUID `db:"menu_item_id"`
-			AddonID      uuid.UUID `db:"addon_id"`
-			RestaurantID uuid.UUID `db:"restaurant_id"`
-			Rank         *int      `db:"rank"`
-			DateCreated  time.Time `db:"date_created"`
-		}{
-			MenuItemID:   menuItemID,
-			AddonID:      a.AddonID,
-			RestaurantID: restaurantID,
-			Rank:         a.Rank,
-			DateCreated:  now,
-		}
-
-		if err := sqldb.NamedExecContext(ctx, s.log, tx, insQ, row); err != nil {
-			return fmt.Errorf("insert menu_item_addons: %w", err)
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit transaction: %w", err)
-	}
-
-	return nil
-}
-
-// ReorderMenuItemAddons updates the ranks of assigned addons in a transaction.
-func (s *Store) ReorderMenuItemAddons(ctx context.Context, menuItemID uuid.UUID, assignments []addonbus.ItemAddonAssignment) error {
+// Reorder updates the ranks of addons for a menu item in a transaction.
+func (s *Store) Reorder(ctx context.Context, menuItemID uuid.UUID, addonIDs []uuid.UUID) error {
 	tx, err := s.db.(*sqlx.DB).BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
@@ -286,25 +202,26 @@ func (s *Store) ReorderMenuItemAddons(ctx context.Context, menuItemID uuid.UUID,
 
 	const q = `
 	UPDATE
-		menu_item_addons
+		addons
 	SET
 		rank = :rank
 	WHERE
-		menu_item_id = :menu_item_id AND addon_id = :addon_id`
+		addon_id = :addon_id AND menu_item_id = :menu_item_id`
 
-	for _, a := range assignments {
+	for i, id := range addonIDs {
+		rankVal := (i + 1) * 10
 		data := struct {
-			MenuItemID uuid.UUID `db:"menu_item_id"`
 			AddonID    uuid.UUID `db:"addon_id"`
-			Rank       *int      `db:"rank"`
+			MenuItemID uuid.UUID `db:"menu_item_id"`
+			Rank       int       `db:"rank"`
 		}{
+			AddonID:    id,
 			MenuItemID: menuItemID,
-			AddonID:    a.AddonID,
-			Rank:       a.Rank,
+			Rank:       rankVal,
 		}
 
 		if err := sqldb.NamedExecContext(ctx, s.log, tx, q, data); err != nil {
-			return fmt.Errorf("update menu_item_addons: %w", err)
+			return fmt.Errorf("update addon rank: %w", err)
 		}
 	}
 

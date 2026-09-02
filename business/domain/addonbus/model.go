@@ -6,48 +6,42 @@ import (
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/business/types/money"
 	"github.com/warlck/food-flow/business/types/name"
+	"github.com/warlck/food-flow/business/types/opt"
 )
 
-// Addon represents a restaurant-level addon definition in the system.
+// Addon represents a menu-item level addon in the system.
 type Addon struct {
 	ID           uuid.UUID
+	MenuItemID   uuid.UUID
 	RestaurantID uuid.UUID
 	Name         name.Name
 	Description  string
 	Price        money.Money
 	Available    bool
 	MaxQuantity  int
+	Rank         *int
 	DateCreated  time.Time
 	DateUpdated  time.Time
 }
 
-// NewAddon contains information needed to create a new addon definition.
+// NewAddon contains information needed to create a new addon.
 type NewAddon struct {
+	MenuItemID   uuid.UUID
 	RestaurantID uuid.UUID
 	Name         name.Name
 	Description  string
 	Price        money.Money
 	Available    *bool
 	MaxQuantity  int
+	Rank         *int
 }
 
-// UpdateAddon contains information needed to update an addon definition.
+// UpdateAddon contains information needed to update an addon.
 type UpdateAddon struct {
 	Name        *name.Name
 	Description *string
 	Price       *money.Money
 	Available   *bool
 	MaxQuantity *int
-}
-
-// ItemAddonAssignment represents an item-to-addon assignment with an optional rank.
-type ItemAddonAssignment struct {
-	AddonID uuid.UUID
-	Rank    *int
-}
-
-// MenuItemAddonInfo represents an assigned add-on on a specific menu item.
-type MenuItemAddonInfo struct {
-	Addon Addon
-	Rank  *int
+	Rank        opt.NullInt
 }

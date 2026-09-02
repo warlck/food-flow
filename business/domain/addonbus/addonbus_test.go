@@ -20,6 +20,7 @@ import (
 	"github.com/warlck/food-flow/business/sdk/unittest"
 	"github.com/warlck/food-flow/business/types/money"
 	"github.com/warlck/food-flow/business/types/name"
+	"github.com/warlck/food-flow/business/types/opt"
 )
 
 type seedData struct {
@@ -41,7 +42,7 @@ func Test_Addon(t *testing.T) {
 	unittest.Run(t, query(db.BusDomain, sd), "query")
 	unittest.Run(t, create(db.BusDomain, sd), "create")
 	unittest.Run(t, update(db.BusDomain, sd), "update")
-	unittest.Run(t, menuItemAddons(db.BusDomain, sd), "menu-item-addons")
+	unittest.Run(t, reorder(db.BusDomain, sd), "reorder")
 	unittest.Run(t, delete(db.BusDomain, sd), "delete")
 }
 
@@ -64,7 +65,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (seedData, error) {
 	if err != nil {
 		return seedData{}, fmt.Errorf("seeding menu items: %w", err)
 	}
-	addons, err := addonbus.TestSeedAddons(ctx, 4, rests[0].ID, busDomain.Addon)
+	addons, err := addonbus.TestSeedAddons(ctx, 4, items[0].ID, rests[0].ID, busDomain.Addon)
 	if err != nil {
 		return seedData{}, fmt.Errorf("seeding addons: %w", err)
 	}
@@ -90,6 +91,7 @@ func query(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
 			ExpResp: addons,
 			ExcFunc: func(ctx context.Context) any {
 				filter := addonbus.QueryFilter{
+					MenuItemID:   &sd.MenuItemID,
 					RestaurantID: &sd.RestaurantID,
 				}
 				resp, err := busDomain.Addon.Query(ctx, filter, addonbus.DefaultOrderBy, page.MustParse("1", "10"))
@@ -148,25 +150,30 @@ func query(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
 
 func create(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
 	avail := true
+	r10 := 10
 	table := []unittest.Table{
 		{
 			Name: "basic",
 			ExpResp: addonbus.Addon{
+				MenuItemID:   sd.MenuItemID,
 				RestaurantID: sd.RestaurantID,
 				Name:         name.MustParse("French Fries"),
 				Description:  "Crispy golden fries",
 				Price:        money.MustParse(4.50),
 				Available:    true,
 				MaxQuantity:  5,
+				Rank:         &r10,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				na := addonbus.NewAddon{
+					MenuItemID:   sd.MenuItemID,
 					RestaurantID: sd.RestaurantID,
 					Name:         name.MustParse("French Fries"),
 					Description:  "Crispy golden fries",
 					Price:        money.MustParse(4.50),
 					Available:    &avail,
 					MaxQuantity:  5,
+					Rank:         &r10,
 				}
 				resp, err := busDomain.Addon.Create(ctx, na)
 				if err != nil {
@@ -186,6 +193,33 @@ func create(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
 				return cmp.Diff(gotResp, expResp)
 			},
 		},
+		{
+			Name:    "duplicate-name",
+			ExpResp: addonbus.ErrDuplicateName,
+			ExcFunc: func(ctx context.Context) any {
+				na := addonbus.NewAddon{
+					MenuItemID:   sd.MenuItemID,
+					RestaurantID: sd.RestaurantID,
+					Name:         name.MustParse("French Fries"),
+					Description:  "Another fries",
+					Price:        money.MustParse(5.00),
+					Available:    &avail,
+					MaxQuantity:  5,
+				}
+				_, err := busDomain.Addon.Create(ctx, na)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return "expected error response"
+				}
+				if !errors.Is(gotErr, addonbus.ErrDuplicateName) {
+					return fmt.Sprintf("expected ErrDuplicateName, got %v", gotErr)
+				}
+				return ""
+			},
+		},
 	}
 
 	return table
@@ -199,12 +233,14 @@ func update(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
 			Name: "basic",
 			ExpResp: addonbus.Addon{
 				ID:           sd.Addons[0].ID,
+				MenuItemID:   sd.Addons[0].MenuItemID,
 				RestaurantID: sd.Addons[0].RestaurantID,
 				Name:         name.MustParse("Updated Addon Name"),
 				Description:  "Updated description",
 				Price:        newPrice,
 				Available:    sd.Addons[0].Available,
 				MaxQuantity:  newMax,
+				Rank:         nil,
 				DateCreated:  sd.Addons[0].DateCreated,
 			},
 			ExcFunc: func(ctx context.Context) any {
@@ -213,6 +249,7 @@ func update(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
 					Description: dbtest.StringPointer("Updated description"),
 					Price:       &newPrice,
 					MaxQuantity: &newMax,
+					Rank:        opt.NewNullIntNull(), // test unsetting rank
 				}
 				current, err := busDomain.Addon.QueryByID(ctx, sd.Addons[0].ID)
 				if err != nil {
@@ -240,66 +277,44 @@ func update(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
 	return table
 }
 
-func menuItemAddons(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
-	r10 := 10
-	r20 := 20
+func reorder(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
 	table := []unittest.Table{
 		{
-			Name:    "replace-assignments",
-			ExpResp: []int{10, 20},
+			Name:    "reorder-success",
+			ExpResp: 5,
 			ExcFunc: func(ctx context.Context) any {
-				assignments := []addonbus.ItemAddonAssignment{
-					{AddonID: sd.Addons[0].ID, Rank: &r10},
-					{AddonID: sd.Addons[1].ID, Rank: &r20},
-				}
-				assigned, err := busDomain.Addon.ReplaceMenuItemAddons(ctx, sd.MenuItemID, sd.RestaurantID, assignments)
+				current, err := busDomain.Addon.QueryAll(ctx, addonbus.QueryFilter{
+					MenuItemID: &sd.MenuItemID,
+				}, addonbus.DefaultOrderBy)
 				if err != nil {
 					return err
 				}
-				ranks := make([]int, len(assigned))
-				for i, a := range assigned {
-					if a.Rank != nil {
-						ranks[i] = *a.Rank
-					}
+
+				orderIDs := make([]uuid.UUID, len(current))
+				for i := range current {
+					orderIDs[i] = current[len(current)-1-i].ID
 				}
-				return ranks
-			},
-			CmpFunc: func(got any, exp any) string {
-				gotRanks, ok := got.([]int)
-				if !ok {
-					return fmt.Sprintf("expected []int, got %T: %v", got, got)
-				}
-				return cmp.Diff(gotRanks, exp.([]int))
-			},
-		},
-		{
-			Name:    "reorder-assignments",
-			ExpResp: []uuid.UUID{sd.Addons[1].ID, sd.Addons[0].ID},
-			ExcFunc: func(ctx context.Context) any {
-				reordered, err := busDomain.Addon.ReorderMenuItemAddons(ctx, sd.MenuItemID, []uuid.UUID{sd.Addons[1].ID, sd.Addons[0].ID})
+
+				reordered, err := busDomain.Addon.Reorder(ctx, sd.MenuItemID, orderIDs)
 				if err != nil {
 					return err
 				}
-				ids := make([]uuid.UUID, len(reordered))
-				for i, a := range reordered {
-					ids[i] = a.Addon.ID
-				}
-				return ids
+				return len(reordered)
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotIDs, ok := got.([]uuid.UUID)
+				gotLen, ok := got.(int)
 				if !ok {
-					return fmt.Sprintf("expected []uuid.UUID, got %T: %v", got, got)
+					return fmt.Sprintf("expected int, got %T: %v", got, got)
 				}
-				return cmp.Diff(gotIDs, exp.([]uuid.UUID))
+				return cmp.Diff(gotLen, exp.(int))
 			},
 		},
 		{
 			Name:    "reorder-mismatch-error",
 			ExpResp: addonbus.ErrInvalidReorder,
 			ExcFunc: func(ctx context.Context) any {
-				// Only pass 1 addon when 2 are assigned
-				_, err := busDomain.Addon.ReorderMenuItemAddons(ctx, sd.MenuItemID, []uuid.UUID{sd.Addons[1].ID})
+				// Pass fewer addons than exist
+				_, err := busDomain.Addon.Reorder(ctx, sd.MenuItemID, []uuid.UUID{sd.Addons[0].ID})
 				return err
 			},
 			CmpFunc: func(got any, exp any) string {
