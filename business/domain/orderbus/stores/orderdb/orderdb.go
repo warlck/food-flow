@@ -32,7 +32,6 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 
 // Create inserts a new order into the database.
 func (s *Store) Create(ctx context.Context, order orderbus.Order) error {
-	// Use transaction to insert order, items, and address
 	tx, err := s.db.(*sqlx.DB).BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
@@ -61,15 +60,31 @@ func (s *Store) Create(ctx context.Context, order orderbus.Order) error {
 	for _, item := range order.Items {
 		const itemSQL = `
 		INSERT INTO order_items (
-			order_item_id, order_id, menu_item_id, menu_item_name,
+			order_item_id, order_id, category_id, category_name, menu_item_id, menu_item_name,
 			menu_item_price, quantity, special_instructions, date_created
 		) VALUES (
-			:order_item_id, :order_id, :menu_item_id, :menu_item_name,
+			:order_item_id, :order_id, :category_id, :category_name, :menu_item_id, :menu_item_name,
 			:menu_item_price, :quantity, :special_instructions, :date_created
 		)`
 
 		if err := sqldb.NamedExecContext(ctx, s.log, tx, itemSQL, toDBOrderItem(item, order.ID)); err != nil {
 			return fmt.Errorf("namedexeccontext: %w", err)
+		}
+
+		// Insert order item modifiers
+		for _, mod := range item.Modifiers {
+			const modSQL = `
+			INSERT INTO order_item_modifiers (
+				order_item_modifier_id, order_item_id, modifier_group_id, modifier_group_name,
+				modifier_option_id, modifier_option_name, price_delta, date_created
+			) VALUES (
+				:order_item_modifier_id, :order_item_id, :modifier_group_id, :modifier_group_name,
+				:modifier_option_id, :modifier_option_name, :price_delta, :date_created
+			)`
+
+			if err := sqldb.NamedExecContext(ctx, s.log, tx, modSQL, toDBOrderItemModifier(mod, item.ID)); err != nil {
+				return fmt.Errorf("namedexeccontext: %w", err)
+			}
 		}
 
 		// Insert order item addons
@@ -188,22 +203,23 @@ func (s *Store) Query(ctx context.Context, filter orderbus.QueryFilter, orderBy 
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 
-	// Load order items and delivery addresses for each order
 	orders := make([]orderbus.Order, len(dbOrders))
 	for i, dbo := range dbOrders {
-		// Load items
 		items, err := s.queryOrderItems(ctx, dbo.ID)
 		if err != nil {
 			return nil, err
 		}
 
-		// Load item addons
+		modifiers, err := s.queryOrderItemModifiers(ctx, dbo.ID)
+		if err != nil {
+			return nil, err
+		}
+
 		addons, err := s.queryOrderItemAddons(ctx, dbo.ID)
 		if err != nil {
 			return nil, err
 		}
 
-		// Load delivery address if delivery order
 		var addr *dbDeliveryAddress
 		if dbo.OrderType == orderbus.OrderTypeDelivery {
 			a, err := s.queryDeliveryAddress(ctx, dbo.ID)
@@ -215,7 +231,7 @@ func (s *Store) Query(ctx context.Context, filter orderbus.QueryFilter, orderBy 
 			}
 		}
 
-		order, err := toBusOrder(dbo, items, addons, addr)
+		order, err := toBusOrder(dbo, items, modifiers, addons, addr)
 		if err != nil {
 			return nil, fmt.Errorf("tobusorder: %w", err)
 		}
@@ -272,19 +288,21 @@ func (s *Store) QueryByID(ctx context.Context, orderID uuid.UUID) (orderbus.Orde
 		return orderbus.Order{}, fmt.Errorf("namedquerystruct: %w", err)
 	}
 
-	// Load items
 	items, err := s.queryOrderItems(ctx, orderID)
 	if err != nil {
 		return orderbus.Order{}, err
 	}
 
-	// Load item addons
+	modifiers, err := s.queryOrderItemModifiers(ctx, orderID)
+	if err != nil {
+		return orderbus.Order{}, err
+	}
+
 	addons, err := s.queryOrderItemAddons(ctx, orderID)
 	if err != nil {
 		return orderbus.Order{}, err
 	}
 
-	// Load delivery address if delivery order
 	var addr *dbDeliveryAddress
 	if dbo.OrderType == orderbus.OrderTypeDelivery {
 		a, err := s.queryDeliveryAddress(ctx, orderID)
@@ -296,7 +314,7 @@ func (s *Store) QueryByID(ctx context.Context, orderID uuid.UUID) (orderbus.Orde
 		}
 	}
 
-	order, err := toBusOrder(dbo, items, addons, addr)
+	order, err := toBusOrder(dbo, items, modifiers, addons, addr)
 	if err != nil {
 		return orderbus.Order{}, fmt.Errorf("tobusorder: %w", err)
 	}
@@ -314,7 +332,7 @@ func (s *Store) queryOrderItems(ctx context.Context, orderID uuid.UUID) ([]dbOrd
 
 	const q = `
 	SELECT
-		order_item_id, order_id, menu_item_id, menu_item_name,
+		order_item_id, order_id, category_id, category_name, menu_item_id, menu_item_name,
 		menu_item_price, quantity, special_instructions, date_created
 	FROM
 		order_items
@@ -329,6 +347,36 @@ func (s *Store) queryOrderItems(ctx context.Context, orderID uuid.UUID) ([]dbOrd
 	}
 
 	return items, nil
+}
+
+// queryOrderItemModifiers retrieves all modifiers for all items of an order.
+func (s *Store) queryOrderItemModifiers(ctx context.Context, orderID uuid.UUID) ([]dbOrderItemModifier, error) {
+	data := struct {
+		OrderID uuid.UUID `db:"order_id"`
+	}{
+		OrderID: orderID,
+	}
+
+	const q = `
+	SELECT
+		oim.order_item_modifier_id, oim.order_item_id, oim.modifier_group_id,
+		oim.modifier_group_name, oim.modifier_option_id, oim.modifier_option_name,
+		oim.price_delta, oim.date_created
+	FROM
+		order_item_modifiers AS oim
+	INNER JOIN
+		order_items AS oi ON oim.order_item_id = oi.order_item_id
+	WHERE
+		oi.order_id = :order_id
+	ORDER BY
+		oim.date_created`
+
+	var modifiers []dbOrderItemModifier
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &modifiers); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return modifiers, nil
 }
 
 // queryOrderItemAddons retrieves all addons for all items of an order.

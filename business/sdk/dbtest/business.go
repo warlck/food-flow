@@ -79,7 +79,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) (BusDomain, error) {
 	promoBus := promobus.NewBusiness(log, promoStorage)
 
 	orderStorage := orderdb.NewStore(log, db)
-	orderBus := orderbus.NewBusiness(log, orderStorage, menuItemBus, restaurantBus, addonBus, promoBus)
+	orderBus := orderbus.NewBusiness(log, orderStorage, menuItemBus, restaurantBus, addonBus, promoBus, categoryBus, modifierGroupBus, modifierOptionBus)
 
 	imageStorage := imagedb.NewStore(log, db)
 	imageDir, err := os.MkdirTemp("", "ff-image-test-*")

@@ -15,6 +15,8 @@ import (
 	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
+	"github.com/warlck/food-flow/business/domain/modifiergroupbus"
+	"github.com/warlck/food-flow/business/domain/modifieroptionbus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
 	"github.com/warlck/food-flow/business/domain/promobus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
@@ -89,19 +91,28 @@ func insertSeedData(busDomain dbtest.BusDomain) (unittest.SeedData, error) {
 	}
 
 	// Seed addons
-	addons1, err := addonbus.TestSeedAddons(ctx, 2, cats1[0].ID, rests[0].ID, busDomain.Addon)
+	addons1, err := addonbus.TestSeedAddons(ctx, 2, rests[0].ID, busDomain.Addon)
 	if err != nil {
 		return unittest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
 	}
 
-	addons1OtherCat, err := addonbus.TestSeedAddons(ctx, 1, cats1[1].ID, rests[0].ID, busDomain.Addon)
+	addons1OtherCat, err := addonbus.TestSeedAddons(ctx, 1, rests[0].ID, busDomain.Addon)
 	if err != nil {
 		return unittest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
 	}
 
-	addons2, err := addonbus.TestSeedAddons(ctx, 1, cats2[0].ID, rests[1].ID, busDomain.Addon)
+	addons2, err := addonbus.TestSeedAddons(ctx, 1, rests[1].ID, busDomain.Addon)
 	if err != nil {
 		return unittest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
+	}
+
+	// Assign addons1 to items1[0]
+	if _, err := addonbus.TestAssignAddonsToMenuItem(ctx, items1[0].ID, rests[0].ID, []uuid.UUID{addons1[0].ID, addons1[1].ID}, busDomain.Addon); err != nil {
+		return unittest.SeedData{}, fmt.Errorf("assigning addons: %w", err)
+	}
+	// Assign addons1OtherCat to items1[1]
+	if _, err := addonbus.TestAssignAddonsToMenuItem(ctx, items1[1].ID, rests[0].ID, []uuid.UUID{addons1OtherCat[0].ID}, busDomain.Addon); err != nil {
+		return unittest.SeedData{}, fmt.Errorf("assigning addons: %w", err)
 	}
 
 	// Seed orders
@@ -1099,8 +1110,168 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			},
 		},
 		{
+			Name: "order-with-modifiers-and-addons",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				item, err := busDomain.MenuItem.Create(ctx, menuitembus.NewMenuItem{
+					CategoryID:   sd.Categories[0].ID,
+					RestaurantID: sd.Restaurants[0].ID,
+					Name:         name.MustParse("Burger Deluxe"),
+					Description:  "Tasty burger",
+					Price:        money.MustParse(15.00),
+				})
+				if err != nil {
+					return err
+				}
+
+				grp, err := busDomain.ModifierGroup.Create(ctx, modifiergroupbus.NewModifierGroup{
+					MenuItemID:    item.ID,
+					RestaurantID:  sd.Restaurants[0].ID,
+					Name:          name.MustParse("Size Selection"),
+					MinSelections: 1,
+					MaxSelections: 1,
+					Available:     true,
+				})
+				if err != nil {
+					return err
+				}
+
+				opt, err := busDomain.ModifierOption.Create(ctx, modifieroptionbus.NewModifierOption{
+					ModifierGroupID: grp.ID,
+					RestaurantID:    sd.Restaurants[0].ID,
+					Name:            name.MustParse("Large Upgrade"),
+					PriceDelta:      money.MustParse(3.50),
+				})
+				if err != nil {
+					return err
+				}
+
+				addon, err := busDomain.Addon.Create(ctx, addonbus.NewAddon{
+					RestaurantID: sd.Restaurants[0].ID,
+					Name:         name.MustParse("Extra Cheese"),
+					Description:  "Gouda cheese slice",
+					Price:        money.MustParse(2.00),
+					MaxQuantity:  5,
+				})
+				if err != nil {
+					return err
+				}
+
+				if _, err := addonbus.TestAssignAddonsToMenuItem(ctx, item.ID, sd.Restaurants[0].ID, []uuid.UUID{addon.ID}, busDomain.Addon); err != nil {
+					return err
+				}
+
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Modifier Customer",
+					CustomerEmail: "modcustomer@example.com",
+					CustomerPhone: "555-9876",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: item.ID.String(),
+							Quantity:   2,
+							Modifiers: []orderbus.NewOrderItemModifier{
+								{
+									ModifierGroupID:  grp.ID.String(),
+									ModifierOptionID: opt.ID.String(),
+								},
+							},
+							Addons: []orderbus.NewOrderItemAddon{
+								{
+									AddonID:  addon.ID.String(),
+									Quantity: 2,
+								},
+							},
+						},
+					},
+				}
+
+				ord, err := busDomain.Order.Create(ctx, no)
+				if err != nil {
+					return err
+				}
+
+				// Verify exact math:
+				// Base: 15.00, Mod: 3.50, Addons: 2.00 * 2 = 4.00
+				// Unit subtotal: 15.00 + 3.50 + 4.00 = 22.50
+				// Line total: 22.50 * 2 = 45.00
+				// Tax (10%): 4.50
+				// Total: 49.50
+				if ord.Subtotal.Value() != 45.00 {
+					return fmt.Sprintf("subtotal: got %.2f, want 45.00", ord.Subtotal.Value())
+				}
+				if ord.Tax.Value() != 4.50 {
+					return fmt.Sprintf("tax: got %.2f, want 4.50", ord.Tax.Value())
+				}
+				if ord.Total.Value() != 49.50 {
+					return fmt.Sprintf("total: got %.2f, want 49.50", ord.Total.Value())
+				}
+
+				// Query by ID and assert snapshots persisted
+				queried, err := busDomain.Order.QueryByID(ctx, ord.ID)
+				if err != nil {
+					return err
+				}
+
+				if len(queried.Items) != 1 {
+					return fmt.Sprintf("expected 1 item, got %d", len(queried.Items))
+				}
+				it := queried.Items[0]
+				if it.CategoryID != sd.Categories[0].ID {
+					return fmt.Sprintf("category ID snapshot mismatch: got %s, want %s", it.CategoryID, sd.Categories[0].ID)
+				}
+				if it.CategoryName != sd.Categories[0].Name.String() {
+					return fmt.Sprintf("category name snapshot mismatch: got %q, want %q", it.CategoryName, sd.Categories[0].Name.String())
+				}
+				if it.MenuItemName != "Burger Deluxe" {
+					return fmt.Sprintf("menu item name mismatch: got %q, want 'Burger Deluxe'", it.MenuItemName)
+				}
+				if it.MenuItemPrice.Value() != 15.00 {
+					return fmt.Sprintf("menu item price mismatch: got %.2f, want 15.00", it.MenuItemPrice.Value())
+				}
+
+				if len(it.Modifiers) != 1 {
+					return fmt.Sprintf("expected 1 modifier, got %d", len(it.Modifiers))
+				}
+				m := it.Modifiers[0]
+				if m.ModifierGroupName != "Size Selection" {
+					return fmt.Sprintf("mod group name: got %q, want 'Size Selection'", m.ModifierGroupName)
+				}
+				if m.ModifierOptionName != "Large Upgrade" {
+					return fmt.Sprintf("mod option name: got %q, want 'Large Upgrade'", m.ModifierOptionName)
+				}
+				if m.PriceDelta.Value() != 3.50 {
+					return fmt.Sprintf("price delta: got %.2f, want 3.50", m.PriceDelta.Value())
+				}
+
+				if len(it.Addons) != 1 {
+					return fmt.Sprintf("expected 1 addon, got %d", len(it.Addons))
+				}
+				ad := it.Addons[0]
+				if ad.AddonName != "Extra Cheese" {
+					return fmt.Sprintf("addon name: got %q, want 'Extra Cheese'", ad.AddonName)
+				}
+				if ad.AddonPrice.Value() != 2.00 {
+					return fmt.Sprintf("addon price: got %.2f, want 2.00", ad.AddonPrice.Value())
+				}
+				if ad.Quantity != 2 {
+					return fmt.Sprintf("addon quantity: got %d, want 2", ad.Quantity)
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("unexpected error: %v", got)
+				}
+				return ""
+			},
+		},
+		{
 			Name:    "addon-not-found",
-			ExpResp: addonbus.ErrNotFound,
+			ExpResp: orderbus.ErrAddonNotAssigned,
 			ExcFunc: func(ctx context.Context) any {
 				no := orderbus.NewOrder{
 					RestaurantID:  sd.Restaurants[0].ID.String(),
@@ -1130,7 +1301,7 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				}
 
 				if !errors.Is(gotErr, exp.(error)) {
-					return "different error"
+					return fmt.Sprintf("got %v, expected %v", gotErr, exp)
 				}
 
 				return ""
@@ -1216,20 +1387,20 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			Name:    "addon-unavailable",
 			ExpResp: orderbus.ErrAddonUnavailable,
 			ExcFunc: func(ctx context.Context) any {
+				avail := false
 				addon, err := busDomain.Addon.Create(ctx, addonbus.NewAddon{
-					CategoryID:   sd.Categories[0].ID,
 					RestaurantID: sd.Restaurants[0].ID,
 					Name:         name.MustParse("Unavailable Addon"),
 					Description:  "temporarily unavailable",
 					Price:        money.MustParse(1.50),
+					Available:    &avail,
 					MaxQuantity:  2,
 				})
 				if err != nil {
 					return err
 				}
 
-				available := false
-				if _, err := busDomain.Addon.Update(ctx, addon, addonbus.UpdateAddon{Available: &available}); err != nil {
+				if _, err := addonbus.TestAssignAddonsToMenuItem(ctx, sd.MenuItems[0].ID, sd.Restaurants[0].ID, []uuid.UUID{addon.ID}, busDomain.Addon); err != nil {
 					return err
 				}
 
@@ -1261,20 +1432,20 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				}
 
 				if !errors.Is(gotErr, exp.(error)) {
-					return "different error"
+					return fmt.Sprintf("got %v, expected %v", gotErr, exp)
 				}
 
 				return ""
 			},
 		},
 		{
-			Name:    "addon-wrong-category",
-			ExpResp: orderbus.ErrAddonCategoryMismatch,
+			Name:    "addon-not-assigned",
+			ExpResp: orderbus.ErrAddonNotAssigned,
 			ExcFunc: func(ctx context.Context) any {
 				no := orderbus.NewOrder{
 					RestaurantID:  sd.Restaurants[0].ID.String(),
-					CustomerName:  "Wrong Category",
-					CustomerEmail: "wrongcat@example.com",
+					CustomerName:  "Unassigned Addon",
+					CustomerEmail: "unassigned@example.com",
 					CustomerPhone: "555-5555",
 					OrderType:     orderbus.OrderTypePickup,
 					PaymentMethod: orderbus.PaymentMethodCreditCard,
@@ -1299,7 +1470,150 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				}
 
 				if !errors.Is(gotErr, exp.(error)) {
-					return "different error"
+					return fmt.Sprintf("got %v, expected %v", gotErr, exp)
+				}
+
+				return ""
+			},
+		},
+		{
+			Name:    "modifier-required-missing",
+			ExpResp: orderbus.ErrModifierRequired,
+			ExcFunc: func(ctx context.Context) any {
+				item, err := busDomain.MenuItem.Create(ctx, menuitembus.NewMenuItem{
+					CategoryID:   sd.Categories[0].ID,
+					RestaurantID: sd.Restaurants[0].ID,
+					Name:         name.MustParse("Item With Req Mod"),
+					Description:  "desc",
+					Price:        money.MustParse(12.00),
+				})
+				if err != nil {
+					return err
+				}
+
+				grp, err := busDomain.ModifierGroup.Create(ctx, modifiergroupbus.NewModifierGroup{
+					MenuItemID:    item.ID,
+					RestaurantID:  sd.Restaurants[0].ID,
+					Name:          name.MustParse("Required Spice Level"),
+					MinSelections: 1,
+					MaxSelections: 1,
+					Available:     true,
+				})
+				if err != nil {
+					return err
+				}
+				_, err = busDomain.ModifierOption.Create(ctx, modifieroptionbus.NewModifierOption{
+					ModifierGroupID: grp.ID,
+					RestaurantID:    sd.Restaurants[0].ID,
+					Name:            name.MustParse("Mild"),
+					PriceDelta:      money.MustParse(0),
+				})
+				if err != nil {
+					return err
+				}
+
+				// Attempt order without providing the required modifier
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Missing Modifier",
+					CustomerEmail: "missingmod@example.com",
+					CustomerPhone: "555-7777",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: item.ID.String(),
+							Quantity:   1,
+						},
+					},
+				}
+
+				_, err = busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "expected an error"
+				}
+
+				if !errors.Is(gotErr, exp.(error)) {
+					return fmt.Sprintf("got %v, expected %v", gotErr, exp)
+				}
+
+				return ""
+			},
+		},
+		{
+			Name:    "modifier-option-unavailable",
+			ExpResp: orderbus.ErrModifierOptionUnavailable,
+			ExcFunc: func(ctx context.Context) any {
+				item, err := busDomain.MenuItem.Create(ctx, menuitembus.NewMenuItem{
+					CategoryID:   sd.Categories[0].ID,
+					RestaurantID: sd.Restaurants[0].ID,
+					Name:         name.MustParse("Item With Unavail Mod"),
+					Description:  "desc",
+					Price:        money.MustParse(14.00),
+				})
+				if err != nil {
+					return err
+				}
+
+				grp, err := busDomain.ModifierGroup.Create(ctx, modifiergroupbus.NewModifierGroup{
+					MenuItemID:    item.ID,
+					RestaurantID:  sd.Restaurants[0].ID,
+					Name:          name.MustParse("Unavailable Mod Group"),
+					MinSelections: 1,
+					MaxSelections: 1,
+					Available:     true,
+				})
+				if err != nil {
+					return err
+				}
+				avail := false
+				opt, err := busDomain.ModifierOption.Create(ctx, modifieroptionbus.NewModifierOption{
+					ModifierGroupID: grp.ID,
+					RestaurantID:    sd.Restaurants[0].ID,
+					Name:            name.MustParse("Out of Stock Sauce"),
+					PriceDelta:      money.MustParse(1.00),
+					Available:       &avail,
+				})
+				if err != nil {
+					return err
+				}
+
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Unavailable Mod Option",
+					CustomerEmail: "unavailmod@example.com",
+					CustomerPhone: "555-8888",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: item.ID.String(),
+							Quantity:   1,
+							Modifiers: []orderbus.NewOrderItemModifier{
+								{
+									ModifierGroupID:  grp.ID.String(),
+									ModifierOptionID: opt.ID.String(),
+								},
+							},
+						},
+					},
+				}
+
+				_, err = busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "expected an error"
+				}
+
+				if !errors.Is(gotErr, exp.(error)) {
+					return fmt.Sprintf("got %v, expected %v", gotErr, exp)
 				}
 
 				return ""

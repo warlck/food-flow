@@ -36,12 +36,26 @@ type dbOrder struct {
 type dbOrderItem struct {
 	ID                  uuid.UUID `db:"order_item_id"`
 	OrderID             uuid.UUID `db:"order_id"`
+	CategoryID          uuid.UUID `db:"category_id"`
+	CategoryName        string    `db:"category_name"`
 	MenuItemID          uuid.UUID `db:"menu_item_id"`
 	MenuItemName        string    `db:"menu_item_name"`
 	MenuItemPrice       float64   `db:"menu_item_price"`
 	Quantity            int       `db:"quantity"`
 	SpecialInstructions *string   `db:"special_instructions"`
 	DateCreated         time.Time `db:"date_created"`
+}
+
+// dbOrderItemModifier represents the database row for an order item modifier.
+type dbOrderItemModifier struct {
+	ID                 uuid.UUID `db:"order_item_modifier_id"`
+	OrderItemID        uuid.UUID `db:"order_item_id"`
+	ModifierGroupID    uuid.UUID `db:"modifier_group_id"`
+	ModifierGroupName  string    `db:"modifier_group_name"`
+	ModifierOptionID   uuid.UUID `db:"modifier_option_id"`
+	ModifierOptionName string    `db:"modifier_option_name"`
+	PriceDelta         float64   `db:"price_delta"`
+	DateCreated        time.Time `db:"date_created"`
 }
 
 // dbOrderItemAddon represents the database row for an order item addon.
@@ -110,7 +124,7 @@ func toDBOrder(bus orderbus.Order) dbOrder {
 	}
 }
 
-func toBusOrder(dbo dbOrder, items []dbOrderItem, addons []dbOrderItemAddon, addr *dbDeliveryAddress) (orderbus.Order, error) {
+func toBusOrder(dbo dbOrder, items []dbOrderItem, modifiers []dbOrderItemModifier, addons []dbOrderItemAddon, addr *dbDeliveryAddress) (orderbus.Order, error) {
 	subtotal, err := money.Parse(dbo.Subtotal)
 	if err != nil {
 		return orderbus.Order{}, fmt.Errorf("parse subtotal: %w", err)
@@ -174,6 +188,11 @@ func toBusOrder(dbo dbOrder, items []dbOrderItem, addons []dbOrderItemAddon, add
 		Items:                 make([]orderbus.OrderItem, len(items)),
 	}
 
+	modsByItem := make(map[uuid.UUID][]orderbus.OrderItemModifier)
+	for _, mod := range modifiers {
+		modsByItem[mod.OrderItemID] = append(modsByItem[mod.OrderItemID], toBusOrderItemModifier(mod))
+	}
+
 	addonsByItem := make(map[uuid.UUID][]orderbus.OrderItemAddon)
 	for _, addon := range addons {
 		addonsByItem[addon.OrderItemID] = append(addonsByItem[addon.OrderItemID], toBusOrderItemAddon(addon))
@@ -181,6 +200,7 @@ func toBusOrder(dbo dbOrder, items []dbOrderItem, addons []dbOrderItemAddon, add
 
 	for i, item := range items {
 		busItem := toBusOrderItem(item)
+		busItem.Modifiers = modsByItem[item.ID]
 		busItem.Addons = addonsByItem[item.ID]
 		order.Items[i] = busItem
 	}
@@ -202,6 +222,8 @@ func toDBOrderItem(bus orderbus.OrderItem, orderID uuid.UUID) dbOrderItem {
 	return dbOrderItem{
 		ID:                  bus.ID,
 		OrderID:             orderID,
+		CategoryID:          bus.CategoryID,
+		CategoryName:        bus.CategoryName,
 		MenuItemID:          bus.MenuItemID,
 		MenuItemName:        bus.MenuItemName,
 		MenuItemPrice:       bus.MenuItemPrice.Value(),
@@ -214,8 +236,6 @@ func toDBOrderItem(bus orderbus.OrderItem, orderID uuid.UUID) dbOrderItem {
 func toBusOrderItem(dbo dbOrderItem) orderbus.OrderItem {
 	price, err := money.Parse(dbo.MenuItemPrice)
 	if err != nil {
-		// This should never happen with valid database data
-		// but we need to handle it gracefully
 		price = money.Money{}
 	}
 
@@ -227,12 +247,45 @@ func toBusOrderItem(dbo dbOrderItem) orderbus.OrderItem {
 	return orderbus.OrderItem{
 		ID:                  dbo.ID,
 		OrderID:             dbo.OrderID,
+		CategoryID:          dbo.CategoryID,
+		CategoryName:        dbo.CategoryName,
 		MenuItemID:          dbo.MenuItemID,
 		MenuItemName:        dbo.MenuItemName,
 		MenuItemPrice:       price,
 		Quantity:            dbo.Quantity,
 		SpecialInstructions: specialInstructionsStr,
 		DateCreated:         dbo.DateCreated.In(time.Local),
+	}
+}
+
+func toDBOrderItemModifier(bus orderbus.OrderItemModifier, orderItemID uuid.UUID) dbOrderItemModifier {
+	return dbOrderItemModifier{
+		ID:                 bus.ID,
+		OrderItemID:        orderItemID,
+		ModifierGroupID:    bus.ModifierGroupID,
+		ModifierGroupName:  bus.ModifierGroupName,
+		ModifierOptionID:   bus.ModifierOptionID,
+		ModifierOptionName: bus.ModifierOptionName,
+		PriceDelta:         bus.PriceDelta.Value(),
+		DateCreated:        bus.DateCreated.UTC(),
+	}
+}
+
+func toBusOrderItemModifier(dbo dbOrderItemModifier) orderbus.OrderItemModifier {
+	priceDelta, err := money.Parse(dbo.PriceDelta)
+	if err != nil {
+		priceDelta = money.Money{}
+	}
+
+	return orderbus.OrderItemModifier{
+		ID:                 dbo.ID,
+		OrderItemID:        dbo.OrderItemID,
+		ModifierGroupID:    dbo.ModifierGroupID,
+		ModifierGroupName:  dbo.ModifierGroupName,
+		ModifierOptionID:   dbo.ModifierOptionID,
+		ModifierOptionName: dbo.ModifierOptionName,
+		PriceDelta:         priceDelta,
+		DateCreated:        dbo.DateCreated.In(time.Local),
 	}
 }
 
@@ -251,8 +304,6 @@ func toDBOrderItemAddon(bus orderbus.OrderItemAddon, orderItemID uuid.UUID) dbOr
 func toBusOrderItemAddon(dbo dbOrderItemAddon) orderbus.OrderItemAddon {
 	price, err := money.Parse(dbo.AddonPrice)
 	if err != nil {
-		// This should never happen with valid database data
-		// but we need to handle it gracefully
 		price = money.Money{}
 	}
 

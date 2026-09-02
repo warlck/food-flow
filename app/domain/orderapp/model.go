@@ -37,14 +37,27 @@ type Order struct {
 
 // OrderItem represents an item in an order.
 type OrderItem struct {
-	ID                  string           `json:"id"`
-	MenuItemID          string           `json:"menuItemId"`
-	MenuItemName        string           `json:"menuItemName"`
-	MenuItemPrice       float64          `json:"menuItemPrice"`
-	Quantity            int              `json:"quantity"`
-	SpecialInstructions string           `json:"specialInstructions,omitempty"`
-	Addons              []OrderItemAddon `json:"addons,omitempty"`
-	DateCreated         string           `json:"dateCreated"`
+	ID                  string              `json:"id"`
+	CategoryID          string              `json:"categoryId"`
+	CategoryName        string              `json:"categoryName"`
+	MenuItemID          string              `json:"menuItemId"`
+	MenuItemName        string              `json:"menuItemName"`
+	MenuItemPrice       float64             `json:"menuItemPrice"`
+	Quantity            int                 `json:"quantity"`
+	SpecialInstructions string              `json:"specialInstructions,omitempty"`
+	Modifiers           []OrderItemModifier `json:"modifiers,omitempty"`
+	Addons              []OrderItemAddon    `json:"addons,omitempty"`
+	DateCreated         string              `json:"dateCreated"`
+}
+
+// OrderItemModifier represents a modifier option applied to an order item.
+type OrderItemModifier struct {
+	ID                 string  `json:"id"`
+	ModifierGroupID    string  `json:"modifierGroupId"`
+	ModifierGroupName  string  `json:"modifierGroupName"`
+	ModifierOptionID   string  `json:"modifierOptionId"`
+	ModifierOptionName string  `json:"modifierOptionName"`
+	PriceDelta         float64 `json:"priceDelta"`
 }
 
 // OrderItemAddon represents an addon applied to an order item.
@@ -79,6 +92,18 @@ func (app Order) Encode() ([]byte, string, error) {
 func ToAppOrder(bus orderbus.Order) Order {
 	items := make([]OrderItem, len(bus.Items))
 	for i, item := range bus.Items {
+		var modifiers []OrderItemModifier
+		for _, mod := range item.Modifiers {
+			modifiers = append(modifiers, OrderItemModifier{
+				ID:                 mod.ID.String(),
+				ModifierGroupID:    mod.ModifierGroupID.String(),
+				ModifierGroupName:  mod.ModifierGroupName,
+				ModifierOptionID:   mod.ModifierOptionID.String(),
+				ModifierOptionName: mod.ModifierOptionName,
+				PriceDelta:         mod.PriceDelta.Value(),
+			})
+		}
+
 		var addons []OrderItemAddon
 		for _, addon := range item.Addons {
 			addons = append(addons, OrderItemAddon{
@@ -92,11 +117,14 @@ func ToAppOrder(bus orderbus.Order) Order {
 
 		items[i] = OrderItem{
 			ID:                  item.ID.String(),
+			CategoryID:          item.CategoryID.String(),
+			CategoryName:        item.CategoryName,
 			MenuItemID:          item.MenuItemID.String(),
 			MenuItemName:        item.MenuItemName,
 			MenuItemPrice:       item.MenuItemPrice.Value(),
 			Quantity:            item.Quantity,
 			SpecialInstructions: item.SpecialInstructions,
+			Modifiers:           modifiers,
 			Addons:              addons,
 			DateCreated:         item.DateCreated.Format(time.RFC3339),
 		}
@@ -170,10 +198,17 @@ type NewOrder struct {
 
 // NewOrderItem defines the data needed to add an item to an order.
 type NewOrderItem struct {
-	MenuItemID          string              `json:"menuItemId" validate:"required"`
-	Quantity            int                 `json:"quantity" validate:"required,min=1"`
-	SpecialInstructions string              `json:"specialInstructions"`
-	Addons              []NewOrderItemAddon `json:"addons" validate:"omitempty,dive"`
+	MenuItemID          string                 `json:"menuItemId" validate:"required"`
+	Quantity            int                    `json:"quantity" validate:"required,min=1"`
+	SpecialInstructions string                 `json:"specialInstructions"`
+	Modifiers           []NewOrderItemModifier `json:"modifiers" validate:"omitempty,dive"`
+	Addons              []NewOrderItemAddon    `json:"addons" validate:"omitempty,dive"`
+}
+
+// NewOrderItemModifier defines the data needed to add a modifier option to an order item.
+type NewOrderItemModifier struct {
+	ModifierGroupID  string `json:"modifierGroupId" validate:"required,uuid"`
+	ModifierOptionID string `json:"modifierOptionId" validate:"required,uuid"`
 }
 
 // NewOrderItemAddon defines the data needed to add an addon to an order item.
@@ -215,6 +250,14 @@ func toBusNewOrder(app NewOrder) (orderbus.NewOrder, error) {
 
 	items := make([]orderbus.NewOrderItem, len(app.Items))
 	for i, item := range app.Items {
+		modifiers := make([]orderbus.NewOrderItemModifier, len(item.Modifiers))
+		for j, mod := range item.Modifiers {
+			modifiers[j] = orderbus.NewOrderItemModifier{
+				ModifierGroupID:  mod.ModifierGroupID,
+				ModifierOptionID: mod.ModifierOptionID,
+			}
+		}
+
 		addons := make([]orderbus.NewOrderItemAddon, len(item.Addons))
 		for j, addon := range item.Addons {
 			addons[j] = orderbus.NewOrderItemAddon{
@@ -227,6 +270,7 @@ func toBusNewOrder(app NewOrder) (orderbus.NewOrder, error) {
 			MenuItemID:          item.MenuItemID,
 			Quantity:            item.Quantity,
 			SpecialInstructions: item.SpecialInstructions,
+			Modifiers:           modifiers,
 			Addons:              addons,
 		}
 	}
@@ -244,7 +288,7 @@ func toBusNewOrder(app NewOrder) (orderbus.NewOrder, error) {
 		}
 	}
 
-	bus := orderbus.NewOrder{
+	return orderbus.NewOrder{
 		RestaurantID:        restaurantID.String(),
 		CustomerName:        app.CustomerName,
 		CustomerEmail:       app.CustomerEmail,
@@ -252,46 +296,16 @@ func toBusNewOrder(app NewOrder) (orderbus.NewOrder, error) {
 		OrderType:           app.OrderType,
 		PaymentMethod:       app.PaymentMethod,
 		PromoCode:           app.PromoCode,
-		SpecialInstructions: app.SpecialInstructions,
 		Items:               items,
 		DeliveryAddress:     deliveryAddr,
-	}
-
-	return bus, nil
+		SpecialInstructions: app.SpecialInstructions,
+	}, nil
 }
 
-// =============================================================================
-
-// DeliveryQuote represents a delivery fee quote for API responses.
-type DeliveryQuote struct {
-	DistanceKm            float64 `json:"distanceKm"`
-	DeliveryFee           float64 `json:"deliveryFee"`
-	MaxDeliveryDistanceKm float64 `json:"maxDeliveryDistanceKm"`
-	WithinLimit           bool    `json:"withinLimit"`
-}
-
-// Encode implements the encoder interface.
-func (app DeliveryQuote) Encode() ([]byte, string, error) {
-	data, err := json.Marshal(app)
-	return data, "application/json", err
-}
-
-// ToAppDeliveryQuote converts a business layer delivery quote to an app layer quote.
-func ToAppDeliveryQuote(bus orderbus.DeliveryQuote) DeliveryQuote {
-	return DeliveryQuote{
-		DistanceKm:            bus.DistanceKm,
-		DeliveryFee:           bus.DeliveryFee.Value(),
-		MaxDeliveryDistanceKm: bus.MaxDeliveryDistanceKm,
-		WithinLimit:           bus.WithinLimit,
-	}
-}
-
-// =============================================================================
-
-// UpdateOrderStatus defines the data needed to update order status.
+// UpdateOrderStatus defines the data needed to update an order's status.
 type UpdateOrderStatus struct {
-	OrderStatus   *string `json:"orderStatus" validate:"omitempty,oneof=pending confirmed preparing ready out_for_delivery completed cancelled"`
-	PaymentStatus *string `json:"paymentStatus" validate:"omitempty,oneof=pending processing paid failed refunded"`
+	OrderStatus   string `json:"orderStatus" validate:"omitempty,oneof=pending confirmed preparing ready out_for_delivery completed cancelled"`
+	PaymentStatus string `json:"paymentStatus" validate:"omitempty,oneof=pending processing paid failed refunded"`
 }
 
 // Decode implements the decoder interface.
@@ -309,18 +323,32 @@ func (app UpdateOrderStatus) Validate() error {
 }
 
 func toBusUpdateOrderStatus(app UpdateOrderStatus) orderbus.UpdateOrderStatus {
-	var orderStatus, paymentStatus string
-
-	if app.OrderStatus != nil {
-		orderStatus = *app.OrderStatus
-	}
-
-	if app.PaymentStatus != nil {
-		paymentStatus = *app.PaymentStatus
-	}
-
 	return orderbus.UpdateOrderStatus{
-		OrderStatus:   orderStatus,
-		PaymentStatus: paymentStatus,
+		OrderStatus:   app.OrderStatus,
+		PaymentStatus: app.PaymentStatus,
+	}
+}
+
+// DeliveryQuote represents delivery fee calculation results.
+type DeliveryQuote struct {
+	DistanceKm            float64 `json:"distanceKm"`
+	DeliveryFee           float64 `json:"deliveryFee"`
+	MaxDeliveryDistanceKm float64 `json:"maxDeliveryDistanceKm"`
+	WithinLimit           bool    `json:"withinLimit"`
+}
+
+// Encode implements the encoder interface.
+func (app DeliveryQuote) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// ToAppDeliveryQuote converts a business layer delivery quote to an app layer delivery quote.
+func ToAppDeliveryQuote(bus orderbus.DeliveryQuote) DeliveryQuote {
+	return DeliveryQuote{
+		DistanceKm:            bus.DistanceKm,
+		DeliveryFee:           bus.DeliveryFee.Value(),
+		MaxDeliveryDistanceKm: bus.MaxDeliveryDistanceKm,
+		WithinLimit:           bus.WithinLimit,
 	}
 }
