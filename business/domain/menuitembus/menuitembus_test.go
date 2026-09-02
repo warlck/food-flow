@@ -113,7 +113,21 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 	}
 
 	sort.Slice(items, func(i, j int) bool {
-		return items[i].ID.String() <= items[j].ID.String()
+		r1 := items[i].Rank
+		r2 := items[j].Rank
+		if r1 != nil && r2 != nil && *r1 != *r2 {
+			return *r1 < *r2
+		}
+		if r1 != nil && r2 == nil {
+			return true
+		}
+		if r1 == nil && r2 != nil {
+			return false
+		}
+		if items[i].Name.String() != items[j].Name.String() {
+			return items[i].Name.String() < items[j].Name.String()
+		}
+		return items[i].ID.String() < items[j].ID.String()
 	})
 
 	table := []unittest.Table{
