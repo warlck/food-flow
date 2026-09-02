@@ -46,6 +46,7 @@ export interface AdminCategory {
   description: string;
   restaurantId: string;
   enabled: boolean;
+  rank?: number | null;
   dateCreated?: string;
   dateUpdated?: string;
 }
@@ -60,22 +61,61 @@ export interface AdminMenuItem {
   imageUrl: string;
   available: boolean;
   rank?: number | null;
+  modifierGroups?: AdminModifierGroup[];
+  addons?: AdminMenuItemAddonInfo[];
+  dateCreated?: string;
+  dateUpdated?: string;
+}
+
+export interface AdminModifierOption {
+  id: string;
+  modifierGroupId: string;
+  restaurantId: string;
+  name: string;
+  description: string;
+  priceDelta: number;
+  available: boolean;
+  rank?: number | null;
+  dateCreated?: string;
+  dateUpdated?: string;
+}
+
+export interface AdminModifierGroup {
+  id: string;
+  menuItemId: string;
+  restaurantId: string;
+  name: string;
+  description: string;
+  minSelections: number;
+  maxSelections: number;
+  available: boolean;
+  rank?: number | null;
+  options?: AdminModifierOption[];
   dateCreated?: string;
   dateUpdated?: string;
 }
 
 export interface AdminAddon {
   id: string;
-  categoryId: string;
   restaurantId: string;
   name: string;
   description: string;
   price: number;
   available: boolean;
   maxQuantity: number;
-  rank?: number | null;
   dateCreated?: string;
   dateUpdated?: string;
+}
+
+export interface AdminMenuItemAddonInfo {
+  id: string;
+  addonId: string;
+  name: string;
+  description: string;
+  price: number;
+  available: boolean;
+  maxQuantity: number;
+  rank: number;
 }
 
 export interface AdminWorkspace {
@@ -88,6 +128,15 @@ export interface AdminWorkspace {
 export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'out_for_delivery' | 'completed' | 'cancelled';
 export type PaymentStatus = 'pending' | 'processing' | 'paid' | 'failed' | 'refunded';
 export type OrderType = 'pickup' | 'delivery';
+
+export interface AdminOrderItemModifier {
+  id: string;
+  modifierGroupId: string;
+  modifierGroupName: string;
+  modifierOptionId: string;
+  modifierOptionName: string;
+  priceDelta: number;
+}
 
 export interface AdminOrderItemAddon {
   id: string;
@@ -104,6 +153,7 @@ export interface AdminOrderItem {
   menuItemPrice: number;
   quantity: number;
   specialInstructions?: string;
+  modifiers?: AdminOrderItemModifier[];
   addons?: AdminOrderItemAddon[];
   dateCreated: string;
 }
@@ -159,28 +209,17 @@ export interface OrderStatusInput {
 export type RestaurantInput = Pick<AdminRestaurant, 'name' | 'description' | 'address' | 'phone' | 'email' | 'imageUrl' | 'logoUrl' | 'operatingHours' | 'enabled' | 'latitude' | 'longitude' | 'maxDeliveryDistanceKm' | 'minSpend' | 'taxRate'> & {
   organizationId?: string;
 };
-export type CategoryInput = Pick<AdminCategory, 'name' | 'description' | 'restaurantId'>;
-export type MenuItemInput = Pick<AdminMenuItem, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'imageUrl' | 'rank'>;
-export type AddonInput = Pick<AdminAddon, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'maxQuantity' | 'rank'>;
+export type CategoryInput = Pick<AdminCategory, 'name' | 'description' | 'restaurantId'> & { rank?: number | null };
+export type MenuItemInput = Pick<AdminMenuItem, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'imageUrl'> & { rank?: number | null };
+export type ModifierGroupInput = Pick<AdminModifierGroup, 'name' | 'description' | 'minSelections' | 'maxSelections' | 'menuItemId' | 'restaurantId'> & { available?: boolean; rank?: number | null };
+export type ModifierOptionInput = Pick<AdminModifierOption, 'name' | 'description' | 'priceDelta' | 'modifierGroupId' | 'restaurantId'> & { available?: boolean; rank?: number | null };
+export type AddonInput = Pick<AdminAddon, 'name' | 'description' | 'price' | 'restaurantId' | 'maxQuantity'> & { available?: boolean };
 
 interface ApiPage<T> {
   items: T[];
   total: number;
   page: number;
   rowsPerPage: number;
-}
-
-interface ApiDetailsCategory {
-  id: string;
-  name: string;
-  description: string;
-  enabled: boolean;
-  mentuItems?: Array<Omit<AdminMenuItem, 'categoryId' | 'restaurantId'>>;
-  menuItems?: Array<Omit<AdminMenuItem, 'categoryId' | 'restaurantId'>>;
-}
-
-interface ApiRestaurantDetails extends AdminRestaurant {
-  categories: ApiDetailsCategory[];
 }
 
 function readErrorMessage(payload: unknown, fallback: string) {
@@ -204,9 +243,6 @@ export interface AdminOrganization {
 class AdminApi {
   private unauthorizedHandler: (() => void) | null = null;
 
-  // setUnauthorizedHandler registers the callback invoked whenever the
-  // session is gone or rejected (401). The AuthProvider uses it to drop the
-  // token from state, which renders the login page.
   setUnauthorizedHandler(cb: () => void) {
     this.unauthorizedHandler = cb;
   }
@@ -256,26 +292,19 @@ class AdminApi {
   }
 
   async getWorkspace(restaurantId: string): Promise<AdminWorkspace> {
-    const [details, addonPage] = await Promise.all([
-      this.request<ApiRestaurantDetails>(`/v1/restaurants/${restaurantId}/details`, {}, false),
+    const [restaurant, categoryPage, menuItemPage, addonPage] = await Promise.all([
+      this.request<AdminRestaurant>(`/v1/restaurants/${restaurantId}`),
+      this.listCategories(restaurantId),
+      this.listMenuItems(restaurantId),
       this.listAddons(restaurantId),
     ]);
-    const categories = details.categories.map((category) => ({
-      id: category.id,
-      name: category.name,
-      description: category.description,
-      restaurantId,
-      enabled: category.enabled,
-    }));
-    const menuItems = details.categories.flatMap((category) =>
-      (category.mentuItems ?? category.menuItems ?? []).map((item) => ({
-        ...item,
-        categoryId: category.id,
-        restaurantId,
-      })),
-    );
-    const { categories: _categories, ...restaurant } = details;
-    return { restaurant, categories, menuItems, addons: addonPage.items };
+
+    return {
+      restaurant,
+      categories: categoryPage.items,
+      menuItems: menuItemPage.items,
+      addons: addonPage.items,
+    };
   }
 
   createRestaurant(input: RestaurantInput) {
@@ -284,6 +313,16 @@ class AdminApi {
 
   updateRestaurant(id: string, input: Partial<RestaurantInput> & { enabled?: boolean }) {
     return this.request<AdminRestaurant>(`/v1/restaurants/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  listCategories(restaurantId: string) {
+    const params = new URLSearchParams({
+      page: '1',
+      rows: '100',
+      orderBy: 'rank,ASC',
+      restaurant_id: restaurantId,
+    });
+    return this.request<ApiPage<AdminCategory>>(`/v1/categories?${params}`);
   }
 
   createCategory(input: CategoryInput) {
@@ -296,6 +335,21 @@ class AdminApi {
 
   deleteCategory(id: string) {
     return this.request<void>(`/v1/categories/${id}`, { method: 'DELETE' });
+  }
+
+  reorderCategories(input: { restaurantId: string; orderedIds: string[] }) {
+    return this.request<AdminCategory[]>('/v1/categories/order', { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  listMenuItems(restaurantId: string, categoryId?: string) {
+    const params = new URLSearchParams({
+      page: '1',
+      rows: '100',
+      orderBy: 'rank,ASC',
+      restaurant_id: restaurantId,
+    });
+    if (categoryId) params.set('category_id', categoryId);
+    return this.request<ApiPage<AdminMenuItem>>(`/v1/menuitems?${params}`);
   }
 
   createMenuItem(input: MenuItemInput) {
@@ -314,6 +368,70 @@ class AdminApi {
     return this.request<AdminMenuItem[]>('/v1/menuitems/order', { method: 'PUT', body: JSON.stringify(input) });
   }
 
+  listModifierGroups(menuItemId: string) {
+    const params = new URLSearchParams({
+      page: '1',
+      rows: '100',
+      orderBy: 'rank,ASC',
+      menu_item_id: menuItemId,
+    });
+    return this.request<ApiPage<AdminModifierGroup>>(`/v1/modifiergroups?${params}`);
+  }
+
+  createModifierGroup(input: ModifierGroupInput) {
+    return this.request<AdminModifierGroup>('/v1/modifiergroups', { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  updateModifierGroup(id: string, input: Partial<Omit<ModifierGroupInput, 'menuItemId' | 'restaurantId'>>) {
+    return this.request<AdminModifierGroup>(`/v1/modifiergroups/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  deleteModifierGroup(id: string) {
+    return this.request<void>(`/v1/modifiergroups/${id}`, { method: 'DELETE' });
+  }
+
+  reorderModifierGroups(input: { menuItemId: string; orderedIds: string[] }) {
+    return this.request<AdminModifierGroup[]>('/v1/modifiergroups/order', { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  listModifierOptions(modifierGroupId: string) {
+    const params = new URLSearchParams({
+      page: '1',
+      rows: '100',
+      orderBy: 'rank,ASC',
+      modifier_group_id: modifierGroupId,
+    });
+    return this.request<ApiPage<AdminModifierOption>>(`/v1/modifieroptions?${params}`);
+  }
+
+  createModifierOption(input: ModifierOptionInput) {
+    return this.request<AdminModifierOption>('/v1/modifieroptions', { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  updateModifierOption(id: string, input: Partial<Omit<ModifierOptionInput, 'modifierGroupId' | 'restaurantId'>>) {
+    return this.request<AdminModifierOption>(`/v1/modifieroptions/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  deleteModifierOption(id: string) {
+    return this.request<void>(`/v1/modifieroptions/${id}`, { method: 'DELETE' });
+  }
+
+  reorderModifierOptions(input: { modifierGroupId: string; orderedIds: string[] }) {
+    return this.request<AdminModifierOption[]>('/v1/modifieroptions/order', { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  getMenuItemAddons(menuItemId: string) {
+    return this.request<AdminMenuItemAddonInfo[]>(`/v1/menuitems/${menuItemId}/addons`);
+  }
+
+  replaceMenuItemAddons(menuItemId: string, input: { addons: Array<{ addonId: string; rank?: number }> }) {
+    return this.request<AdminMenuItemAddonInfo[]>(`/v1/menuitems/${menuItemId}/addons`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  reorderMenuItemAddons(menuItemId: string, input: { orderedIds: string[] }) {
+    return this.request<AdminMenuItemAddonInfo[]>(`/v1/menuitems/${menuItemId}/addons/order`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
   listAddons(restaurantId: string) {
     const params = new URLSearchParams({
       page: '1',
@@ -328,16 +446,12 @@ class AdminApi {
     return this.request<AdminAddon>('/v1/addons', { method: 'POST', body: JSON.stringify(input) });
   }
 
-  updateAddon(id: string, input: Partial<Omit<AddonInput, 'categoryId' | 'restaurantId'>> & { available?: boolean }) {
+  updateAddon(id: string, input: Partial<Omit<AddonInput, 'restaurantId'>> & { available?: boolean }) {
     return this.request<AdminAddon>(`/v1/addons/${id}`, { method: 'PUT', body: JSON.stringify(input) });
   }
 
   deleteAddon(id: string) {
     return this.request<void>(`/v1/addons/${id}`, { method: 'DELETE' });
-  }
-
-  reorderAddons(input: { categoryId: string; orderedIds: string[] }) {
-    return this.request<AdminAddon[]>('/v1/addons/order', { method: 'PUT', body: JSON.stringify(input) });
   }
 
   listOrders(restaurantId: string, filters: OrderFilters = {}) {
@@ -410,9 +524,6 @@ class AdminApi {
   private async uploadToSignedUrl(grant: ImageUploadGrant, file: File) {
     const headers = new Headers(grant.headers);
     if (grant.uploadUrl.startsWith('/')) {
-      // Same-origin URLs come from the local development backend, whose
-      // endpoint still requires an admin token. GCS signed URLs must not
-      // carry one.
       headers.set('Authorization', `Bearer ${this.getToken()}`);
     }
     const response = await fetch(grant.uploadUrl, {
@@ -436,7 +547,6 @@ class AdminApi {
       await this.uploadToSignedUrl(grant, input.file);
       return await this.completeImageUpload(grant.image.imageId);
     } catch (err) {
-      // Best-effort cleanup so failed uploads do not linger as pending rows.
       await this.deleteImage(grant.image.imageId).catch(() => undefined);
       throw err;
     }
@@ -576,4 +686,3 @@ export interface AdminInsights {
 }
 
 export const adminApi = new AdminApi();
-
