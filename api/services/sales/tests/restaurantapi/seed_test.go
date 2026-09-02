@@ -13,6 +13,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
+	"github.com/warlck/food-flow/business/types/opt"
 	"github.com/warlck/food-flow/business/types/role"
 )
 
@@ -101,24 +102,30 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}
 
 	// rankedItems[0] -> rank 20, rankedItems[1] -> rank 10, rankedItems[2] -> unranked.
-	if rankedItems[0], err = busDomain.MenuItem.Update(ctx, rankedItems[0], menuitembus.UpdateMenuItem{Rank: dbtest.IntPointer(20)}); err != nil {
+	if rankedItems[0], err = busDomain.MenuItem.Update(ctx, rankedItems[0], menuitembus.UpdateMenuItem{Rank: opt.NewNullInt(20)}); err != nil {
 		return apitest.SeedData{}, fmt.Errorf("ranking menu item 0 : %w", err)
 	}
-	if rankedItems[1], err = busDomain.MenuItem.Update(ctx, rankedItems[1], menuitembus.UpdateMenuItem{Rank: dbtest.IntPointer(10)}); err != nil {
+	if rankedItems[1], err = busDomain.MenuItem.Update(ctx, rankedItems[1], menuitembus.UpdateMenuItem{Rank: opt.NewNullInt(10)}); err != nil {
 		return apitest.SeedData{}, fmt.Errorf("ranking menu item 1 : %w", err)
 	}
 
-	rankedAddons, err := addonbus.TestSeedAddons(ctx, 3, rankedCats[0].ID, rests[4].ID, busDomain.Addon)
+	rankedAddons, err := addonbus.TestSeedAddons(ctx, 3, rests[4].ID, busDomain.Addon)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding ranked addons : %w", err)
 	}
 
-	// rankedAddons[0] -> rank 20, rankedAddons[1] -> rank 10, rankedAddons[2] -> unranked.
-	if rankedAddons[0], err = busDomain.Addon.Update(ctx, rankedAddons[0], addonbus.UpdateAddon{Rank: dbtest.IntPointer(20)}); err != nil {
-		return apitest.SeedData{}, fmt.Errorf("ranking addon 0 : %w", err)
+	// Assign addons to ranked items with item-level ranks (20, 10, nil)
+	rank20 := 20
+	rank10 := 10
+	addonAssignments := []addonbus.ItemAddonAssignment{
+		{AddonID: rankedAddons[0].ID, Rank: &rank20},
+		{AddonID: rankedAddons[1].ID, Rank: &rank10},
+		{AddonID: rankedAddons[2].ID, Rank: nil},
 	}
-	if rankedAddons[1], err = busDomain.Addon.Update(ctx, rankedAddons[1], addonbus.UpdateAddon{Rank: dbtest.IntPointer(10)}); err != nil {
-		return apitest.SeedData{}, fmt.Errorf("ranking addon 1 : %w", err)
+	for _, item := range rankedItems {
+		if _, err := busDomain.Addon.ReplaceMenuItemAddons(ctx, item.ID, rests[4].ID, addonAssignments); err != nil {
+			return apitest.SeedData{}, fmt.Errorf("assigning addons to menu item: %w", err)
+		}
 	}
 
 	// -------------------------------------------------------------------------

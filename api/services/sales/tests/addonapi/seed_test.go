@@ -35,8 +35,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	// -------------------------------------------------------------------------
 
-	// Seed organizations; the second org's resources are used for
-	// cross-organization authorization tests (admins are NOT members of it).
+	// Seed organizations
 	orgs, err := organizationbus.TestSeedOrganizations(ctx, 2, busDomain.Organization)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding organizations: %w", err)
@@ -72,14 +71,8 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	// -------------------------------------------------------------------------
 
-	// Seed addons for category 0
-	addons1, err := addonbus.TestSeedAddons(ctx, 2, cats[0].ID, rests[0].ID, busDomain.Addon)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
-	}
-
-	// Seed addons for category 1
-	addons2, err := addonbus.TestSeedAddons(ctx, 2, cats[1].ID, rests[0].ID, busDomain.Addon)
+	// Seed addons for restaurant 0
+	addons1, err := addonbus.TestSeedAddons(ctx, 4, rests[0].ID, busDomain.Addon)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
 	}
@@ -96,13 +89,12 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding other org category : %w", err)
 	}
 
-	otherAddons, err := addonbus.TestSeedAddons(ctx, 2, otherCats[0].ID, otherRests[0].ID, busDomain.Addon)
+	otherAddons, err := addonbus.TestSeedAddons(ctx, 2, otherRests[0].ID, busDomain.Addon)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding other org addons : %w", err)
 	}
 
-	allAddons := append(addons1, addons2...)
-	allAddons = append(allAddons, otherAddons...)
+	allAddons := append(addons1, otherAddons...)
 	appAddons := make([]apitest.Addon, len(allAddons))
 	for i, a := range allAddons {
 		appAddons[i] = apitest.Addon{Addon: a}

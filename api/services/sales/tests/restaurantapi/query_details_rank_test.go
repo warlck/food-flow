@@ -66,20 +66,18 @@ func queryByIDWithDetailsRanked200(sd apitest.SeedData) []apitest.Table {
 					}
 				}
 
-				// Addons: shared per category; ranked ascending first, unranked last.
+				// Addons: assigned per item; ranked ascending first (10, 20), unranked last.
+				rank10 := 10
+				rank20 := 20
 				wantAddons := []struct {
 					id   string
 					rank *int
 				}{
-					{sd.Addons[1].ID.String(), sd.Addons[1].Rank},
-					{sd.Addons[0].ID.String(), sd.Addons[0].Rank},
+					{sd.Addons[1].ID.String(), &rank10},
+					{sd.Addons[0].ID.String(), &rank20},
 					{sd.Addons[2].ID.String(), nil},
 				}
 
-				// The backend attaches the same shared addon list to every menu
-				// item in the category, so assert the ordering on all of them —
-				// a bug that ordered only the first item's addons would slip
-				// past a MenuItems[0]-only check.
 				for _, gotItem := range cat.MenuItems {
 					gotAddons := gotItem.Addons
 					if len(gotAddons) != len(wantAddons) {

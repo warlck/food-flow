@@ -132,7 +132,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	// -------------------------------------------------------------------------
 	// Create addons
 
-	addons, err := addonbus.TestSeedAddons(ctx, 2, categories[0].ID, restaurants[0].ID, busDomain.Addon)
+	addons, err := addonbus.TestSeedAddons(ctx, 2, restaurants[0].ID, busDomain.Addon)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding addons: %w", err)
 	}
@@ -143,6 +143,13 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	ta2 := apitest.Addon{
 		Addon: addons[1],
+	}
+
+	if _, err := busDomain.Addon.ReplaceMenuItemAddons(ctx, menuItems[0].ID, restaurants[0].ID, []addonbus.ItemAddonAssignment{
+		{AddonID: addons[0].ID},
+		{AddonID: addons[1].ID},
+	}); err != nil {
+		return apitest.SeedData{}, fmt.Errorf("assigning addons: %w", err)
 	}
 
 	// -------------------------------------------------------------------------

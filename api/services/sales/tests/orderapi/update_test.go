@@ -11,10 +11,6 @@ import (
 )
 
 func updateStatus200(sd apitest.SeedData) []apitest.Table {
-	orderStatus := "confirmed"
-	paymentStatus := "paid"
-	outForDelivery := "out_for_delivery"
-
 	table := []apitest.Table{
 		{
 			Name:       "update-order-status",
@@ -23,7 +19,7 @@ func updateStatus200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPatch,
 			StatusCode: http.StatusOK,
 			Input: &orderapp.UpdateOrderStatus{
-				OrderStatus: &orderStatus,
+				OrderStatus: "confirmed",
 			},
 			GotResp: &orderapp.Order{},
 			ExpResp: &orderapp.Order{
@@ -66,7 +62,7 @@ func updateStatus200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPatch,
 			StatusCode: http.StatusOK,
 			Input: &orderapp.UpdateOrderStatus{
-				PaymentStatus: &paymentStatus,
+				PaymentStatus: "paid",
 			},
 			GotResp: &orderapp.Order{},
 			ExpResp: &orderapp.Order{
@@ -76,7 +72,7 @@ func updateStatus200(sd apitest.SeedData) []apitest.Table {
 				CustomerEmail: sd.Orders[1].CustomerEmail,
 				CustomerPhone: sd.Orders[1].CustomerPhone,
 				OrderType:     sd.Orders[1].OrderType,
-				OrderStatus:   sd.Orders[1].OrderStatus,
+				OrderStatus:   "confirmed",
 				PaymentStatus: "paid",
 				PaymentMethod: sd.Orders[1].PaymentMethod,
 			},
@@ -109,7 +105,7 @@ func updateStatus200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPatch,
 			StatusCode: http.StatusOK,
 			Input: &orderapp.UpdateOrderStatus{
-				OrderStatus: &outForDelivery,
+				OrderStatus: "out_for_delivery",
 			},
 			GotResp: &orderapp.Order{},
 			ExpResp: &orderapp.Order{
@@ -151,8 +147,6 @@ func updateStatus200(sd apitest.SeedData) []apitest.Table {
 }
 
 func updateStatus400(sd apitest.SeedData) []apitest.Table {
-	outForDelivery := "out_for_delivery"
-
 	table := []apitest.Table{
 		{
 			Name:       "out-for-delivery-on-pickup-order",
@@ -161,7 +155,7 @@ func updateStatus400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPatch,
 			StatusCode: http.StatusBadRequest,
 			Input: &orderapp.UpdateOrderStatus{
-				OrderStatus: &outForDelivery,
+				OrderStatus: "out_for_delivery",
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.InvalidArgument, "out for delivery status requires a delivery order"),
@@ -175,8 +169,6 @@ func updateStatus400(sd apitest.SeedData) []apitest.Table {
 }
 
 func updateStatus401(sd apitest.SeedData) []apitest.Table {
-	orderStatus := "confirmed"
-
 	table := []apitest.Table{
 		{
 			Name:       "non-admin-user",
@@ -185,7 +177,7 @@ func updateStatus401(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPatch,
 			StatusCode: http.StatusForbidden,
 			Input: &orderapp.UpdateOrderStatus{
-				OrderStatus: &orderStatus,
+				OrderStatus: "confirmed",
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.PermissionDenied, "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_only]"),
@@ -200,7 +192,7 @@ func updateStatus401(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPatch,
 			StatusCode: http.StatusUnauthorized,
 			Input: &orderapp.UpdateOrderStatus{
-				OrderStatus: &orderStatus,
+				OrderStatus: "confirmed",
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.Unauthenticated, "error parsing token: token is malformed: token contains an invalid number of segments"),

@@ -28,7 +28,6 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			GotResp: &addonapp.Addon{},
 			ExpResp: &addonapp.Addon{
 				ID:           sd.Addons[0].ID.String(),
-				CategoryID:   sd.Addons[0].CategoryID.String(),
 				RestaurantID: sd.Addons[0].RestaurantID.String(),
 				Name:         "Updated Extra Cheese",
 				Description:  "Extra melted cheese portion",
@@ -47,28 +46,6 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				expResp.DateUpdated = gotResp.DateUpdated
 
 				return cmp.Diff(got, exp)
-			},
-		},
-		{
-			Name:       "update-rank",
-			URL:        fmt.Sprintf("/v1/addons/%s", sd.Addons[0].ID),
-			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPut,
-			StatusCode: http.StatusOK,
-			Input: &addonapp.UpdateAddon{
-				Rank: dbtest.IntPointer(25),
-			},
-			GotResp: &addonapp.Addon{},
-			ExpResp: &addonapp.Addon{},
-			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(*addonapp.Addon)
-				if !exists {
-					return "got is not *addonapp.Addon"
-				}
-				if gotResp.Rank == nil || *gotResp.Rank != 25 {
-					return "rank not updated"
-				}
-				return ""
 			},
 		},
 	}
@@ -91,42 +68,6 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &errs.Error{
 				Code:    errs.InvalidArgument,
 				Message: `parse name: invalid name ""`,
-			},
-			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
-		{
-			Name:       "rank-zero",
-			URL:        fmt.Sprintf("/v1/addons/%s", sd.Addons[0].ID),
-			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPut,
-			StatusCode: http.StatusBadRequest,
-			Input: &addonapp.UpdateAddon{
-				Rank: dbtest.IntPointer(0),
-			},
-			GotResp: &errs.Error{},
-			ExpResp: &errs.Error{
-				Code:    errs.InvalidArgument,
-				Message: `validate: [{"field":"rank","error":"rank must be 1 or greater"}]`,
-			},
-			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
-		{
-			Name:       "rank-negative",
-			URL:        fmt.Sprintf("/v1/addons/%s", sd.Addons[0].ID),
-			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPut,
-			StatusCode: http.StatusBadRequest,
-			Input: &addonapp.UpdateAddon{
-				Rank: dbtest.IntPointer(-1),
-			},
-			GotResp: &errs.Error{},
-			ExpResp: &errs.Error{
-				Code:    errs.InvalidArgument,
-				Message: `validate: [{"field":"rank","error":"rank must be 1 or greater"}]`,
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)

@@ -7,7 +7,6 @@ import (
 	"github.com/warlck/food-flow/app/domain/addonapp"
 	"github.com/warlck/food-flow/app/sdk/apitest"
 	"github.com/warlck/food-flow/app/sdk/errs"
-	"github.com/warlck/food-flow/business/sdk/dbtest"
 )
 
 func create201(sd apitest.SeedData) []apitest.Table {
@@ -19,7 +18,6 @@ func create201(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusCreated,
 			Input: &addonapp.NewAddon{
-				CategoryID:   sd.Categories[0].ID.String(),
 				RestaurantID: sd.Restaurants[0].ID.String(),
 				Name:         "Extra Special Sauce",
 				Description:  "Special homemade sauce",
@@ -28,7 +26,6 @@ func create201(sd apitest.SeedData) []apitest.Table {
 			},
 			GotResp: &addonapp.Addon{},
 			ExpResp: &addonapp.Addon{
-				CategoryID:   sd.Categories[0].ID.String(),
 				RestaurantID: sd.Restaurants[0].ID.String(),
 				Name:         "Extra Special Sauce",
 				Description:  "Special homemade sauce",
@@ -51,34 +48,6 @@ func create201(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(got, exp)
 			},
 		},
-		{
-			Name:       "with-rank",
-			URL:        "/v1/addons",
-			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPost,
-			StatusCode: http.StatusCreated,
-			Input: &addonapp.NewAddon{
-				CategoryID:   sd.Categories[0].ID.String(),
-				RestaurantID: sd.Restaurants[0].ID.String(),
-				Name:         "Extra Pickles",
-				Description:  "Pickle slices",
-				Price:        1.00,
-				MaxQuantity:  3,
-				Rank:         func(i int) *int { return &i }(15),
-			},
-			GotResp: &addonapp.Addon{},
-			ExpResp: &addonapp.Addon{},
-			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(*addonapp.Addon)
-				if !exists {
-					return "got is not *addonapp.Addon"
-				}
-				if gotResp.Rank == nil || *gotResp.Rank != 15 {
-					return "rank mismatch"
-				}
-				return ""
-			},
-		},
 	}
 
 	return table
@@ -96,51 +65,27 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			GotResp:    &errs.Error{},
 			ExpResp: &errs.Error{
 				Code:    errs.InvalidArgument,
-				Message: `validate: [{"field":"categoryId","error":"categoryId is a required field"},{"field":"restaurantId","error":"restaurantId is a required field"},{"field":"name","error":"name is a required field"},{"field":"price","error":"price is a required field"}]`,
+				Message: `validate: [{"field":"restaurantId","error":"restaurantId is a required field"},{"field":"name","error":"name is a required field"}]`,
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},
 		},
 		{
-			Name:       "rank-zero",
+			Name:       "invalid-name",
 			URL:        "/v1/addons",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &addonapp.NewAddon{
-				CategoryID:   sd.Categories[0].ID.String(),
 				RestaurantID: sd.Restaurants[0].ID.String(),
-				Name:         "Extra Sauce",
+				Name:         "AB",
 				Price:        2.50,
-				Rank:         dbtest.IntPointer(0),
 			},
 			GotResp: &errs.Error{},
 			ExpResp: &errs.Error{
 				Code:    errs.InvalidArgument,
-				Message: `validate: [{"field":"rank","error":"rank must be 1 or greater"}]`,
-			},
-			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
-		{
-			Name:       "rank-negative",
-			URL:        "/v1/addons",
-			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPost,
-			StatusCode: http.StatusBadRequest,
-			Input: &addonapp.NewAddon{
-				CategoryID:   sd.Categories[0].ID.String(),
-				RestaurantID: sd.Restaurants[0].ID.String(),
-				Name:         "Extra Sauce",
-				Price:        2.50,
-				Rank:         dbtest.IntPointer(-1),
-			},
-			GotResp: &errs.Error{},
-			ExpResp: &errs.Error{
-				Code:    errs.InvalidArgument,
-				Message: `validate: [{"field":"rank","error":"rank must be 1 or greater"}]`,
+				Message: `parse name: invalid name "AB"`,
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)

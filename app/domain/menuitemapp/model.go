@@ -146,7 +146,7 @@ func (app UpdateMenuItem) Validate() error {
 		return fmt.Errorf("validate: %w", err)
 	}
 	if app.Rank.Present && app.Rank.Value != nil && *app.Rank.Value < 1 {
-		return errs.NewFieldErrors("rank", fmt.Errorf("rank must be >= 1"))
+		return errs.NewFieldErrors("rank", fmt.Errorf("rank must be 1 or greater"))
 	}
 
 	return nil
