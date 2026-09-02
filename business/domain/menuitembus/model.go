@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/business/types/money"
 	"github.com/warlck/food-flow/business/types/name"
+	"github.com/warlck/food-flow/business/types/opt"
 )
 
 // MenuItem represents a menu item in the system.
@@ -42,5 +43,5 @@ type UpdateMenuItem struct {
 	CategoryID  *uuid.UUID
 	ImageURL    *string
 	Available   *bool
-	Rank        *int
+	Rank        opt.NullInt
 }

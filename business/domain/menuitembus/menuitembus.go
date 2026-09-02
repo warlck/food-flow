@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,22 +15,22 @@ import (
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound     = errors.New("menu item not found")
-	ErrInvalidOrder = errors.New("invalid menu item order")
+	ErrNotFound       = errors.New("menu item not found")
+	ErrInvalidOrder   = errors.New("invalid menu item order")
+	ErrInvalidReorder = errors.New("invalid reorder set")
 )
 
-// Storer interface declares the behavior this package needs to persist and
-// retrieve data.
+// Storer interface declares the behavior this package needs to persist and retrieve data.
 type Storer interface {
 	Create(ctx context.Context, item MenuItem) error
 	Update(ctx context.Context, item MenuItem) error
 	Delete(ctx context.Context, item MenuItem) error
+	Reorder(ctx context.Context, items []MenuItem) error
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]MenuItem, error)
 	QueryAll(ctx context.Context, filter QueryFilter, orderBy order.By) ([]MenuItem, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, menuItemID uuid.UUID) (MenuItem, error)
 	QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]MenuItem, error)
-	Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) error
 }
 
 // Business manages the set of APIs for menu item access.
@@ -48,6 +49,10 @@ func NewBusiness(log *logger.Logger, storer Storer) *Business {
 
 // Create adds a new menu item to the system.
 func (b *Business) Create(ctx context.Context, ni NewMenuItem) (MenuItem, error) {
+	if ni.Rank != nil && *ni.Rank < 1 {
+		return MenuItem{}, fmt.Errorf("rank must be >= 1")
+	}
+
 	now := time.Now()
 
 	item := MenuItem{
@@ -76,29 +81,26 @@ func (b *Business) Update(ctx context.Context, item MenuItem, ui UpdateMenuItem)
 	if ui.Name != nil {
 		item.Name = *ui.Name
 	}
-
 	if ui.Description != nil {
 		item.Description = *ui.Description
 	}
-
 	if ui.Price != nil {
 		item.Price = *ui.Price
 	}
-
 	if ui.CategoryID != nil {
 		item.CategoryID = *ui.CategoryID
 	}
-
 	if ui.ImageURL != nil {
 		item.ImageURL = *ui.ImageURL
 	}
-
 	if ui.Available != nil {
 		item.Available = *ui.Available
 	}
-
-	if ui.Rank != nil {
-		item.Rank = ui.Rank
+	if ui.Rank.Present {
+		if ui.Rank.Value != nil && *ui.Rank.Value < 1 {
+			return MenuItem{}, fmt.Errorf("rank must be >= 1")
+		}
+		item.Rank = ui.Rank.Value
 	}
 
 	item.DateUpdated = time.Now()
@@ -108,6 +110,72 @@ func (b *Business) Update(ctx context.Context, item MenuItem, ui UpdateMenuItem)
 	}
 
 	return item, nil
+}
+
+// Reorder updates the display rank of all menu items in a category.
+func (b *Business) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) ([]MenuItem, error) {
+	if len(orderedIDs) == 0 {
+		return nil, fmt.Errorf("%w: ordered IDs cannot be empty", ErrInvalidReorder)
+	}
+
+	seen := make(map[uuid.UUID]bool, len(orderedIDs))
+	for _, id := range orderedIDs {
+		if seen[id] {
+			return nil, fmt.Errorf("%w: duplicate menu item id %s", ErrInvalidReorder, id)
+		}
+		seen[id] = true
+	}
+
+	existing, err := b.storer.QueryByCategoryID(ctx, categoryID)
+	if err != nil {
+		return nil, fmt.Errorf("query category menu items: %w", err)
+	}
+
+	if len(existing) != len(orderedIDs) {
+		return nil, fmt.Errorf("%w: exact set mismatch: expected %d menu items, got %d", ErrInvalidReorder, len(existing), len(orderedIDs))
+	}
+
+	existingMap := make(map[uuid.UUID]MenuItem, len(existing))
+	for _, item := range existing {
+		existingMap[item.ID] = item
+	}
+
+	now := time.Now()
+	reordered := make([]MenuItem, len(orderedIDs))
+	for i, id := range orderedIDs {
+		item, exists := existingMap[id]
+		if !exists {
+			return nil, fmt.Errorf("%w: menu item id %s does not belong to category %s", ErrInvalidReorder, id, categoryID)
+		}
+		rankVal := (i + 1) * 10
+		item.Rank = &rankVal
+		item.DateUpdated = now
+		reordered[i] = item
+	}
+
+	if err := b.storer.Reorder(ctx, reordered); err != nil {
+		return nil, fmt.Errorf("reorder menu items: %w", err)
+	}
+
+	sort.SliceStable(reordered, func(i, j int) bool {
+		r1 := reordered[i].Rank
+		r2 := reordered[j].Rank
+		if r1 != nil && r2 != nil && *r1 != *r2 {
+			return *r1 < *r2
+		}
+		if r1 != nil && r2 == nil {
+			return true
+		}
+		if r1 == nil && r2 != nil {
+			return false
+		}
+		if reordered[i].Name.String() != reordered[j].Name.String() {
+			return reordered[i].Name.String() < reordered[j].Name.String()
+		}
+		return reordered[i].ID.String() < reordered[j].ID.String()
+	})
+
+	return reordered, nil
 }
 
 // Delete removes the specified menu item.
@@ -162,34 +230,4 @@ func (b *Business) QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) 
 	}
 
 	return items, nil
-}
-
-// Reorder updates the display rank of all menu items in a category.
-func (b *Business) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) error {
-	items, err := b.storer.QueryByCategoryID(ctx, categoryID)
-	if err != nil {
-		return fmt.Errorf("query category menu items: %w", err)
-	}
-
-	if len(items) != len(orderedIDs) {
-		return fmt.Errorf("%w: orderedIds must contain all menu items in the category exactly once", ErrInvalidOrder)
-	}
-
-	itemMap := make(map[uuid.UUID]bool, len(items))
-	for _, itm := range items {
-		itemMap[itm.ID] = true
-	}
-
-	for _, id := range orderedIDs {
-		if !itemMap[id] {
-			return fmt.Errorf("%w: orderedIds contains invalid or duplicate menu item id", ErrInvalidOrder)
-		}
-		delete(itemMap, id)
-	}
-
-	if err := b.storer.Reorder(ctx, categoryID, orderedIDs); err != nil {
-		return fmt.Errorf("reorder: %w", err)
-	}
-
-	return nil
 }

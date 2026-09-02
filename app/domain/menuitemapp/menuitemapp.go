@@ -224,17 +224,13 @@ func (a *app) reorder(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		orderedIDs[i] = id
 	}
 
-	if err := a.menuItemBus.Reorder(ctx, categoryID, orderedIDs); err != nil {
-		if errors.Is(err, menuitembus.ErrInvalidOrder) {
+	reordered, err := a.menuItemBus.Reorder(ctx, categoryID, orderedIDs)
+	if err != nil {
+		if errors.Is(err, menuitembus.ErrInvalidReorder) || errors.Is(err, menuitembus.ErrInvalidOrder) {
 			return errs.New(errs.InvalidArgument, err)
 		}
 		return errs.Newf(errs.Internal, "reorder: %s", err)
 	}
 
-	items, err := a.menuItemBus.QueryByCategoryID(ctx, categoryID)
-	if err != nil {
-		return errs.Newf(errs.Internal, "query reordered menu items: categoryID[%s]: %s", categoryID, err)
-	}
-
-	return web.Respond(ctx, w, ToAppMenuItems(items), http.StatusOK)
+	return web.Respond(ctx, w, ToAppMenuItems(reordered), http.StatusOK)
 }

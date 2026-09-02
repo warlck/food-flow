@@ -10,6 +10,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/types/money"
 	"github.com/warlck/food-flow/business/types/name"
+	"github.com/warlck/food-flow/business/types/opt"
 )
 
 // MenuItem represents information about a menu item for API responses.
@@ -67,8 +68,8 @@ type NewMenuItem struct {
 	Name         string  `json:"name" validate:"required"`
 	Description  string  `json:"description"`
 	Price        float64 `json:"price" validate:"required,gt=0"`
-	CategoryID   string  `json:"categoryId" validate:"required"`
-	RestaurantID string  `json:"restaurantId" validate:"required"`
+	CategoryID   string  `json:"categoryId" validate:"required,uuid"`
+	RestaurantID string  `json:"restaurantId" validate:"required,uuid"`
 	ImageURL     string  `json:"imageUrl"`
 	Rank         *int    `json:"rank" validate:"omitempty,gte=1"`
 }
@@ -125,13 +126,13 @@ func toBusNewMenuItem(app NewMenuItem) (menuitembus.NewMenuItem, error) {
 
 // UpdateMenuItem defines the data needed to update a menu item.
 type UpdateMenuItem struct {
-	Name        *string  `json:"name"`
-	Description *string  `json:"description"`
-	Price       *float64 `json:"price" validate:"omitempty,gt=0"`
-	CategoryID  *string  `json:"categoryId"`
-	ImageURL    *string  `json:"imageUrl"`
-	Available   *bool    `json:"available"`
-	Rank        *int     `json:"rank" validate:"omitempty,gte=1"`
+	Name        *string     `json:"name"`
+	Description *string     `json:"description"`
+	Price       *float64    `json:"price" validate:"omitempty,gt=0"`
+	CategoryID  *string     `json:"categoryId" validate:"omitempty,uuid"`
+	ImageURL    *string     `json:"imageUrl"`
+	Available   *bool       `json:"available"`
+	Rank        opt.NullInt `json:"rank"`
 }
 
 // Decode implements the decoder interface.
@@ -143,6 +144,9 @@ func (app *UpdateMenuItem) Decode(data []byte) error {
 func (app UpdateMenuItem) Validate() error {
 	if err := errs.Check(app); err != nil {
 		return fmt.Errorf("validate: %w", err)
+	}
+	if app.Rank.Present && app.Rank.Value != nil && *app.Rank.Value < 1 {
+		return errs.NewFieldErrors("rank", fmt.Errorf("rank must be >= 1"))
 	}
 
 	return nil
