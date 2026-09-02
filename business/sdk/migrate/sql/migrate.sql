@@ -189,51 +189,40 @@ CREATE INDEX idx_modifier_options_restaurant
 
 CREATE TABLE addons (
     addon_id      UUID           NOT NULL,
+    menu_item_id  UUID           NOT NULL,
     restaurant_id UUID           NOT NULL,
     name          TEXT           NOT NULL,
     description   TEXT           NULL,
     price         NUMERIC(10, 2) NOT NULL,
     available     BOOLEAN        NOT NULL DEFAULT true,
     max_quantity  INT            NOT NULL DEFAULT 10,
+    rank          INT            NULL,
     date_created  TIMESTAMP      NOT NULL,
     date_updated  TIMESTAMP      NOT NULL,
 
     PRIMARY KEY (addon_id),
     CONSTRAINT addons_id_restaurant_unique
         UNIQUE (addon_id, restaurant_id),
+    FOREIGN KEY (menu_item_id, restaurant_id)
+        REFERENCES menu_items(menu_item_id, restaurant_id)
+        ON DELETE CASCADE,
     FOREIGN KEY (restaurant_id)
         REFERENCES restaurants(restaurant_id)
         ON DELETE CASCADE,
     CONSTRAINT addons_price_check
         CHECK (price >= 0),
     CONSTRAINT addons_max_quantity_check
-        CHECK (max_quantity >= 1)
+        CHECK (max_quantity >= 1),
+    CONSTRAINT addons_rank_check
+        CHECK (rank IS NULL OR rank >= 1)
 );
 
+CREATE UNIQUE INDEX idx_addons_unique_name
+    ON addons(menu_item_id, lower(name));
+CREATE INDEX idx_addons_menu_item_rank
+    ON addons(menu_item_id, rank, name, addon_id);
 CREATE INDEX idx_addons_restaurant
     ON addons(restaurant_id);
-
-CREATE TABLE menu_item_addons (
-    menu_item_id  UUID      NOT NULL,
-    addon_id      UUID      NOT NULL,
-    restaurant_id UUID      NOT NULL,
-    rank          INT       NULL,
-    date_created  TIMESTAMP NOT NULL,
-
-    PRIMARY KEY (menu_item_id, addon_id),
-    FOREIGN KEY (menu_item_id, restaurant_id)
-        REFERENCES menu_items(menu_item_id, restaurant_id)
-        ON DELETE CASCADE,
-    FOREIGN KEY (addon_id, restaurant_id)
-        REFERENCES addons(addon_id, restaurant_id)
-        ON DELETE CASCADE,
-    CHECK (rank IS NULL OR rank >= 1)
-);
-
-CREATE INDEX idx_menu_item_addons_item_rank
-    ON menu_item_addons(menu_item_id, rank, addon_id);
-CREATE INDEX idx_menu_item_addons_addon
-    ON menu_item_addons(addon_id);
 
 CREATE TABLE orders (
     order_id                 UUID           NOT NULL,
