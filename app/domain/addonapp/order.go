@@ -7,9 +7,9 @@ import (
 var defaultOrderBy = addonbus.DefaultOrderBy
 
 var orderByFields = map[string]string{
-	"addon_id":     addonbus.OrderByID,
-	"name":         addonbus.OrderByName,
-	"price":        addonbus.OrderByPrice,
-	"date_created": addonbus.OrderByCreated,
-	"rank":         addonbus.OrderByRank,
+	"addon_id":    addonbus.OrderByID,
+	"name":        addonbus.OrderByName,
+	"price":       addonbus.OrderByPrice,
+	"dateCreated": addonbus.OrderByDateCreated,
+	"dateUpdated": addonbus.OrderByDateUpdated,
 }

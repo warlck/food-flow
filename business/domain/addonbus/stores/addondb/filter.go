@@ -15,18 +15,13 @@ func applyFilter(filter addonbus.QueryFilter, data map[string]any, buf *bytes.Bu
 		wc = append(wc, "addon_id = :addon_id")
 	}
 
-	if filter.CategoryID != nil {
-		data["category_id"] = *filter.CategoryID
-		wc = append(wc, "category_id = :category_id")
-	}
-
 	if filter.RestaurantID != nil {
 		data["restaurant_id"] = *filter.RestaurantID
 		wc = append(wc, "restaurant_id = :restaurant_id")
 	}
 
 	if filter.Name != nil {
-		data["name"] = "%" + *filter.Name + "%"
+		data["name"] = "%" + filter.Name.String() + "%"
 		wc = append(wc, "name ILIKE :name")
 	}
 

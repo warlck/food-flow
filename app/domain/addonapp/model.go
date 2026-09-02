@@ -12,17 +12,15 @@ import (
 	"github.com/warlck/food-flow/business/types/name"
 )
 
-// Addon represents information about an addon for API responses.
+// Addon represents an addon definition for API responses.
 type Addon struct {
 	ID           string  `json:"id"`
-	CategoryID   string  `json:"categoryId"`
 	RestaurantID string  `json:"restaurantId"`
 	Name         string  `json:"name"`
 	Description  string  `json:"description"`
 	Price        float64 `json:"price"`
 	Available    bool    `json:"available"`
 	MaxQuantity  int     `json:"maxQuantity"`
-	Rank         *int    `json:"rank"`
 	DateCreated  string  `json:"dateCreated"`
 	DateUpdated  string  `json:"dateUpdated"`
 }
@@ -37,14 +35,12 @@ func (app Addon) Encode() ([]byte, string, error) {
 func ToAppAddon(bus addonbus.Addon) Addon {
 	return Addon{
 		ID:           bus.ID.String(),
-		CategoryID:   bus.CategoryID.String(),
 		RestaurantID: bus.RestaurantID.String(),
 		Name:         bus.Name.String(),
 		Description:  bus.Description,
 		Price:        bus.Price.Value(),
 		Available:    bus.Available,
 		MaxQuantity:  bus.MaxQuantity,
-		Rank:         bus.Rank,
 		DateCreated:  bus.DateCreated.Format(time.RFC3339),
 		DateUpdated:  bus.DateUpdated.Format(time.RFC3339),
 	}
@@ -56,21 +52,66 @@ func ToAppAddons(addons []addonbus.Addon) []Addon {
 	for i, addon := range addons {
 		app[i] = ToAppAddon(addon)
 	}
-
 	return app
 }
 
 // =============================================================================
 
-// NewAddon defines the data needed to add a new addon.
+// MenuItemAddon represents an assigned addon on a menu item.
+type MenuItemAddon struct {
+	ID           string  `json:"id"`
+	RestaurantID string  `json:"restaurantId"`
+	Name         string  `json:"name"`
+	Description  string  `json:"description"`
+	Price        float64 `json:"price"`
+	Available    bool    `json:"available"`
+	MaxQuantity  int     `json:"maxQuantity"`
+	Rank         *int    `json:"rank"`
+	DateCreated  string  `json:"dateCreated"`
+	DateUpdated  string  `json:"dateUpdated"`
+}
+
+// Encode implements the web.Encoder interface.
+func (app MenuItemAddon) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// ToAppMenuItemAddon converts a MenuItemAddonInfo to an app MenuItemAddon.
+func ToAppMenuItemAddon(bus addonbus.MenuItemAddonInfo) MenuItemAddon {
+	return MenuItemAddon{
+		ID:           bus.Addon.ID.String(),
+		RestaurantID: bus.Addon.RestaurantID.String(),
+		Name:         bus.Addon.Name.String(),
+		Description:  bus.Addon.Description,
+		Price:        bus.Addon.Price.Value(),
+		Available:    bus.Addon.Available,
+		MaxQuantity:  bus.Addon.MaxQuantity,
+		Rank:         bus.Rank,
+		DateCreated:  bus.Addon.DateCreated.Format(time.RFC3339),
+		DateUpdated:  bus.Addon.DateUpdated.Format(time.RFC3339),
+	}
+}
+
+// ToAppMenuItemAddons converts a slice of MenuItemAddonInfo to app MenuItemAddon.
+func ToAppMenuItemAddons(infos []addonbus.MenuItemAddonInfo) []MenuItemAddon {
+	app := make([]MenuItemAddon, len(infos))
+	for i, info := range infos {
+		app[i] = ToAppMenuItemAddon(info)
+	}
+	return app
+}
+
+// =============================================================================
+
+// NewAddon defines the data needed to add a new addon definition.
 type NewAddon struct {
-	CategoryID   string  `json:"categoryId" validate:"required"`
-	RestaurantID string  `json:"restaurantId" validate:"required"`
+	RestaurantID string  `json:"restaurantId" validate:"required,uuid"`
 	Name         string  `json:"name" validate:"required"`
 	Description  string  `json:"description"`
-	Price        float64 `json:"price" validate:"required"`
-	MaxQuantity  int     `json:"maxQuantity"`
-	Rank         *int    `json:"rank" validate:"omitempty,gte=1"`
+	Price        float64 `json:"price" validate:"gte=0"`
+	Available    *bool   `json:"available"`
+	MaxQuantity  int     `json:"maxQuantity" validate:"omitempty,gte=1"`
 }
 
 // Decode implements the web.Decoder interface.
@@ -78,12 +119,11 @@ func (app *NewAddon) Decode(data []byte) error {
 	return json.Unmarshal(data, app)
 }
 
-// Validate checks the data in the model is considered clean.
+// Validate checks the data in the model is clean.
 func (app NewAddon) Validate() error {
 	if err := errs.Check(app); err != nil {
 		return fmt.Errorf("validate: %w", err)
 	}
-
 	return nil
 }
 
@@ -93,9 +133,9 @@ func toBusNewAddon(app NewAddon) (addonbus.NewAddon, error) {
 		return addonbus.NewAddon{}, fmt.Errorf("parse name: %w", err)
 	}
 
-	categoryID, err := uuid.Parse(app.CategoryID)
+	price, err := money.Parse(app.Price)
 	if err != nil {
-		return addonbus.NewAddon{}, fmt.Errorf("parse categoryID: %w", err)
+		return addonbus.NewAddon{}, fmt.Errorf("parse price: %w", err)
 	}
 
 	restaurantID, err := uuid.Parse(app.RestaurantID)
@@ -103,19 +143,18 @@ func toBusNewAddon(app NewAddon) (addonbus.NewAddon, error) {
 		return addonbus.NewAddon{}, fmt.Errorf("parse restaurantID: %w", err)
 	}
 
-	prc, err := money.Parse(app.Price)
-	if err != nil {
-		return addonbus.NewAddon{}, fmt.Errorf("parse price: %w", err)
+	maxQty := app.MaxQuantity
+	if maxQty <= 0 {
+		maxQty = 10
 	}
 
 	bus := addonbus.NewAddon{
-		CategoryID:   categoryID,
 		RestaurantID: restaurantID,
 		Name:         nme,
 		Description:  app.Description,
-		Price:        prc,
-		MaxQuantity:  app.MaxQuantity,
-		Rank:         app.Rank,
+		Price:        price,
+		Available:    app.Available,
+		MaxQuantity:  maxQty,
 	}
 
 	return bus, nil
@@ -123,14 +162,13 @@ func toBusNewAddon(app NewAddon) (addonbus.NewAddon, error) {
 
 // =============================================================================
 
-// UpdateAddon defines the data needed to update an addon.
+// UpdateAddon defines the data needed to update an addon definition.
 type UpdateAddon struct {
 	Name        *string  `json:"name"`
 	Description *string  `json:"description"`
-	Price       *float64 `json:"price"`
+	Price       *float64 `json:"price" validate:"omitempty,gte=0"`
 	Available   *bool    `json:"available"`
-	MaxQuantity *int     `json:"maxQuantity"`
-	Rank        *int     `json:"rank" validate:"omitempty,gte=1"`
+	MaxQuantity *int     `json:"maxQuantity" validate:"omitempty,gte=1"`
 }
 
 // Decode implements the web.Decoder interface.
@@ -138,12 +176,11 @@ func (app *UpdateAddon) Decode(data []byte) error {
 	return json.Unmarshal(data, app)
 }
 
-// Validate checks the data in the model is considered clean.
+// Validate checks the data in the model is clean.
 func (app UpdateAddon) Validate() error {
 	if err := errs.Check(app); err != nil {
 		return fmt.Errorf("validate: %w", err)
 	}
-
 	return nil
 }
 
@@ -157,22 +194,21 @@ func toBusUpdateAddon(app UpdateAddon) (addonbus.UpdateAddon, error) {
 		nme = &nm
 	}
 
-	var prc *money.Money
+	var price *money.Money
 	if app.Price != nil {
-		pr, err := money.Parse(*app.Price)
+		p, err := money.Parse(*app.Price)
 		if err != nil {
 			return addonbus.UpdateAddon{}, fmt.Errorf("parse price: %w", err)
 		}
-		prc = &pr
+		price = &p
 	}
 
 	bus := addonbus.UpdateAddon{
 		Name:        nme,
 		Description: app.Description,
-		Price:       prc,
+		Price:       price,
 		Available:   app.Available,
 		MaxQuantity: app.MaxQuantity,
-		Rank:        app.Rank,
 	}
 
 	return bus, nil
@@ -180,22 +216,44 @@ func toBusUpdateAddon(app UpdateAddon) (addonbus.UpdateAddon, error) {
 
 // =============================================================================
 
-// ReorderAddons defines the data needed to update addons order.
-type ReorderAddons struct {
-	CategoryID string   `json:"categoryId" validate:"required,uuid"`
-	OrderedIDs []string `json:"orderedIds" validate:"required,min=1,dive,uuid"`
+// ItemAddonAssignmentInput represents an addon assigned to a menu item with an optional rank.
+type ItemAddonAssignmentInput struct {
+	AddonID string `json:"addonId" validate:"required,uuid"`
+	Rank    *int   `json:"rank" validate:"omitempty,gte=1"`
 }
 
-// Decode implements the decoder interface.
-func (app *ReorderAddons) Decode(data []byte) error {
+// ReplaceMenuItemAddons defines the payload for replacing assigned addons for a menu item.
+type ReplaceMenuItemAddons struct {
+	Addons []ItemAddonAssignmentInput `json:"addons" validate:"required,dive"`
+}
+
+// Decode implements the web.Decoder interface.
+func (app *ReplaceMenuItemAddons) Decode(data []byte) error {
 	return json.Unmarshal(data, app)
 }
 
-// Validate checks the data in the model is considered clean.
-func (app ReorderAddons) Validate() error {
+// Validate checks the data in the model is clean.
+func (app ReplaceMenuItemAddons) Validate() error {
 	if err := errs.Check(app); err != nil {
 		return fmt.Errorf("validate: %w", err)
 	}
+	return nil
+}
 
+// ReorderMenuItemAddons defines the payload for reordering assigned addons on a menu item.
+type ReorderMenuItemAddons struct {
+	OrderedIDs []string `json:"orderedIds" validate:"required,min=1,dive,uuid"`
+}
+
+// Decode implements the web.Decoder interface.
+func (app *ReorderMenuItemAddons) Decode(data []byte) error {
+	return json.Unmarshal(data, app)
+}
+
+// Validate checks the data in the model is clean.
+func (app ReorderMenuItemAddons) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return fmt.Errorf("validate: %w", err)
+	}
 	return nil
 }

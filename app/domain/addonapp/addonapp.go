@@ -11,7 +11,7 @@ import (
 	"github.com/warlck/food-flow/app/sdk/mid"
 	"github.com/warlck/food-flow/app/sdk/query"
 	"github.com/warlck/food-flow/business/domain/addonbus"
-	"github.com/warlck/food-flow/business/domain/categorybus"
+	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/order"
 	"github.com/warlck/food-flow/business/sdk/page"
@@ -21,20 +21,20 @@ import (
 // app manages the set of addon endpoints.
 type app struct {
 	addonBus      *addonbus.Business
+	menuItemBus   *menuitembus.Business
 	restaurantBus *restaurantbus.Business
-	categoryBus   *categorybus.Business
 }
 
 // newApp constructs an app handler for route access.
-func newApp(addonBus *addonbus.Business, restaurantBus *restaurantbus.Business, categoryBus *categorybus.Business) *app {
+func newApp(addonBus *addonbus.Business, menuItemBus *menuitembus.Business, restaurantBus *restaurantbus.Business) *app {
 	return &app{
 		addonBus:      addonBus,
+		menuItemBus:   menuItemBus,
 		restaurantBus: restaurantBus,
-		categoryBus:   categoryBus,
 	}
 }
 
-// create adds a new addon to the system.
+// create adds a new addon definition to the system.
 func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	var app NewAddon
 	if err := web.Decode(r, &app); err != nil {
@@ -120,7 +120,7 @@ func (a *app) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	return web.Respond(ctx, w, ToAppAddon(addon), http.StatusOK)
 }
 
-// update modifies an existing addon.
+// update modifies an existing addon definition.
 func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	var app UpdateAddon
 	if err := web.Decode(r, &app); err != nil {
@@ -164,7 +164,7 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 	return web.Respond(ctx, w, ToAppAddon(updAddon), http.StatusOK)
 }
 
-// delete removes an addon from the system.
+// delete removes an addon definition from the system.
 func (a *app) delete(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	addonIDStr := web.Param(r, "addon_id")
 	addonID, err := uuid.Parse(addonIDStr)
@@ -197,24 +197,36 @@ func (a *app) delete(ctx context.Context, w http.ResponseWriter, r *http.Request
 	return web.Respond(ctx, w, nil, http.StatusNoContent)
 }
 
-// reorder updates the display rank of addons in a category.
-func (a *app) reorder(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	var app ReorderAddons
-	if err := web.Decode(r, &app); err != nil {
-		return errs.New(errs.InvalidArgument, err)
-	}
-
-	categoryID, err := uuid.Parse(app.CategoryID)
+// queryMenuItemAddons retrieves assigned addons for a menu item.
+func (a *app) queryMenuItemAddons(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	menuItemIDStr := web.Param(r, "menu_item_id")
+	menuItemID, err := uuid.Parse(menuItemIDStr)
 	if err != nil {
-		return errs.NewFieldErrors("categoryId", err)
+		return errs.NewFieldErrors("menu_item_id", err)
 	}
 
-	cat, err := a.categoryBus.QueryByID(ctx, categoryID)
+	infos, err := a.addonBus.QueryMenuItemAddons(ctx, menuItemID)
 	if err != nil {
-		return errs.New(errs.InvalidArgument, fmt.Errorf("category lookup: %w", err))
+		return errs.Newf(errs.Internal, "queryMenuItemAddons: %s", err)
 	}
 
-	rest, err := a.restaurantBus.QueryByID(ctx, cat.RestaurantID)
+	return web.Respond(ctx, w, ToAppMenuItemAddons(infos), http.StatusOK)
+}
+
+// replaceMenuItemAddons replaces the list of addons assigned to a menu item.
+func (a *app) replaceMenuItemAddons(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	menuItemIDStr := web.Param(r, "menu_item_id")
+	menuItemID, err := uuid.Parse(menuItemIDStr)
+	if err != nil {
+		return errs.NewFieldErrors("menu_item_id", err)
+	}
+
+	item, err := a.menuItemBus.QueryByID(ctx, menuItemID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("menu item lookup: %w", err))
+	}
+
+	rest, err := a.restaurantBus.QueryByID(ctx, item.RestaurantID)
 	if err != nil {
 		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
 	}
@@ -222,6 +234,59 @@ func (a *app) reorder(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	claims := mid.GetClaims(ctx)
 	if !claims.IsOrgAuthorized(rest.OrganizationID) {
 		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
+	}
+
+	var app ReplaceMenuItemAddons
+	if err := web.Decode(r, &app); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	assignments := make([]addonbus.ItemAddonAssignment, len(app.Addons))
+	for i, in := range app.Addons {
+		addonID, err := uuid.Parse(in.AddonID)
+		if err != nil {
+			return errs.NewFieldErrors(fmt.Sprintf("addons[%d].addonId", i), err)
+		}
+		assignments[i] = addonbus.ItemAddonAssignment{
+			AddonID: addonID,
+			Rank:    in.Rank,
+		}
+	}
+
+	assigned, err := a.addonBus.ReplaceMenuItemAddons(ctx, menuItemID, rest.ID, assignments)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	return web.Respond(ctx, w, ToAppMenuItemAddons(assigned), http.StatusOK)
+}
+
+// reorderMenuItemAddons updates the rank of assigned addons on a menu item.
+func (a *app) reorderMenuItemAddons(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	menuItemIDStr := web.Param(r, "menu_item_id")
+	menuItemID, err := uuid.Parse(menuItemIDStr)
+	if err != nil {
+		return errs.NewFieldErrors("menu_item_id", err)
+	}
+
+	item, err := a.menuItemBus.QueryByID(ctx, menuItemID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("menu item lookup: %w", err))
+	}
+
+	rest, err := a.restaurantBus.QueryByID(ctx, item.RestaurantID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(rest.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
+	}
+
+	var app ReorderMenuItemAddons
+	if err := web.Decode(r, &app); err != nil {
+		return errs.New(errs.InvalidArgument, err)
 	}
 
 	orderedIDs := make([]uuid.UUID, len(app.OrderedIDs))
@@ -233,17 +298,13 @@ func (a *app) reorder(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		orderedIDs[i] = id
 	}
 
-	if err := a.addonBus.Reorder(ctx, categoryID, orderedIDs); err != nil {
-		if errors.Is(err, addonbus.ErrInvalidOrder) {
+	reordered, err := a.addonBus.ReorderMenuItemAddons(ctx, menuItemID, orderedIDs)
+	if err != nil {
+		if errors.Is(err, addonbus.ErrInvalidReorder) {
 			return errs.New(errs.InvalidArgument, err)
 		}
 		return errs.Newf(errs.Internal, "reorder: %s", err)
 	}
 
-	addons, err := a.addonBus.QueryByCategoryID(ctx, categoryID)
-	if err != nil {
-		return errs.Newf(errs.Internal, "query reordered addons: categoryID[%s]: %s", categoryID, err)
-	}
-
-	return web.Respond(ctx, w, ToAppAddons(addons), http.StatusOK)
+	return web.Respond(ctx, w, ToAppMenuItemAddons(reordered), http.StatusOK)
 }

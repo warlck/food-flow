@@ -122,8 +122,19 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 				return Order{}, fmt.Errorf("addon %s does not belong to restaurant %s", newAddon.AddonID, no.RestaurantID)
 			}
 
-			// Validate addon belongs to the menu item's category
-			if addon.CategoryID != menuItem.CategoryID {
+			// Validate addon is assigned to the menu item
+			assignedAddons, err := b.addonBus.QueryMenuItemAddons(ctx, menuItem.ID)
+			if err != nil {
+				return Order{}, fmt.Errorf("lookup menu item addons: %w", err)
+			}
+			var isAssigned bool
+			for _, a := range assignedAddons {
+				if a.Addon.ID == addonID {
+					isAssigned = true
+					break
+				}
+			}
+			if !isAssigned {
 				return Order{}, fmt.Errorf("%w: addon %s cannot be applied to menu item %s", ErrAddonCategoryMismatch, newAddon.AddonID, newItem.MenuItemID)
 			}
 

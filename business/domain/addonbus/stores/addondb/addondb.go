@@ -34,9 +34,9 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 func (s *Store) Create(ctx context.Context, addon addonbus.Addon) error {
 	const q = `
 	INSERT INTO addons
-		(addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated, rank)
+		(addon_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated)
 	VALUES
-		(:addon_id, :category_id, :restaurant_id, :name, :description, :price, :available, :max_quantity, :date_created, :date_updated, :rank)`
+		(:addon_id, :restaurant_id, :name, :description, :price, :available, :max_quantity, :date_created, :date_updated)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAddon(addon)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -56,7 +56,6 @@ func (s *Store) Update(ctx context.Context, addon addonbus.Addon) error {
 		price = :price,
 		available = :available,
 		max_quantity = :max_quantity,
-		rank = :rank,
 		date_updated = :date_updated
 	WHERE
 		addon_id = :addon_id`
@@ -92,7 +91,7 @@ func (s *Store) Query(ctx context.Context, filter addonbus.QueryFilter, orderBy 
 
 	const q = `
 	SELECT
-		addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated, rank
+		addon_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated
 	FROM
 		addons`
 
@@ -106,6 +105,34 @@ func (s *Store) Query(ctx context.Context, filter addonbus.QueryFilter, orderBy 
 
 	buf.WriteString(orderByClause)
 	buf.WriteString(" OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY")
+
+	var dbAddons []dbAddon
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbAddons); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusAddons(dbAddons)
+}
+
+// QueryAll retrieves all addons matching the filter without pagination.
+func (s *Store) QueryAll(ctx context.Context, filter addonbus.QueryFilter, orderBy order.By) ([]addonbus.Addon, error) {
+	data := map[string]any{}
+
+	const q = `
+	SELECT
+		addon_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated
+	FROM
+		addons`
+
+	buf := bytes.NewBufferString(q)
+	applyFilter(filter, data, buf)
+
+	orderByClause, err := orderByClause(orderBy)
+	if err != nil {
+		return nil, err
+	}
+
+	buf.WriteString(orderByClause)
 
 	var dbAddons []dbAddon
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbAddons); err != nil {
@@ -148,7 +175,7 @@ func (s *Store) QueryByID(ctx context.Context, addonID uuid.UUID) (addonbus.Addo
 
 	const q = `
 	SELECT
-		addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated, rank
+		addon_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated
 	FROM
 		addons
 	WHERE 
@@ -165,66 +192,80 @@ func (s *Store) QueryByID(ctx context.Context, addonID uuid.UUID) (addonbus.Addo
 	return toBusAddon(dbAddn)
 }
 
-// QueryByCategoryID gets all addons for a specific category from the database.
-func (s *Store) QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]addonbus.Addon, error) {
+// QueryMenuItemAddons gets all assigned addons for a menu item.
+func (s *Store) QueryMenuItemAddons(ctx context.Context, menuItemID uuid.UUID) ([]addonbus.MenuItemAddonInfo, error) {
 	data := struct {
-		CategoryID uuid.UUID `db:"category_id"`
+		MenuItemID uuid.UUID `db:"menu_item_id"`
 	}{
-		CategoryID: categoryID,
+		MenuItemID: menuItemID,
 	}
 
 	const q = `
 	SELECT
-		addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated, rank
+		a.addon_id,
+		a.restaurant_id,
+		a.name,
+		a.description,
+		a.price,
+		a.available,
+		a.max_quantity,
+		a.date_created,
+		a.date_updated,
+		mia.rank AS association_rank
 	FROM
-		addons
-	WHERE 
-		category_id = :category_id
+		menu_item_addons AS mia
+	JOIN
+		addons AS a ON a.addon_id = mia.addon_id
+	WHERE
+		mia.menu_item_id = :menu_item_id
 	ORDER BY
-		rank ASC, name ASC, addon_id ASC`
+		mia.rank ASC NULLS LAST, a.name ASC, a.addon_id ASC`
 
-	var dbAddons []dbAddon
-	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbAddons); err != nil {
+	var rows []dbMenuItemAddonRow
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &rows); err != nil {
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 
-	return toBusAddons(dbAddons)
+	return toBusMenuItemAddons(rows)
 }
 
-// Reorder updates the rank of addons in a category transactionally in steps of 10.
-func (s *Store) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) error {
+// ReplaceMenuItemAddons replaces all addon associations for a menu item in a transaction.
+func (s *Store) ReplaceMenuItemAddons(ctx context.Context, menuItemID uuid.UUID, restaurantID uuid.UUID, assignments []addonbus.ItemAddonAssignment) error {
 	tx, err := s.db.(*sqlx.DB).BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	const q = `
-	UPDATE
-		addons
-	SET
-		"rank" = :rank,
-		"date_updated" = :date_updated
-	WHERE
-		addon_id = :addon_id AND category_id = :category_id`
+	const delQ = `DELETE FROM menu_item_addons WHERE menu_item_id = :menu_item_id`
+	if err := sqldb.NamedExecContext(ctx, s.log, tx, delQ, map[string]any{"menu_item_id": menuItemID}); err != nil {
+		return fmt.Errorf("delete menu_item_addons: %w", err)
+	}
+
+	const insQ = `
+	INSERT INTO menu_item_addons
+		(menu_item_id, addon_id, restaurant_id, rank, date_created)
+	VALUES
+		(:menu_item_id, :addon_id, :restaurant_id, :rank, :date_created)`
 
 	now := time.Now().UTC()
-	for i, id := range orderedIDs {
-		rank := (i + 1) * 10
-		data := struct {
-			Rank        int       `db:"rank"`
-			DateUpdated time.Time `db:"date_updated"`
-			AddonID     uuid.UUID `db:"addon_id"`
-			CategoryID  uuid.UUID `db:"category_id"`
+	for _, a := range assignments {
+		row := struct {
+			MenuItemID   uuid.UUID `db:"menu_item_id"`
+			AddonID      uuid.UUID `db:"addon_id"`
+			RestaurantID uuid.UUID `db:"restaurant_id"`
+			Rank         *int      `db:"rank"`
+			DateCreated  time.Time `db:"date_created"`
 		}{
-			Rank:        rank,
-			DateUpdated: now,
-			AddonID:     id,
-			CategoryID:  categoryID,
+			MenuItemID:   menuItemID,
+			AddonID:      a.AddonID,
+			RestaurantID: restaurantID,
+			Rank:         a.Rank,
+			DateCreated:  now,
 		}
 
-		if err := sqldb.NamedExecContext(ctx, s.log, tx, q, data); err != nil {
-			return fmt.Errorf("namedexeccontext: %w", err)
+		if err := sqldb.NamedExecContext(ctx, s.log, tx, insQ, row); err != nil {
+			return fmt.Errorf("insert menu_item_addons: %w", err)
 		}
 	}
 
@@ -235,13 +276,41 @@ func (s *Store) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []
 	return nil
 }
 
-// orderByClause validates the order by clause and returns the SQL string.
-func orderByClause(orderBy order.By) (string, error) {
-	const orderByFields = "addon_id, name, price, rank, date_created"
+// ReorderMenuItemAddons updates the ranks of assigned addons in a transaction.
+func (s *Store) ReorderMenuItemAddons(ctx context.Context, menuItemID uuid.UUID, assignments []addonbus.ItemAddonAssignment) error {
+	tx, err := s.db.(*sqlx.DB).BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback()
 
-	by, exists := orderByFields, true
-	_ = by
-	_ = exists
+	const q = `
+	UPDATE
+		menu_item_addons
+	SET
+		rank = :rank
+	WHERE
+		menu_item_id = :menu_item_id AND addon_id = :addon_id`
 
-	return fmt.Sprintf(" ORDER BY %s %s", orderBy.Field, orderBy.Direction), nil
+	for _, a := range assignments {
+		data := struct {
+			MenuItemID uuid.UUID `db:"menu_item_id"`
+			AddonID    uuid.UUID `db:"addon_id"`
+			Rank       *int      `db:"rank"`
+		}{
+			MenuItemID: menuItemID,
+			AddonID:    a.AddonID,
+			Rank:       a.Rank,
+		}
+
+		if err := sqldb.NamedExecContext(ctx, s.log, tx, q, data); err != nil {
+			return fmt.Errorf("update menu_item_addons: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
+	}
+
+	return nil
 }

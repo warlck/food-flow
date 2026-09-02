@@ -11,7 +11,7 @@ import (
 )
 
 // TestNewAddons is a helper method for testing.
-func TestNewAddons(n int, categoryID, restaurantID uuid.UUID) []NewAddon {
+func TestNewAddons(n int, restaurantID uuid.UUID) []NewAddon {
 	newAddons := make([]NewAddon, n)
 
 	addonNames := []string{
@@ -33,12 +33,13 @@ func TestNewAddons(n int, categoryID, restaurantID uuid.UUID) []NewAddon {
 		nameIdx := i % len(addonNames)
 		price := addonPrices[nameIdx]
 
+		avail := true
 		na := NewAddon{
-			CategoryID:   categoryID,
 			RestaurantID: restaurantID,
 			Name:         name.MustParse(fmt.Sprintf("%s%d", addonNames[nameIdx], idx+i)),
 			Description:  addonDescriptions[nameIdx],
 			Price:        money.MustParse(price),
+			Available:    &avail,
 			MaxQuantity:  3,
 		}
 
@@ -49,8 +50,8 @@ func TestNewAddons(n int, categoryID, restaurantID uuid.UUID) []NewAddon {
 }
 
 // TestSeedAddons is a helper method for testing.
-func TestSeedAddons(ctx context.Context, n int, categoryID, restaurantID uuid.UUID, bus *Business) ([]Addon, error) {
-	newAddons := TestNewAddons(n, categoryID, restaurantID)
+func TestSeedAddons(ctx context.Context, n int, restaurantID uuid.UUID, bus *Business) ([]Addon, error) {
+	newAddons := TestNewAddons(n, restaurantID)
 
 	addons := make([]Addon, len(newAddons))
 	for i, na := range newAddons {
@@ -65,39 +66,16 @@ func TestSeedAddons(ctx context.Context, n int, categoryID, restaurantID uuid.UU
 	return addons, nil
 }
 
-// TestSeedAddonsForMenuItem is a helper method for testing that creates
-// addons with specific names for a category.
-func TestSeedAddonsForMenuItem(ctx context.Context, categoryID, restaurantID uuid.UUID, bus *Business) ([]Addon, error) {
-	addonData := []struct {
-		name        string
-		description string
-		price       float64
-		maxQty      int
-	}{
-		{"Extra Cheese", "Additional melted cheese", 2.00, 3},
-		{"Extra Meat", "Additional portion of meat", 4.00, 2},
-		{"Garlic Sauce", "Extra garlic sauce on the side", 1.00, 3},
-		{"Spicy Sauce", "Hot chili sauce", 1.00, 3},
+// TestAssignAddonsToMenuItem assigns addons to a menu item with ranks.
+func TestAssignAddonsToMenuItem(ctx context.Context, menuItemID uuid.UUID, restaurantID uuid.UUID, addonIDs []uuid.UUID, bus *Business) ([]MenuItemAddonInfo, error) {
+	assignments := make([]ItemAddonAssignment, len(addonIDs))
+	for i, id := range addonIDs {
+		rankVal := (i + 1) * 10
+		assignments[i] = ItemAddonAssignment{
+			AddonID: id,
+			Rank:    &rankVal,
+		}
 	}
 
-	addons := make([]Addon, len(addonData))
-	for i, data := range addonData {
-		na := NewAddon{
-			CategoryID:   categoryID,
-			RestaurantID: restaurantID,
-			Name:         name.MustParse(data.name),
-			Description:  data.description,
-			Price:        money.MustParse(data.price),
-			MaxQuantity:  data.maxQty,
-		}
-
-		addon, err := bus.Create(ctx, na)
-		if err != nil {
-			return nil, fmt.Errorf("seeding addon %s: %w", data.name, err)
-		}
-
-		addons[i] = addon
-	}
-
-	return addons, nil
+	return bus.ReplaceMenuItemAddons(ctx, menuItemID, restaurantID, assignments)
 }
