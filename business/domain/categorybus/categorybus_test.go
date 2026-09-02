@@ -2,19 +2,22 @@ package categorybus_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"sort"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/uuid"
 	"github.com/warlck/food-flow/business/domain/categorybus"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
 	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/business/sdk/unittest"
 	"github.com/warlck/food-flow/business/types/name"
+	"github.com/warlck/food-flow/business/types/opt"
 )
 
 func Test_Category(t *testing.T) {
@@ -33,6 +36,7 @@ func Test_Category(t *testing.T) {
 	unittest.Run(t, queryAll(db.BusDomain, sd), "query-all")
 	unittest.Run(t, create(db.BusDomain, sd), "create")
 	unittest.Run(t, update(db.BusDomain, sd), "update")
+	unittest.Run(t, reorder(db.BusDomain, sd), "reorder")
 	unittest.Run(t, delete(db.BusDomain, sd), "delete")
 }
 
@@ -91,7 +95,21 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 	}
 
 	sort.Slice(cats, func(i, j int) bool {
-		return cats[i].ID.String() <= cats[j].ID.String()
+		r1 := cats[i].Rank
+		r2 := cats[j].Rank
+		if r1 != nil && r2 != nil && *r1 != *r2 {
+			return *r1 < *r2
+		}
+		if r1 != nil && r2 == nil {
+			return true
+		}
+		if r1 == nil && r2 != nil {
+			return false
+		}
+		if cats[i].Name.String() != cats[j].Name.String() {
+			return cats[i].Name.String() < cats[j].Name.String()
+		}
+		return cats[i].ID.String() < cats[j].ID.String()
 	})
 
 	table := []unittest.Table{
@@ -192,7 +210,7 @@ func queryAll(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table
 		},
 		{
 			Name:    "by-restaurant",
-			ExpResp: 2, // 2 categories for restaurant 0
+			ExpResp: 2,
 			ExcFunc: func(ctx context.Context) any {
 				resp, err := busDomain.Category.QueryAll(ctx, categorybus.QueryFilter{
 					RestaurantID: &sd.Restaurants[0].ID,
@@ -220,20 +238,23 @@ func queryAll(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table
 }
 
 func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
+	rankVal := 10
 	table := []unittest.Table{
 		{
 			Name: "basic",
 			ExpResp: categorybus.Category{
 				Name:         name.MustParse("Appetizers"),
 				Description:  "Delicious starters and appetizers",
-				RestaurantID: sd.Restaurants[0].ID,
+				RestaurantID: sd.Restaurants[1].ID, // use restaurant 1 to keep restaurant 0 clean for reorder
 				Enabled:      true,
+				Rank:         &rankVal,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				nc := categorybus.NewCategory{
 					Name:         name.MustParse("Appetizers"),
 					Description:  "Delicious starters and appetizers",
-					RestaurantID: sd.Restaurants[0].ID,
+					RestaurantID: sd.Restaurants[1].ID,
+					Rank:         &rankVal,
 				}
 
 				resp, err := busDomain.Category.Create(ctx, nc)
@@ -264,15 +285,17 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 }
 
 func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
+	rankVal := 50
 	table := []unittest.Table{
 		{
-			Name: "basic",
+			Name: "set-rank",
 			ExpResp: categorybus.Category{
 				ID:           sd.Categories[0].ID,
 				Name:         name.MustParse("Updated Category"),
 				Description:  "Updated description for this category",
 				RestaurantID: sd.Categories[0].RestaurantID,
 				Enabled:      false,
+				Rank:         &rankVal,
 				DateCreated:  sd.Categories[0].DateCreated,
 			},
 			ExcFunc: func(ctx context.Context) any {
@@ -280,6 +303,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 					Name:        dbtest.NamePointer("Updated Category"),
 					Description: dbtest.StringPointer("Updated description for this category"),
 					Enabled:     dbtest.BoolPointer(false),
+					Rank:        opt.NewNullInt(50),
 				}
 
 				resp, err := busDomain.Category.Update(ctx, sd.Categories[0].Category, uc)
@@ -296,10 +320,125 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				}
 
 				expResp := exp.(categorybus.Category)
-
+				expResp.DateCreated = gotResp.DateCreated
 				expResp.DateUpdated = gotResp.DateUpdated
 
 				return cmp.Diff(gotResp, expResp)
+			},
+		},
+		{
+			Name: "clear-rank",
+			ExpResp: categorybus.Category{
+				ID:           sd.Categories[0].ID,
+				Name:         name.MustParse("Updated Category"),
+				Description:  "Updated description for this category",
+				RestaurantID: sd.Categories[0].RestaurantID,
+				Enabled:      false,
+				Rank:         nil,
+				DateCreated:  sd.Categories[0].DateCreated,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				uc := categorybus.UpdateCategory{
+					Rank: opt.NewNullIntNull(),
+				}
+
+				current, err := busDomain.Category.QueryByID(ctx, sd.Categories[0].ID)
+				if err != nil {
+					return err
+				}
+
+				resp, err := busDomain.Category.Update(ctx, current, uc)
+				if err != nil {
+					return err
+				}
+
+				return resp
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(categorybus.Category)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(categorybus.Category)
+				expResp.DateCreated = gotResp.DateCreated
+				expResp.DateUpdated = gotResp.DateUpdated
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+
+	return table
+}
+
+func reorder(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
+	restID := sd.Restaurants[0].ID
+	cat0 := sd.Categories[0].ID
+	cat1 := sd.Categories[1].ID
+
+	table := []unittest.Table{
+		{
+			Name:    "success-exact-set",
+			ExpResp: []int{10, 20},
+			ExcFunc: func(ctx context.Context) any {
+				// Reverse order: cat1 then cat0
+				reordered, err := busDomain.Category.Reorder(ctx, restID, []uuid.UUID{cat1, cat0})
+				if err != nil {
+					return err
+				}
+
+				ranks := make([]int, len(reordered))
+				for i, cat := range reordered {
+					if cat.Rank != nil {
+						ranks[i] = *cat.Rank
+					}
+				}
+				return ranks
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotRanks, ok := got.([]int)
+				if !ok {
+					return fmt.Sprintf("expected []int, got %T", got)
+				}
+				return cmp.Diff(gotRanks, exp.([]int))
+			},
+		},
+		{
+			Name:    "duplicate-id-error",
+			ExpResp: categorybus.ErrInvalidReorder,
+			ExcFunc: func(ctx context.Context) any {
+				_, err := busDomain.Category.Reorder(ctx, restID, []uuid.UUID{cat1, cat1})
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return "expected error response"
+				}
+				if !errors.Is(gotErr, categorybus.ErrInvalidReorder) {
+					return fmt.Sprintf("expected ErrInvalidReorder, got %v", gotErr)
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "foreign-restaurant-id-error",
+			ExpResp: categorybus.ErrInvalidReorder,
+			ExcFunc: func(ctx context.Context) any {
+				foreignCat := sd.Categories[2].ID
+				_, err := busDomain.Category.Reorder(ctx, restID, []uuid.UUID{cat0, foreignCat})
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return "expected error response"
+				}
+				if !errors.Is(gotErr, categorybus.ErrInvalidReorder) {
+					return fmt.Sprintf("expected ErrInvalidReorder, got %v", gotErr)
+				}
+				return ""
 			},
 		},
 	}

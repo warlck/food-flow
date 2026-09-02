@@ -2,6 +2,7 @@ package categoryapp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -58,6 +59,48 @@ func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 	}
 
 	return web.Respond(ctx, w, ToAppCategory(cat), http.StatusCreated)
+}
+
+// Reorder updates the rank of all categories within a restaurant.
+func (a *app) reorder(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	var app ReorderCategories
+	if err := web.Decode(r, &app); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	restID, err := uuid.Parse(app.RestaurantID)
+	if err != nil {
+		return errs.NewFieldErrors("restaurantId", err)
+	}
+
+	rest, err := a.restaurantBus.QueryByID(ctx, restID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, fmt.Errorf("restaurant lookup: %w", err))
+	}
+
+	claims := mid.GetClaims(ctx)
+	if !claims.IsOrgAuthorized(rest.OrganizationID) {
+		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
+	}
+
+	orderedIDs := make([]uuid.UUID, len(app.OrderedIDs))
+	for i, idStr := range app.OrderedIDs {
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			return errs.NewFieldErrors("orderedIds", err)
+		}
+		orderedIDs[i] = id
+	}
+
+	reordered, err := a.categoryBus.Reorder(ctx, restID, orderedIDs)
+	if err != nil {
+		if errors.Is(err, categorybus.ErrInvalidReorder) {
+			return errs.New(errs.InvalidArgument, err)
+		}
+		return errs.Newf(errs.Internal, "reorder: %s", err)
+	}
+
+	return web.Respond(ctx, w, ToAppCategories(reordered), http.StatusOK)
 }
 
 // Query retrieves a list of categories based on query parameters.

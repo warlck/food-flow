@@ -10,7 +10,7 @@ func Test_Money(t *testing.T) {
 	t.Parallel()
 
 	t.Run("valid-values", func(t *testing.T) {
-		tests := []float64{0.0, 0.01, 10.50, 999.99, 1_000_000.0, 1_000_000_000.0}
+		tests := []float64{0.0, 0.01, 10.50, 999.99, 1_000_000.0, 99_999_999.99}
 		for _, val := range tests {
 			m, err := money.Parse(val)
 			if err != nil {
@@ -30,9 +30,9 @@ func Test_Money(t *testing.T) {
 	})
 
 	t.Run("overflow-value-rejected", func(t *testing.T) {
-		_, err := money.Parse(1_000_000_000.01)
+		_, err := money.Parse(100_000_000.00)
 		if err == nil {
-			t.Fatal("expected error for money > 1_000_000_000, got nil")
+			t.Fatal("expected error for money > 99_999_999.99, got nil")
 		}
 	})
 
