@@ -24,6 +24,7 @@ var (
 	ErrModifierOptionNotFound    = errors.New("modifier option not found")
 	ErrModifierRequired          = errors.New("modifier selection required")
 	ErrModifierOptionUnavailable = errors.New("modifier option is unavailable")
+	ErrModifierGroupUnavailable  = errors.New("modifier group is unavailable")
 	ErrModifierSelectionLimit    = errors.New("modifier selection limit exceeded")
 	ErrAddonNotAssigned          = errors.New("addon is not assigned to menu item")
 	ErrAddonUnavailable          = errors.New("addon is unavailable")

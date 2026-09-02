@@ -1605,6 +1605,275 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			},
 		},
 		{
+			Name:    "unavailable-required-group-suspends-requirement",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				item, err := busDomain.MenuItem.Create(ctx, menuitembus.NewMenuItem{
+					CategoryID:   sd.Categories[0].ID,
+					RestaurantID: sd.Restaurants[0].ID,
+					Name:         name.MustParse("Item With Suspended Group"),
+					Description:  "desc",
+					Price:        money.MustParse(12.00),
+				})
+				if err != nil {
+					return err
+				}
+
+				_, err = busDomain.ModifierGroup.Create(ctx, modifiergroupbus.NewModifierGroup{
+					MenuItemID:    item.ID,
+					RestaurantID:  sd.Restaurants[0].ID,
+					Name:          name.MustParse("Suspended Size Group"),
+					MinSelections: 1,
+					MaxSelections: 1,
+					Available:     false,
+				})
+				if err != nil {
+					return err
+				}
+
+				// An unavailable required group is suspended: an order
+				// without a selection from it must succeed.
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Suspended Group Customer",
+					CustomerEmail: "suspendedmod@example.com",
+					CustomerPhone: "555-2111",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: item.ID.String(),
+							Quantity:   1,
+						},
+					},
+				}
+
+				ord, err := busDomain.Order.Create(ctx, no)
+				if err != nil {
+					return err
+				}
+
+				if ord.Subtotal.Value() != 12.00 {
+					return fmt.Sprintf("subtotal: got %.2f, want 12.00", ord.Subtotal.Value())
+				}
+
+				queried, err := busDomain.Order.QueryByID(ctx, ord.ID)
+				if err != nil {
+					return fmt.Errorf("query created order: %w", err)
+				}
+
+				if len(queried.Items) != 1 {
+					return fmt.Sprintf("expected 1 item, got %d", len(queried.Items))
+				}
+				if len(queried.Items[0].Modifiers) != 0 {
+					return fmt.Sprintf("expected 0 modifier snapshots, got %d", len(queried.Items[0].Modifiers))
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("unexpected error: %v", got)
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "unavailable-group-rejects-submitted-selection",
+			ExpResp: orderbus.ErrModifierGroupUnavailable,
+			ExcFunc: func(ctx context.Context) any {
+				item, err := busDomain.MenuItem.Create(ctx, menuitembus.NewMenuItem{
+					CategoryID:   sd.Categories[0].ID,
+					RestaurantID: sd.Restaurants[0].ID,
+					Name:         name.MustParse("Item With Rejected Group"),
+					Description:  "desc",
+					Price:        money.MustParse(13.00),
+				})
+				if err != nil {
+					return err
+				}
+
+				grp, err := busDomain.ModifierGroup.Create(ctx, modifiergroupbus.NewModifierGroup{
+					MenuItemID:    item.ID,
+					RestaurantID:  sd.Restaurants[0].ID,
+					Name:          name.MustParse("Rejected Size Group"),
+					MinSelections: 1,
+					MaxSelections: 1,
+					Available:     false,
+				})
+				if err != nil {
+					return err
+				}
+				opt, err := busDomain.ModifierOption.Create(ctx, modifieroptionbus.NewModifierOption{
+					ModifierGroupID: grp.ID,
+					RestaurantID:    sd.Restaurants[0].ID,
+					Name:            name.MustParse("Suspended Large Option"),
+					PriceDelta:      money.MustParse(2.00),
+				})
+				if err != nil {
+					return err
+				}
+
+				// A suspended group accepts no selection.
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Rejected Group Customer",
+					CustomerEmail: "rejectedmod@example.com",
+					CustomerPhone: "555-2112",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: item.ID.String(),
+							Quantity:   1,
+							Modifiers: []orderbus.NewOrderItemModifier{
+								{
+									ModifierGroupID:  grp.ID.String(),
+									ModifierOptionID: opt.ID.String(),
+								},
+							},
+						},
+					},
+				}
+
+				_, err = busDomain.Order.Create(ctx, no)
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "expected an error"
+				}
+
+				if !errors.Is(gotErr, exp.(error)) {
+					return fmt.Sprintf("got %v, expected %v", gotErr, exp)
+				}
+
+				return ""
+			},
+		},
+		{
+			Name:    "mixed-available-and-suspended-required-groups",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				item, err := busDomain.MenuItem.Create(ctx, menuitembus.NewMenuItem{
+					CategoryID:   sd.Categories[0].ID,
+					RestaurantID: sd.Restaurants[0].ID,
+					Name:         name.MustParse("Item With Mixed Groups"),
+					Description:  "desc",
+					Price:        money.MustParse(12.00),
+				})
+				if err != nil {
+					return err
+				}
+
+				availableGroup, err := busDomain.ModifierGroup.Create(ctx, modifiergroupbus.NewModifierGroup{
+					MenuItemID:    item.ID,
+					RestaurantID:  sd.Restaurants[0].ID,
+					Name:          name.MustParse("Active Spice Level"),
+					MinSelections: 1,
+					MaxSelections: 1,
+					Available:     true,
+				})
+				if err != nil {
+					return err
+				}
+				activeOption, err := busDomain.ModifierOption.Create(ctx, modifieroptionbus.NewModifierOption{
+					ModifierGroupID: availableGroup.ID,
+					RestaurantID:    sd.Restaurants[0].ID,
+					Name:            name.MustParse("Active Mild Option"),
+					PriceDelta:      money.MustParse(1.50),
+				})
+				if err != nil {
+					return err
+				}
+
+				_, err = busDomain.ModifierGroup.Create(ctx, modifiergroupbus.NewModifierGroup{
+					MenuItemID:    item.ID,
+					RestaurantID:  sd.Restaurants[0].ID,
+					Name:          name.MustParse("Sided Sides Group"),
+					MinSelections: 1,
+					MaxSelections: 1,
+					Available:     false,
+				})
+				if err != nil {
+					return err
+				}
+
+				// Same item carries one available required group and one
+				// suspended required group: selecting only from the active
+				// group must succeed with exact math.
+				// Unit: 12.00 + 1.50 = 13.50; Tax (10%): 1.35; Total: 14.85.
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Mixed Groups Customer",
+					CustomerEmail: "mixedmods@example.com",
+					CustomerPhone: "555-2113",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: item.ID.String(),
+							Quantity:   1,
+							Modifiers: []orderbus.NewOrderItemModifier{
+								{
+									ModifierGroupID:  availableGroup.ID.String(),
+									ModifierOptionID: activeOption.ID.String(),
+								},
+							},
+						},
+					},
+				}
+
+				ord, err := busDomain.Order.Create(ctx, no)
+				if err != nil {
+					return err
+				}
+
+				if ord.Subtotal.Value() != 13.50 {
+					return fmt.Sprintf("subtotal: got %.2f, want 13.50", ord.Subtotal.Value())
+				}
+				expTax := math.Round(13.50*sd.Restaurants[0].TaxRate*100) / 100
+				if ord.Tax.Value() != expTax {
+					return fmt.Sprintf("tax: got %.2f, want %.2f", ord.Tax.Value(), expTax)
+				}
+				if ord.Total.Value() != math.Round((13.50+expTax)*100)/100 {
+					return fmt.Sprintf("total: got %.2f, want %.2f", ord.Total.Value(), math.Round((13.50+expTax)*100)/100)
+				}
+
+				queried, err := busDomain.Order.QueryByID(ctx, ord.ID)
+				if err != nil {
+					return fmt.Errorf("query created order: %w", err)
+				}
+
+				if len(queried.Items) != 1 {
+					return fmt.Sprintf("expected 1 item, got %d", len(queried.Items))
+				}
+				it := queried.Items[0]
+				if len(it.Modifiers) != 1 {
+					return fmt.Sprintf("expected 1 modifier snapshot, got %d", len(it.Modifiers))
+				}
+				m := it.Modifiers[0]
+				if m.ModifierGroupName != "Active Spice Level" {
+					return fmt.Sprintf("mod group name: got %q, want 'Active Spice Level'", m.ModifierGroupName)
+				}
+				if m.ModifierOptionName != "Active Mild Option" {
+					return fmt.Sprintf("mod option name: got %q, want 'Active Mild Option'", m.ModifierOptionName)
+				}
+				if m.PriceDelta.Value() != 1.50 {
+					return fmt.Sprintf("price delta: got %.2f, want 1.50", m.PriceDelta.Value())
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("unexpected error: %v", got)
+				}
+				return ""
+			},
+		},
+		{
 			Name:    "addon-wrong-restaurant",
 			ExpResp: nil,
 			ExcFunc: func(ctx context.Context) any {

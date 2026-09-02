@@ -159,20 +159,25 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 			submittedByGroup[gID] = append(submittedByGroup[gID], m)
 		}
 
-		// Validate modifier selections per group
+		// Validate modifier selections per group. An unavailable group is
+		// suspended: it imposes no requirement and accepts no selection.
 		var itemModifiers []OrderItemModifier
 		for _, g := range itemGroups {
 			submitted := submittedByGroup[g.ID]
-			count := len(submitted)
 
-			if g.MinSelections > 0 && count == 0 {
+			if !g.Available {
+				if len(submitted) > 0 {
+					return Order{}, fmt.Errorf("%w: group %s (%s) is unavailable", ErrModifierGroupUnavailable, g.ID, g.Name.String())
+				}
+				continue
+			}
+
+			count := len(submitted)
+			if count < g.MinSelections {
 				return Order{}, fmt.Errorf("%w: group %s (%s)", ErrModifierRequired, g.ID, g.Name.String())
 			}
 			if count > g.MaxSelections {
 				return Order{}, fmt.Errorf("%w: group %s", ErrModifierSelectionLimit, g.ID)
-			}
-			if count > 0 && !g.Available {
-				return Order{}, fmt.Errorf("%w: group %s (%s) is unavailable", ErrModifierOptionUnavailable, g.ID, g.Name.String())
 			}
 
 			for _, m := range submitted {
