@@ -15,6 +15,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/orderbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/page"
+	"github.com/warlck/food-flow/business/types/money"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
@@ -185,6 +186,11 @@ func (a *app) queryInsights(ctx context.Context, w http.ResponseWriter, r *http.
 	// 1. Query pure order domain metrics
 	metrics, err := a.orderBus.QueryOrderMetrics(ctx, filter)
 	if err != nil {
+		// Never clamp aggregate money values: surface them as a client error
+		// rather than failing with an opaque 500.
+		if errors.Is(err, money.ErrOverflow) {
+			return errs.New(errs.InvalidArgument, fmt.Errorf("aggregated sales total exceeds the maximum supported amount"))
+		}
 		return fmt.Errorf("query order metrics: %w", err)
 	}
 

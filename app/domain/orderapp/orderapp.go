@@ -18,6 +18,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/order"
 	"github.com/warlck/food-flow/business/sdk/page"
+	"github.com/warlck/food-flow/business/types/money"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
@@ -55,6 +56,11 @@ func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 	if err != nil {
 		if errors.Is(err, orderbus.ErrMinSpendNotMet) || strings.Contains(err.Error(), "invalid promo code") {
 			return errs.New(errs.InvalidArgument, err)
+		}
+		// Never clamp order money values: an amount beyond the supported
+		// maximum must surface as a client error, not an internal failure.
+		if errors.Is(err, money.ErrOverflow) {
+			return errs.New(errs.InvalidArgument, fmt.Errorf("order total exceeds the maximum supported amount"))
 		}
 		return fmt.Errorf("create: order[%+v]: %w", ord, err)
 	}
