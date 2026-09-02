@@ -36,9 +36,5 @@ func Routes(app *web.App, cfg Config) {
 	app.HandleFunc(http.MethodPost, version, "/addons", api.create, authen, ruleAdmin)
 	app.HandleFunc(http.MethodPut, version, "/addons/{addon_id}", api.update, authen, ruleAdmin)
 	app.HandleFunc(http.MethodDelete, version, "/addons/{addon_id}", api.delete, authen, ruleAdmin)
-
-	// Menu item addon association endpoints
-	app.HandleFunc(http.MethodGet, version, "/menuitems/{menu_item_id}/addons", api.queryMenuItemAddons, authen)
-	app.HandleFunc(http.MethodPut, version, "/menuitems/{menu_item_id}/addons", api.replaceMenuItemAddons, authen, ruleAdmin)
-	app.HandleFunc(http.MethodPut, version, "/menuitems/{menu_item_id}/addons/order", api.reorderMenuItemAddons, authen, ruleAdmin)
+	app.HandleFunc(http.MethodPost, version, "/addons/reorder", api.reorder, authen, ruleAdmin)
 }

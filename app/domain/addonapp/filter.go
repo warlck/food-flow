@@ -16,6 +16,7 @@ type queryParams struct {
 	Rows         string
 	OrderBy      string
 	ID           string
+	MenuItemID   string
 	RestaurantID string
 	Name         string
 	Available    string
@@ -29,6 +30,7 @@ func parseQueryParams(r *http.Request) (queryParams, error) {
 		Rows:         values.Get("rows"),
 		OrderBy:      values.Get("orderBy"),
 		ID:           values.Get("addon_id"),
+		MenuItemID:   values.Get("menu_item_id"),
 		RestaurantID: values.Get("restaurant_id"),
 		Name:         values.Get("name"),
 		Available:    values.Get("available"),
@@ -46,6 +48,14 @@ func parseFilter(qp queryParams) (addonbus.QueryFilter, error) {
 			return addonbus.QueryFilter{}, errs.NewFieldErrors("addon_id", err)
 		}
 		filter.ID = &id
+	}
+
+	if qp.MenuItemID != "" {
+		menuItemID, err := uuid.Parse(qp.MenuItemID)
+		if err != nil {
+			return addonbus.QueryFilter{}, errs.NewFieldErrors("menu_item_id", err)
+		}
+		filter.MenuItemID = &menuItemID
 	}
 
 	if qp.RestaurantID != "" {
