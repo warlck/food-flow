@@ -718,7 +718,10 @@ The implementation is incomplete until new businesses are wired through:
 ### 9.1 Naming
 
 - JSON uses camelCase.
-- Query parameters continue to use the repository’s current snake_case convention.
+- Filter query parameters use the repository's existing snake_case names, such
+  as `restaurant_id`, `menu_item_id`, and `start_created_date`. Pagination and
+  sorting retain the existing `page`, `rows`, and `orderBy` names; do not rename
+  `orderBy` to `order_by`.
 - List endpoints return the existing paginated `query.Result` envelope.
 - Embedded collections always serialize as `[]`, never `null`.
 - `mentuItems` is corrected to `menuItems`.
@@ -818,6 +821,7 @@ Use existing auth conventions:
 | `DELETE /v1/modifieroptions/{id}` | Delete | admin plus organization ownership |
 | `PUT /v1/modifieroptions/order` | Exact-set reorder within a group | admin plus organization ownership |
 | `PUT /v1/categories/order` | Exact-set reorder within a restaurant | admin plus organization ownership |
+| `GET /v1/menuitems/{id}/addons` | Read assigned add-ons with association rank | authenticated and organization-scoped |
 | `PUT /v1/menuitems/{id}/addons` | Replace exact add-on association set | admin plus organization ownership |
 | `PUT /v1/menuitems/{id}/addons/order` | Exact-set reorder of that item's assigned add-ons | admin plus organization ownership |
 
@@ -840,6 +844,13 @@ Refactored add-on definition DTO:
 ```
 
 `categoryId` and definition-level `rank` are omitted from the add-on contract and do not exist in the rebuilt schema. `GET /v1/addons` supports `restaurant_id`, `available`, normal pagination, and allowed order fields `name`, `price`, `dateCreated`, and `dateUpdated`.
+
+`GET /v1/menuitems/{id}/addons` returns `200` with the menu item's complete
+embedded add-on array, including unavailable definitions and each association's
+`rank` from `menu_item_addons`. The collection uses the public-details add-on
+shape and ordering from §6.6, serializes as `[]` when no add-ons are assigned,
+and is not paginated. The handler verifies the menu item's restaurant through
+the caller's organization claims before returning any definitions.
 
 Example group creation:
 
@@ -1054,6 +1065,11 @@ Normalize special instructions once on add-to-cart as `input.trim()`, preserving
 
 Two lines merge only when this complete signature matches. Quantity is increased on merge.
 
+Every persisted cart line has a stable, unique `cartItemId`. All cart, checkout,
+and summary React lists use `cartItemId` as the row key, never `menuItemId`,
+because differently configured lines for the same menu item must coexist
+without duplicate keys or incorrect row reconciliation.
+
 Persist a versioned shape:
 
 ```json
@@ -1115,6 +1131,13 @@ Extend `AdminWorkspace` with:
 - modifier snapshots in admin order DTOs.
 
 Use only the corrected `menuItems` key in the admin workspace model.
+
+Load categories, menu items, and add-on definitions through their authenticated
+organization-scoped endpoints. Do not derive the admin workspace from public
+restaurant details, because public details intentionally omit disabled
+categories. When an item editor opens, load its current assignments through
+`GET /v1/menuitems/{id}/addons` and store those association rows by menu-item ID
+so unavailable assignments and association ranks remain editable.
 
 ### 11.2 Category management
 
@@ -1217,7 +1240,8 @@ Add API suites for:
 - all group/option endpoints, filters, pagination, ordering, authorization, and error mappings;
 - zero-price creation/update;
 - exact-set reorder success and stale/duplicate/foreign/missing IDs;
-- item add-on association replacement;
+- item add-on association reads and replacement, including deterministic rank
+  ordering, empty arrays, unavailable definitions, and organization isolation;
 - details hierarchy, spelling, ordering, empty arrays, availability, orderability, and no duplicate add-ons;
 - order create request/response snapshots and exact totals;
 - organization isolation on reads and writes;
@@ -1234,13 +1258,16 @@ Online hub Vitest/Testing Library:
 - optional group omission;
 - unavailable and unorderable states;
 - exact preview arithmetic;
-- configured-line identity and merging;
+- configured-line identity and merging, including two differently configured
+  lines for the same menu item;
+- updating or removing one same-item configured line leaves the other line and
+  its selections unchanged;
 - existing unversioned-cart clearing and malformed/future-version handling;
 - both checkout payloads;
 - all receipt/tracking surfaces;
 - keyboard and screen-reader labels.
 
-Admin hub currently has no test script. Add Vitest, jsdom, Testing Library, setup, and a `test` script before claiming admin UI completion. Cover CRUD, association, reorder rollback, zero delta, nested-save sequencing, unresolved historical IDs, and keyboard alternatives.
+Admin hub currently has no test script. Add Vitest, jsdom, Testing Library, setup, and a `test` script before claiming admin UI completion. Cover CRUD, loading existing add-on assignments for enabled and disabled-category items, association changes, reorder rollback, zero delta, nested-save sequencing, unresolved historical IDs, and keyboard alternatives.
 
 ### 12.6 Required validation commands
 
@@ -1317,9 +1344,10 @@ Do not log entire order payloads or payment data.
 
 ---
 
-## 14. Implementation Sequence and Atomic Commits
+## 14. Implementation Sequence and Temporary Commit Exception
 
-Each numbered step is a separate, self-contained conventional commit and must compile and pass its relevant tests:
+The following sequence is the preferred set of logical conventional-commit
+groups:
 
 1. `feat(schema): add modifier groups options and menu associations`
 2. `feat(categories): add category rank and reorder support`
@@ -1334,7 +1362,17 @@ Each numbered step is a separate, self-contained conventional commit and must co
 11. `chore(seed): convert restaurant menu fixtures`
 12. `docs: add local hierarchy walkthrough and feature review`
 
-If dependency ordering makes a listed commit non-compilable in isolation, combine only the inseparable schema/domain wiring into one atomic commit and document why. Never leave generated test helpers or required wiring for a later commit.
+For this feature only, the coordinated pre-production schema reset is an
+explicit exception to the repository's normal requirement that every
+intermediate commit compile and pass its relevant tests. A numbered group may
+temporarily depend on a later group when separating the schema, final seed,
+generated test helpers, stores, and cross-layer wiring would require throwaway
+compatibility code or an artificially large commit.
+
+Keep commits logically scoped and document any known temporary build or test
+failure in the commit body. Intermediate commits must not be deployed or merged.
+Before review and handoff, the complete branch must satisfy every command and
+acceptance gate in §12.
 
 ---
 
@@ -1366,9 +1404,9 @@ If dependency ordering makes a listed commit non-compilable in isolation, combin
 These are the only product decisions intentionally left open:
 
 1. Final category/item/group/option mapping for every Donergy and A1 Kebab seed row.
-2. Which modifier groups are required versus optional.
-3. Whether unavailable catalog choices should remain visible as disabled, as specified, or be hidden.
-4. Whether reusable add-ons need per-item price/max overrides in v1; this spec assumes no.
-5. Whether to retain a staging backup before the destructive rebuild and the staging maintenance window.
+2. Which modifier groups are required versus optional. 
+3. Whether unavailable catalog choices should remain visible as disabled, as specified, or be hidden. => disabled
+4. Whether reusable add-ons need per-item price/max overrides in v1; this spec assumes no. => no
+5. Whether to retain a staging backup before the destructive rebuild and the staging maintenance window. => no need, just make seed.sql is also properly refilled to that staging can be reseeded
 
 All technical contracts outside these explicit decisions are defined by this spec.
