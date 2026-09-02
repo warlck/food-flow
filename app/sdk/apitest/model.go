@@ -4,6 +4,8 @@ import (
 	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
+	"github.com/warlck/food-flow/business/domain/modifiergroupbus"
+	"github.com/warlck/food-flow/business/domain/modifieroptionbus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
 	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
@@ -36,6 +38,16 @@ type MenuItem struct {
 	menuitembus.MenuItem
 }
 
+// ModifierGroup extends the modifiergroupbus.ModifierGroup for api test support.
+type ModifierGroup struct {
+	modifiergroupbus.ModifierGroup
+}
+
+// ModifierOption extends the modifieroptionbus.ModifierOption for api test support.
+type ModifierOption struct {
+	modifieroptionbus.ModifierOption
+}
+
 // Addon extends the addonbus.Addon for api test support.
 type Addon struct {
 	addonbus.Addon
@@ -48,14 +60,16 @@ type Order struct {
 
 // SeedData represents data for api tests.
 type SeedData struct {
-	Users         []User
-	Admins        []User
-	Organizations []Organization
-	Restaurants   []Restaurant
-	Categories    []Category
-	MenuItems     []MenuItem
-	Addons        []Addon
-	Orders        []Order
+	Users           []User
+	Admins          []User
+	Organizations   []Organization
+	Restaurants     []Restaurant
+	Categories      []Category
+	MenuItems       []MenuItem
+	ModifierGroups  []ModifierGroup
+	ModifierOptions []ModifierOption
+	Addons          []Addon
+	Orders          []Order
 }
 
 // Table represent fields needed for running an api test.

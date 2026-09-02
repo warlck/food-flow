@@ -166,6 +166,9 @@ func (a *app) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	group, err := a.modifierGroupBus.QueryByID(ctx, groupID)
 	if err != nil {
+		if errors.Is(err, modifiergroupbus.ErrNotFound) {
+			return errs.New(errs.NotFound, err)
+		}
 		return fmt.Errorf("querybyid: groupID[%s]: %w", groupID, err)
 	}
 
@@ -193,6 +196,9 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	group, err := a.modifierGroupBus.QueryByID(ctx, groupID)
 	if err != nil {
+		if errors.Is(err, modifiergroupbus.ErrNotFound) {
+			return errs.New(errs.NotFound, err)
+		}
 		return fmt.Errorf("querybyid: groupID[%s]: %w", groupID, err)
 	}
 
@@ -225,6 +231,9 @@ func (a *app) delete(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	group, err := a.modifierGroupBus.QueryByID(ctx, groupID)
 	if err != nil {
+		if errors.Is(err, modifiergroupbus.ErrNotFound) {
+			return errs.New(errs.NotFound, err)
+		}
 		return fmt.Errorf("querybyid: groupID[%s]: %w", groupID, err)
 	}
 

@@ -166,6 +166,9 @@ func (a *app) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	opt, err := a.modifierOptionBus.QueryByID(ctx, optionID)
 	if err != nil {
+		if errors.Is(err, modifieroptionbus.ErrNotFound) {
+			return errs.New(errs.NotFound, err)
+		}
 		return fmt.Errorf("querybyid: optionID[%s]: %w", optionID, err)
 	}
 
@@ -193,6 +196,9 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	opt, err := a.modifierOptionBus.QueryByID(ctx, optionID)
 	if err != nil {
+		if errors.Is(err, modifieroptionbus.ErrNotFound) {
+			return errs.New(errs.NotFound, err)
+		}
 		return fmt.Errorf("querybyid: optionID[%s]: %w", optionID, err)
 	}
 
@@ -225,6 +231,9 @@ func (a *app) delete(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	opt, err := a.modifierOptionBus.QueryByID(ctx, optionID)
 	if err != nil {
+		if errors.Is(err, modifieroptionbus.ErrNotFound) {
+			return errs.New(errs.NotFound, err)
+		}
 		return fmt.Errorf("querybyid: optionID[%s]: %w", optionID, err)
 	}
 
