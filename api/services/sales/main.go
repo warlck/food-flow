@@ -218,10 +218,10 @@ func run(ctx context.Context, log *logger.Logger) error {
 	menuitemBus := menuitembus.NewBusiness(log, menuitemstore)
 
 	modifiergroupstore := modifiergroupdb.NewStore(log, db)
-	modifiergroupBus := modifiergroupbus.NewBusiness(log, modifiergroupstore)
-
 	modifieroptionstore := modifieroptiondb.NewStore(log, db)
-	modifieroptionBus := modifieroptionbus.NewBusiness(log, modifieroptionstore)
+
+	modifiergroupBus := modifiergroupbus.NewBusiness(log, modifiergroupstore, modifieroptionstore)
+	modifieroptionBus := modifieroptionbus.NewBusiness(log, modifieroptionstore, modifiergroupstore)
 
 	addonstore := addondb.NewStore(log, db)
 	addonBus := addonbus.NewBusiness(log, addonstore)

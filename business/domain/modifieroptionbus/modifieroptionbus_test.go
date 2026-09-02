@@ -45,6 +45,7 @@ func Test_ModifierOption(t *testing.T) {
 	unittest.Run(t, create(db.BusDomain, sd), "create")
 	unittest.Run(t, update(db.BusDomain, sd), "update")
 	unittest.Run(t, reorder(db.BusDomain, sd), "reorder")
+	unittest.Run(t, lastAvailableOption(db.BusDomain, sd), "last-available-option")
 	unittest.Run(t, delete(db.BusDomain, sd), "delete")
 }
 
@@ -386,6 +387,203 @@ func reorder(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
 					return fmt.Sprintf("expected ErrInvalidReorder, got %v", gotErr)
 				}
 				return ""
+			},
+		},
+	}
+
+	return table
+}
+
+// lastAvailableOption covers the invariant that the last available option of
+// an active required group cannot be disabled or deleted. Each case builds
+// its own group/options so the cases stay independent. Runs after reorder
+// because it creates extra groups and options on the seeded menu item.
+func lastAvailableOption(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
+	disable := false
+
+	newGroup := func(ctx context.Context, minSelections int, available bool) (modifiergroupbus.ModifierGroup, error) {
+		return busDomain.ModifierGroup.Create(ctx, modifiergroupbus.NewModifierGroup{
+			MenuItemID:    sd.MenuItemID,
+			RestaurantID:  sd.RestaurantID,
+			Name:          name.MustParse(fmt.Sprintf("Guard Group %s", uuid.NewString()[:8])),
+			MinSelections: minSelections,
+			MaxSelections: 1,
+			Available:     available,
+		})
+	}
+
+	newOption := func(ctx context.Context, groupID uuid.UUID, available bool) (modifieroptionbus.ModifierOption, error) {
+		return busDomain.ModifierOption.Create(ctx, modifieroptionbus.NewModifierOption{
+			ModifierGroupID: groupID,
+			RestaurantID:    sd.RestaurantID,
+			Name:            name.MustParse(fmt.Sprintf("Guard Option %s", uuid.NewString()[:8])),
+			PriceDelta:      money.MustParse(0.50),
+			Available:       &available,
+		})
+	}
+
+	expectLastOptionErr := func(got any, exp any) string {
+		gotErr, ok := got.(error)
+		if !ok {
+			return "expected error response"
+		}
+		if !errors.Is(gotErr, modifieroptionbus.ErrLastAvailableOption) {
+			return fmt.Sprintf("expected ErrLastAvailableOption, got %v", gotErr)
+		}
+		return ""
+	}
+
+	table := []unittest.Table{
+		{
+			Name:    "disable-last-available-of-active-required-group",
+			ExpResp: modifieroptionbus.ErrLastAvailableOption,
+			ExcFunc: func(ctx context.Context) any {
+				grp, err := newGroup(ctx, 1, true)
+				if err != nil {
+					return err
+				}
+				opt, err := newOption(ctx, grp.ID, true)
+				if err != nil {
+					return err
+				}
+				_, err = busDomain.ModifierOption.Update(ctx, opt, modifieroptionbus.UpdateModifierOption{
+					Available: &disable,
+				})
+				return err
+			},
+			CmpFunc: expectLastOptionErr,
+		},
+		{
+			Name:    "delete-last-available-of-active-required-group",
+			ExpResp: modifieroptionbus.ErrLastAvailableOption,
+			ExcFunc: func(ctx context.Context) any {
+				grp, err := newGroup(ctx, 1, true)
+				if err != nil {
+					return err
+				}
+				opt, err := newOption(ctx, grp.ID, true)
+				if err != nil {
+					return err
+				}
+				return busDomain.ModifierOption.Delete(ctx, opt)
+			},
+			CmpFunc: expectLastOptionErr,
+		},
+		{
+			Name:    "disable-one-of-two-available",
+			ExpResp: false,
+			ExcFunc: func(ctx context.Context) any {
+				grp, err := newGroup(ctx, 1, true)
+				if err != nil {
+					return err
+				}
+				opt, err := newOption(ctx, grp.ID, true)
+				if err != nil {
+					return err
+				}
+				if _, err := newOption(ctx, grp.ID, true); err != nil {
+					return err
+				}
+				resp, err := busDomain.ModifierOption.Update(ctx, opt, modifieroptionbus.UpdateModifierOption{
+					Available: &disable,
+				})
+				if err != nil {
+					return err
+				}
+				return resp.Available
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:    "delete-one-of-two-available",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				grp, err := newGroup(ctx, 1, true)
+				if err != nil {
+					return err
+				}
+				opt, err := newOption(ctx, grp.ID, true)
+				if err != nil {
+					return err
+				}
+				if _, err := newOption(ctx, grp.ID, true); err != nil {
+					return err
+				}
+				return busDomain.ModifierOption.Delete(ctx, opt)
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:    "disable-only-option-of-optional-group",
+			ExpResp: false,
+			ExcFunc: func(ctx context.Context) any {
+				grp, err := newGroup(ctx, 0, true)
+				if err != nil {
+					return err
+				}
+				opt, err := newOption(ctx, grp.ID, true)
+				if err != nil {
+					return err
+				}
+				resp, err := busDomain.ModifierOption.Update(ctx, opt, modifieroptionbus.UpdateModifierOption{
+					Available: &disable,
+				})
+				if err != nil {
+					return err
+				}
+				return resp.Available
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:    "disable-only-option-of-inactive-required-group",
+			ExpResp: false,
+			ExcFunc: func(ctx context.Context) any {
+				grp, err := newGroup(ctx, 1, false)
+				if err != nil {
+					return err
+				}
+				opt, err := newOption(ctx, grp.ID, true)
+				if err != nil {
+					return err
+				}
+				resp, err := busDomain.ModifierOption.Update(ctx, opt, modifieroptionbus.UpdateModifierOption{
+					Available: &disable,
+				})
+				if err != nil {
+					return err
+				}
+				return resp.Available
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:    "delete-unavailable-option-of-active-required-group",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				grp, err := newGroup(ctx, 1, true)
+				if err != nil {
+					return err
+				}
+				if _, err := newOption(ctx, grp.ID, true); err != nil {
+					return err
+				}
+				unavailable, err := newOption(ctx, grp.ID, false)
+				if err != nil {
+					return err
+				}
+				return busDomain.ModifierOption.Delete(ctx, unavailable)
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
 			},
 		},
 	}

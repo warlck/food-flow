@@ -67,10 +67,10 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) (BusDomain, error) {
 	menuItemBus := menuitembus.NewBusiness(log, menuItemStorage)
 
 	modifierGroupStorage := modifiergroupdb.NewStore(log, db)
-	modifierGroupBus := modifiergroupbus.NewBusiness(log, modifierGroupStorage)
-
 	modifierOptionStorage := modifieroptiondb.NewStore(log, db)
-	modifierOptionBus := modifieroptionbus.NewBusiness(log, modifierOptionStorage)
+
+	modifierGroupBus := modifiergroupbus.NewBusiness(log, modifierGroupStorage, modifierOptionStorage)
+	modifierOptionBus := modifieroptionbus.NewBusiness(log, modifierOptionStorage, modifierGroupStorage)
 
 	addonStorage := addondb.NewStore(log, db)
 	addonBus := addonbus.NewBusiness(log, addonStorage)

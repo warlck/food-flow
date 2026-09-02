@@ -261,6 +261,9 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	updGroup, err := a.modifierGroupBus.Update(ctx, group, ug)
 	if err != nil {
+		if errors.Is(err, modifiergroupbus.ErrRequiredNoOptions) {
+			return errs.New(errs.InvalidArgument, err)
+		}
 		return errs.Newf(errs.Internal, "update: groupID[%s] ug[%+v]: %s", groupID, ug, err)
 	}
 

@@ -262,6 +262,9 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	updOpt, err := a.modifierOptionBus.Update(ctx, opt, uo)
 	if err != nil {
+		if errors.Is(err, modifieroptionbus.ErrLastAvailableOption) {
+			return errs.New(errs.InvalidArgument, err)
+		}
 		return errs.Newf(errs.Internal, "update: optionID[%s] uo[%+v]: %s", optionID, uo, err)
 	}
 
@@ -296,6 +299,9 @@ func (a *app) delete(ctx context.Context, w http.ResponseWriter, r *http.Request
 	}
 
 	if err := a.modifierOptionBus.Delete(ctx, opt); err != nil {
+		if errors.Is(err, modifieroptionbus.ErrLastAvailableOption) {
+			return errs.New(errs.InvalidArgument, err)
+		}
 		return errs.Newf(errs.Internal, "delete: optionID[%s]: %s", optionID, err)
 	}
 

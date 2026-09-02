@@ -116,13 +116,27 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding other org modifier options : %w", err)
 	}
 
+	// Seed a second group on menu item 0 carrying exactly one option so the
+	// last-available-option invariant can be exercised.
+	extraGroups, err := modifiergroupbus.TestSeedModifierGroups(ctx, 1, items1[0].ID, rests[0].ID, busDomain.ModifierGroup)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding single-option modifier group : %w", err)
+	}
+
+	extraOptions, err := modifieroptionbus.TestSeedModifierOptions(ctx, 1, extraGroups[0].ID, rests[0].ID, busDomain.ModifierOption)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding single modifier option : %w", err)
+	}
+
 	allOptions := append(options1, otherOptions...)
+	allOptions = append(allOptions, extraOptions...)
 	appOptions := make([]apitest.ModifierOption, len(allOptions))
 	for i, o := range allOptions {
 		appOptions[i] = apitest.ModifierOption{ModifierOption: o}
 	}
 
 	allGroups := append(groups1, otherGroups...)
+	allGroups = append(allGroups, extraGroups...)
 	appGroups := make([]apitest.ModifierGroup, len(allGroups))
 	for i, g := range allGroups {
 		appGroups[i] = apitest.ModifierGroup{ModifierGroup: g}

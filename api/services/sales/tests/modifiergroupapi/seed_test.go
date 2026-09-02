@@ -9,6 +9,7 @@ import (
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/modifiergroupbus"
+	"github.com/warlck/food-flow/business/domain/modifieroptionbus"
 	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
@@ -77,10 +78,22 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	// -------------------------------------------------------------------------
 
-	// Seed modifier groups for menu item 0
+	// Seed modifier groups for menu item 0. The second group carries options so
+	// enable/disable flows can exercise the required-group availability
+	// invariant; the first group has no options by design.
 	groups1, err := modifiergroupbus.TestSeedModifierGroups(ctx, 2, items1[0].ID, rests[0].ID, busDomain.ModifierGroup)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding modifier groups : %w", err)
+	}
+
+	options1, err := modifieroptionbus.TestSeedModifierOptions(ctx, 2, groups1[1].ID, rests[0].ID, busDomain.ModifierOption)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding modifier options : %w", err)
+	}
+
+	appOptions := make([]apitest.ModifierOption, len(options1))
+	for i, o := range options1 {
+		appOptions[i] = apitest.ModifierOption{ModifierOption: o}
 	}
 
 	// Seed a restaurant, category, menu item, and modifier group in the second
@@ -155,8 +168,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 			{Category: cats[1]},
 			{Category: otherCats[0]},
 		},
-		MenuItems:      appItems,
-		ModifierGroups: appGroups,
+		MenuItems:       appItems,
+		ModifierGroups:  appGroups,
+		ModifierOptions: appOptions,
 	}
 
 	return sd, nil

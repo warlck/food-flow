@@ -201,6 +201,33 @@ func (s *Store) Count(ctx context.Context, filter modifieroptionbus.QueryFilter)
 	return count.Count, nil
 }
 
+// CountAvailable returns the number of available options within the specified
+// modifier group.
+func (s *Store) CountAvailable(ctx context.Context, groupID uuid.UUID) (int, error) {
+	data := struct {
+		ID string `db:"modifier_group_id"`
+	}{
+		ID: groupID.String(),
+	}
+
+	const q = `
+	SELECT
+		count(1)
+	FROM
+		modifier_options
+	WHERE
+		modifier_group_id = :modifier_group_id AND available = TRUE`
+
+	var count struct {
+		Count int `db:"count"`
+	}
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &count); err != nil {
+		return 0, fmt.Errorf("db: %w", err)
+	}
+
+	return count.Count, nil
+}
+
 // QueryByID gets the specified modifier option from the database.
 func (s *Store) QueryByID(ctx context.Context, optionID uuid.UUID) (modifieroptionbus.ModifierOption, error) {
 	data := struct {

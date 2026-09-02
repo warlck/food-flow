@@ -18,6 +18,10 @@ import (
 var (
 	ErrNotFound       = errors.New("modifier group not found")
 	ErrInvalidReorder = errors.New("invalid reorder set")
+
+	// ErrRequiredNoOptions is returned when a required group is enabled while
+	// none of its options are available, which the spec declares invalid.
+	ErrRequiredNoOptions = errors.New("required modifier group must have at least one available option")
 )
 
 // Storer interface declares the behavior this package needs to persist and retrieve data.
@@ -32,17 +36,25 @@ type Storer interface {
 	QueryByID(ctx context.Context, groupID uuid.UUID) (ModifierGroup, error)
 }
 
+// OptionStorer declares the behavior this package needs from the modifier
+// option store to enforce the required-group availability invariant.
+type OptionStorer interface {
+	CountAvailable(ctx context.Context, groupID uuid.UUID) (int, error)
+}
+
 // Business manages the set of APIs for modifier group access.
 type Business struct {
-	log    *logger.Logger
-	storer Storer
+	log          *logger.Logger
+	storer       Storer
+	optionStorer OptionStorer
 }
 
 // NewBusiness constructs a modifier group business API for use.
-func NewBusiness(log *logger.Logger, storer Storer) *Business {
+func NewBusiness(log *logger.Logger, storer Storer, optionStorer OptionStorer) *Business {
 	return &Business{
-		log:    log,
-		storer: storer,
+		log:          log,
+		storer:       storer,
+		optionStorer: optionStorer,
 	}
 }
 
@@ -115,6 +127,18 @@ func (b *Business) Update(ctx context.Context, group ModifierGroup, ug UpdateMod
 			return ModifierGroup{}, fmt.Errorf("rank must be >= 1")
 		}
 		group.Rank = ug.Rank.Value
+	}
+
+	// A required group must not be enabled while none of its options are
+	// available; the item would become unorderable.
+	if ug.Available != nil && *ug.Available && group.MinSelections >= 1 {
+		count, err := b.optionStorer.CountAvailable(ctx, group.ID)
+		if err != nil {
+			return ModifierGroup{}, fmt.Errorf("count available options: %w", err)
+		}
+		if count == 0 {
+			return ModifierGroup{}, ErrRequiredNoOptions
+		}
 	}
 
 	group.DateUpdated = time.Now()

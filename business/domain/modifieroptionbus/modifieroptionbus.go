@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/warlck/food-flow/business/domain/modifiergroupbus"
 	"github.com/warlck/food-flow/business/sdk/order"
 	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/foundation/logger"
@@ -18,6 +19,11 @@ import (
 var (
 	ErrNotFound       = errors.New("modifier option not found")
 	ErrInvalidReorder = errors.New("invalid reorder set")
+
+	// ErrLastAvailableOption is returned when disabling or deleting the last
+	// available option of an active required group; disable the group or the
+	// menu item first.
+	ErrLastAvailableOption = errors.New("cannot disable or delete the last available option of an active required group")
 )
 
 // Storer interface declares the behavior this package needs to persist and retrieve data.
@@ -29,20 +35,29 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]ModifierOption, error)
 	QueryAll(ctx context.Context, filter QueryFilter, orderBy order.By) ([]ModifierOption, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
+	CountAvailable(ctx context.Context, groupID uuid.UUID) (int, error)
 	QueryByID(ctx context.Context, optionID uuid.UUID) (ModifierOption, error)
+}
+
+// GroupStorer declares the behavior this package needs from the modifier
+// group store to enforce the required-group availability invariant.
+type GroupStorer interface {
+	QueryByID(ctx context.Context, groupID uuid.UUID) (modifiergroupbus.ModifierGroup, error)
 }
 
 // Business manages the set of APIs for modifier option access.
 type Business struct {
-	log    *logger.Logger
-	storer Storer
+	log         *logger.Logger
+	storer      Storer
+	groupStorer GroupStorer
 }
 
 // NewBusiness constructs a modifier option business API for use.
-func NewBusiness(log *logger.Logger, storer Storer) *Business {
+func NewBusiness(log *logger.Logger, storer Storer, groupStorer GroupStorer) *Business {
 	return &Business{
-		log:    log,
-		storer: storer,
+		log:         log,
+		storer:      storer,
+		groupStorer: groupStorer,
 	}
 }
 
@@ -84,6 +99,8 @@ func (b *Business) Create(ctx context.Context, no NewModifierOption) (ModifierOp
 
 // Update modifies information about a modifier option.
 func (b *Business) Update(ctx context.Context, opt ModifierOption, uo UpdateModifierOption) (ModifierOption, error) {
+	wasAvailable := opt.Available
+
 	if uo.Name != nil {
 		opt.Name = *uo.Name
 	}
@@ -104,6 +121,14 @@ func (b *Business) Update(ctx context.Context, opt ModifierOption, uo UpdateModi
 			return ModifierOption{}, fmt.Errorf("rank must be >= 1")
 		}
 		opt.Rank = uo.Rank.Value
+	}
+
+	// Disabling the last available option of an active required group would
+	// make the item unorderable; the group or item must be disabled first.
+	if wasAvailable && !opt.Available {
+		if err := b.guardLastAvailableOption(ctx, opt); err != nil {
+			return ModifierOption{}, err
+		}
 	}
 
 	opt.DateUpdated = time.Now()
@@ -183,8 +208,39 @@ func (b *Business) Reorder(ctx context.Context, modifierGroupID uuid.UUID, order
 
 // Delete removes the specified modifier option.
 func (b *Business) Delete(ctx context.Context, opt ModifierOption) error {
+	if opt.Available {
+		if err := b.guardLastAvailableOption(ctx, opt); err != nil {
+			return err
+		}
+	}
+
 	if err := b.storer.Delete(ctx, opt); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	return nil
+}
+
+// guardLastAvailableOption rejects the mutation when the option is the last
+// available option of an active required group. The option must still be
+// persisted as available when this runs, so a count of one means last.
+func (b *Business) guardLastAvailableOption(ctx context.Context, opt ModifierOption) error {
+	group, err := b.groupStorer.QueryByID(ctx, opt.ModifierGroupID)
+	if err != nil {
+		return fmt.Errorf("query modifier group: %w", err)
+	}
+
+	if !group.Available || group.MinSelections == 0 {
+		return nil
+	}
+
+	count, err := b.storer.CountAvailable(ctx, opt.ModifierGroupID)
+	if err != nil {
+		return fmt.Errorf("count available options: %w", err)
+	}
+
+	if count <= 1 {
+		return ErrLastAvailableOption
 	}
 
 	return nil

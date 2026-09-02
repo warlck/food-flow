@@ -13,11 +13,13 @@ import (
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/modifiergroupbus"
+	"github.com/warlck/food-flow/business/domain/modifieroptionbus"
 	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
 	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/business/sdk/unittest"
+	"github.com/warlck/food-flow/business/types/money"
 	"github.com/warlck/food-flow/business/types/name"
 	"github.com/warlck/food-flow/business/types/opt"
 )
@@ -42,6 +44,7 @@ func Test_ModifierGroup(t *testing.T) {
 	unittest.Run(t, create(db.BusDomain, sd), "create")
 	unittest.Run(t, update(db.BusDomain, sd), "update")
 	unittest.Run(t, reorder(db.BusDomain, sd), "reorder")
+	unittest.Run(t, updateAvailability(db.BusDomain, sd), "update-availability")
 	unittest.Run(t, delete(db.BusDomain, sd), "delete")
 }
 
@@ -365,6 +368,120 @@ func reorder(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
 					return fmt.Sprintf("expected ErrInvalidReorder, got %v", gotErr)
 				}
 				return ""
+			},
+		},
+	}
+
+	return table
+}
+
+// updateAvailability covers the required-group availability invariant:
+// a required group can only be enabled when at least one of its options is
+// available. Runs after reorder because it creates an extra group on the
+// seeded menu item.
+func updateAvailability(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
+	disable := false
+	enable := true
+
+	table := []unittest.Table{
+		{
+			Name:    "disable-required-without-options",
+			ExpResp: false,
+			ExcFunc: func(ctx context.Context) any {
+				current, err := busDomain.ModifierGroup.QueryByID(ctx, sd.Groups[1].ID)
+				if err != nil {
+					return err
+				}
+				resp, err := busDomain.ModifierGroup.Update(ctx, current, modifiergroupbus.UpdateModifierGroup{
+					Available: &disable,
+				})
+				if err != nil {
+					return err
+				}
+				return resp.Available
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:    "enable-required-without-options",
+			ExpResp: modifiergroupbus.ErrRequiredNoOptions,
+			ExcFunc: func(ctx context.Context) any {
+				current, err := busDomain.ModifierGroup.QueryByID(ctx, sd.Groups[1].ID)
+				if err != nil {
+					return err
+				}
+				_, err = busDomain.ModifierGroup.Update(ctx, current, modifiergroupbus.UpdateModifierGroup{
+					Available: &enable,
+				})
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return "expected error response"
+				}
+				if !errors.Is(gotErr, modifiergroupbus.ErrRequiredNoOptions) {
+					return fmt.Sprintf("expected ErrRequiredNoOptions, got %v", gotErr)
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "add-option-then-enable-required",
+			ExpResp: true,
+			ExcFunc: func(ctx context.Context) any {
+				if _, err := busDomain.ModifierOption.Create(ctx, modifieroptionbus.NewModifierOption{
+					ModifierGroupID: sd.Groups[1].ID,
+					RestaurantID:    sd.RestaurantID,
+					Name:            name.MustParse("First Option"),
+					PriceDelta:      money.MustParse(0.50),
+					Available:       &enable,
+				}); err != nil {
+					return err
+				}
+				current, err := busDomain.ModifierGroup.QueryByID(ctx, sd.Groups[1].ID)
+				if err != nil {
+					return err
+				}
+				resp, err := busDomain.ModifierGroup.Update(ctx, current, modifiergroupbus.UpdateModifierGroup{
+					Available: &enable,
+				})
+				if err != nil {
+					return err
+				}
+				return resp.Available
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:    "enable-optional-without-options",
+			ExpResp: true,
+			ExcFunc: func(ctx context.Context) any {
+				optional, err := busDomain.ModifierGroup.Create(ctx, modifiergroupbus.NewModifierGroup{
+					MenuItemID:    sd.MenuItemID,
+					RestaurantID:  sd.RestaurantID,
+					Name:          name.MustParse("Optional Extras"),
+					MinSelections: 0,
+					MaxSelections: 1,
+					Available:     false,
+				})
+				if err != nil {
+					return err
+				}
+				resp, err := busDomain.ModifierGroup.Update(ctx, optional, modifiergroupbus.UpdateModifierGroup{
+					Available: &enable,
+				})
+				if err != nil {
+					return err
+				}
+				return resp.Available
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
 			},
 		},
 	}
