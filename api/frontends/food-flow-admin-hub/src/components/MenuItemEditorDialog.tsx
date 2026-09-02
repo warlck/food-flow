@@ -6,6 +6,7 @@ import {
   Loader2,
   Plus,
   Puzzle,
+  Pencil,
   Trash2,
   UtensilsCrossed,
   Layers,
@@ -22,9 +23,9 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { ImageField } from '@/components/ImageField';
 import {
+  AdminAddon,
   AdminCategory,
   AdminMenuItem,
-  AdminMenuItemAddonInfo,
   AdminModifierGroup,
   AdminModifierOption,
   AdminWorkspace,
@@ -72,9 +73,10 @@ export function MenuItemEditorDialog({
   const [editingOption, setEditingOption] = useState<{ group: AdminModifierGroup; option?: AdminModifierOption } | null>(null);
 
   // Addons state
-  const [assignedAddons, setAssignedAddons] = useState<AdminMenuItemAddonInfo[]>([]);
+  const [addons, setAddons] = useState<AdminAddon[]>([]);
   const [loadingAddons, setLoadingAddons] = useState(false);
-  const [savingAddons, setSavingAddons] = useState(false);
+  const [editingAddon, setEditingAddon] = useState<AdminAddon | null>(null);
+  const [isAddingAddon, setIsAddingAddon] = useState(false);
 
   useEffect(() => {
     setCurrentItem(item);
@@ -87,7 +89,7 @@ export function MenuItemEditorDialog({
     if (activeTab === 'modifiers' && currentItem?.id) {
       loadModifierGroups(currentItem.id);
     } else if (activeTab === 'addons' && currentItem?.id) {
-      loadAssignedAddons(currentItem.id);
+      loadAddons(currentItem.id);
     }
   }, [activeTab, currentItem?.id]);
 
@@ -109,13 +111,13 @@ export function MenuItemEditorDialog({
     }
   };
 
-  const loadAssignedAddons = async (itemId: string) => {
+  const loadAddons = async (itemId: string) => {
     setLoadingAddons(true);
     try {
-      const addons = await adminApi.getMenuItemAddons(itemId);
-      setAssignedAddons(addons);
+      const page = await adminApi.listAddons(workspace.restaurant.id, itemId);
+      setAddons(page.items);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to load assigned add-ons');
+      toast.error(err instanceof Error ? err.message : 'Failed to load add-ons');
     } finally {
       setLoadingAddons(false);
     }
@@ -319,69 +321,79 @@ export function MenuItemEditorDialog({
     }
   };
 
-  // Addon Assignment Operations
-  const handleToggleAddonAssignment = async (addonId: string, assigned: boolean) => {
+  // Addon Operations
+  const handleSaveAddon = async (
+    addonInput: { name: string; description: string; price: number; maxQuantity: number; available: boolean },
+    existingAddonId?: string
+  ) => {
     if (!currentItem?.id) return;
 
-    let updatedList: AdminMenuItemAddonInfo[];
-    if (assigned) {
-      const fullAddon = workspace.addons.find((a) => a.id === addonId);
-      if (!fullAddon) return;
-      const newRank = (assignedAddons.length + 1) * 10;
-      updatedList = [
-        ...assignedAddons,
-        {
-          id: addonId,
-          addonId: fullAddon.id,
-          name: fullAddon.name,
-          description: fullAddon.description,
-          price: fullAddon.price,
-          available: fullAddon.available,
-          maxQuantity: fullAddon.maxQuantity,
-          rank: newRank,
-        },
-      ];
-    } else {
-      updatedList = assignedAddons.filter((a) => a.addonId !== addonId);
-    }
-
-    setAssignedAddons(updatedList);
-    setSavingAddons(true);
     try {
-      const saved = await adminApi.replaceMenuItemAddons(currentItem.id, {
-        addons: updatedList.map((a, idx) => ({ addonId: a.addonId, rank: (idx + 1) * 10 })),
-      });
-      setAssignedAddons(saved);
-      toast.success(assigned ? 'Add-on assigned' : 'Add-on removed');
+      if (existingAddonId) {
+        await adminApi.updateAddon(existingAddonId, addonInput);
+        toast.success('Add-on updated');
+      } else {
+        await adminApi.createAddon({
+          ...addonInput,
+          menuItemId: currentItem.id,
+          restaurantId: workspace.restaurant.id,
+        });
+        toast.success('Add-on created');
+      }
+      setIsAddingAddon(false);
+      setEditingAddon(null);
+      await loadAddons(currentItem.id);
+      await onRefreshWorkspace();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update add-on assignments');
-      await loadAssignedAddons(currentItem.id);
-    } finally {
-      setSavingAddons(false);
+      toast.error(err instanceof Error ? err.message : 'Failed to save add-on');
     }
   };
 
-  const handleMoveAssignedAddon = async (index: number, direction: 'up' | 'down') => {
+  const handleDeleteAddon = async (addon: AdminAddon) => {
+    if (!currentItem?.id) return;
+    if (!window.confirm(`Delete add-on "${addon.name}"? This cannot be undone.`)) return;
+
+    try {
+      await adminApi.deleteAddon(addon.id);
+      toast.success('Add-on deleted');
+      await loadAddons(currentItem.id);
+      await onRefreshWorkspace();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete add-on');
+    }
+  };
+
+  const handleToggleAddonAvailable = async (addon: AdminAddon, available: boolean) => {
+    if (!currentItem?.id) return;
+
+    try {
+      await adminApi.updateAddon(addon.id, { available });
+      toast.success(available ? 'Add-on enabled' : 'Add-on disabled');
+      await loadAddons(currentItem.id);
+      await onRefreshWorkspace();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update add-on availability');
+    }
+  };
+
+  const handleMoveAddon = async (index: number, direction: 'up' | 'down') => {
     if (!currentItem?.id) return;
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= assignedAddons.length) return;
+    if (targetIndex < 0 || targetIndex >= addons.length) return;
 
-    const reordered = [...assignedAddons];
+    const reordered = [...addons];
     const [moved] = reordered.splice(index, 1);
     reordered.splice(targetIndex, 0, moved);
 
-    const orderedIds = reordered.map((a) => a.addonId);
-    setAssignedAddons(reordered);
-    setSavingAddons(true);
+    const orderedIds = reordered.map((a) => a.id);
     try {
-      const saved = await adminApi.reorderMenuItemAddons(currentItem.id, { orderedIds });
-      setAssignedAddons(saved);
+      const updated = await adminApi.reorderAddons({ menuItemId: currentItem.id, addonIds: orderedIds });
+      setAddons(updated);
       toast.success('Add-ons reordered');
+      await onRefreshWorkspace();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to reorder add-ons');
-      await loadAssignedAddons(currentItem.id);
-    } finally {
-      setSavingAddons(false);
+      await loadAddons(currentItem.id);
     }
   };
 
@@ -401,7 +413,7 @@ export function MenuItemEditorDialog({
                 {currentItem?.name ? `Edit: ${currentItem.name}` : 'New Menu Item'}
               </h2>
               <p className="text-xs text-[#6B7280]">
-                Configure item details, required/optional modifier choices, and add-on assignments.
+                Configure item details, required/optional modifier choices, and add-ons.
               </p>
             </div>
           </div>
@@ -445,7 +457,7 @@ export function MenuItemEditorDialog({
               type="button"
               onClick={() => {
                 if (isNewItem) {
-                  toast.error('Please save the menu item details before assigning add-ons');
+                  toast.error('Please save the menu item details before managing add-ons');
                   return;
                 }
                 setActiveTab('addons');
@@ -460,7 +472,7 @@ export function MenuItemEditorDialog({
               }`}
             >
               <Puzzle size={14} />
-              Add-ons ({assignedAddons.length})
+              Add-ons ({addons.length})
             </button>
           </div>
         </div>
@@ -815,101 +827,126 @@ export function MenuItemEditorDialog({
 
           {activeTab === 'addons' && (
             <div className="space-y-5">
-              <div>
-                <h3 className="text-sm font-bold text-[#111827]">Assigned Add-ons</h3>
-                <p className="text-xs text-[#6B7280]">
-                  Select which restaurant add-ons can be selected as extras with this dish, and set their ordering.
-                </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-[#111827]">Menu Item Add-ons</h3>
+                  <p className="text-xs text-[#6B7280]">
+                    Create and rank extras or add-ons specific to this menu item.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => setIsAddingAddon(true)}
+                  className="admin-primary h-8 gap-1.5 text-xs font-semibold"
+                >
+                  <Plus size={14} />
+                  Add Add-on
+                </Button>
               </div>
 
               {loadingAddons ? (
                 <div className="flex h-40 items-center justify-center">
                   <Loader2 className="h-6 w-6 animate-spin text-[#FF4500]" />
                 </div>
-              ) : workspace.addons.length === 0 ? (
+              ) : addons.length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#D1D5DB] bg-white p-8 text-center">
                   <Puzzle className="h-8 w-8 text-[#9CA3AF] mb-2" />
-                  <p className="text-xs font-bold text-[#374151]">No restaurant add-on definitions created yet</p>
+                  <p className="text-xs font-bold text-[#374151]">No add-ons created for this dish yet</p>
                   <p className="text-[11px] text-[#6B7280] max-w-xs mt-1">
-                    Create global add-on definitions under the Menu &gt; Add-ons tab first, then assign them here.
+                    Add extras like dips, toppings, and portion upsizes specifically for this item.
                   </p>
+                  <Button
+                    type="button"
+                    onClick={() => setIsAddingAddon(true)}
+                    className="mt-4 admin-primary h-8 gap-1.5 text-xs font-semibold"
+                  >
+                    <Plus size={14} />
+                    Create First Add-on
+                  </Button>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm space-y-2">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#9CA3AF]">
-                      Available Restaurant Add-ons
-                    </span>
-
-                    <div className="space-y-2">
-                      {workspace.addons.map((addon) => {
-                        const assignedIdx = assignedAddons.findIndex((a) => a.addonId === addon.id);
-                        const isAssigned = assignedIdx !== -1;
-
-                        return (
-                          <div
-                            key={addon.id}
-                            className={`flex items-center justify-between rounded-xl px-3 py-2.5 border transition-all ${
-                              isAssigned
-                                ? 'border-[#FF8C42]/50 bg-[#FFF7F3]'
-                                : 'border-[#F3F4F6] bg-[#F9FAFB]'
-                            }`}
+                <div className="space-y-2">
+                  {addons.map((addon, index) => (
+                    <div
+                      key={addon.id}
+                      className="flex items-center justify-between rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 shadow-sm transition-all hover:border-[#D1D5DB]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={() => handleMoveAddon(index, 'up')}
+                            className="p-1 text-[#9CA3AF] hover:text-[#111827] disabled:opacity-30"
+                            title="Move Up"
                           >
-                            <div className="flex items-center gap-3">
-                              <input
-                                type="checkbox"
-                                id={`assign-addon-${addon.id}`}
-                                checked={isAssigned}
-                                disabled={savingAddons}
-                                onChange={(e) => handleToggleAddonAssignment(addon.id, e.target.checked)}
-                                className="h-4 w-4 rounded border-gray-300 text-[#FF4500] focus:ring-[#FF4500]"
-                              />
-                              <div>
-                                <label
-                                  htmlFor={`assign-addon-${addon.id}`}
-                                  className="text-xs font-bold text-[#111827] cursor-pointer"
-                                >
-                                  {addon.name}
-                                </label>
-                                {addon.description && (
-                                  <p className="text-[11px] text-[#6B7280]">{addon.description}</p>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                              <span className="font-mono text-xs font-semibold text-[#374151]">
-                                +{formatCurrency(addon.price)} (Max {addon.maxQuantity})
+                            <ChevronUp size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === addons.length - 1}
+                            onClick={() => handleMoveAddon(index, 'down')}
+                            className="p-1 text-[#9CA3AF] hover:text-[#111827] disabled:opacity-30"
+                            title="Move Down"
+                          >
+                            <ChevronDown size={14} />
+                          </button>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-[#111827]">{addon.name}</span>
+                            {addon.rank != null && (
+                              <span className="rounded bg-[#FFF1EB] px-1.5 py-0.5 text-[9px] font-semibold text-[#FF4500]">
+                                #{addon.rank}
                               </span>
-
-                              {isAssigned && (
-                                <div className="flex items-center gap-1 border-l border-[#E5E7EB] pl-3">
-                                  <button
-                                    type="button"
-                                    disabled={assignedIdx === 0 || savingAddons}
-                                    onClick={() => handleMoveAssignedAddon(assignedIdx, 'up')}
-                                    className="p-1 text-[#9CA3AF] hover:text-[#111827] disabled:opacity-30"
-                                    title="Move Up"
-                                  >
-                                    <ChevronUp size={14} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={assignedIdx === assignedAddons.length - 1 || savingAddons}
-                                    onClick={() => handleMoveAssignedAddon(assignedIdx, 'down')}
-                                    className="p-1 text-[#9CA3AF] hover:text-[#111827] disabled:opacity-30"
-                                    title="Move Down"
-                                  >
-                                    <ChevronDown size={14} />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
+                            )}
+                            {!addon.available && (
+                              <span className="rounded-full bg-[#FFEBEE] px-2 py-0.5 text-[9px] font-bold text-[#C62828]">
+                                Sold Out
+                              </span>
+                            )}
                           </div>
-                        );
-                      })}
+                          {addon.description && (
+                            <p className="text-[11px] text-[#6B7280]">{addon.description}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <span className="font-mono text-xs font-semibold text-[#374151]">
+                          +{formatCurrency(addon.price)} <span className="text-[10px] text-[#9CA3AF]">(Max {addon.maxQuantity})</span>
+                        </span>
+
+                        <div className="flex items-center gap-2 border-l border-[#E5E7EB] pl-3">
+                          <Switch
+                            checked={addon.available}
+                            onCheckedChange={(checked) => handleToggleAddonAvailable(addon, checked)}
+                            aria-label={`Toggle ${addon.name} availability`}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingAddon(addon)}
+                            className="h-8 w-8 p-0 text-[#6B7280] hover:text-[#111827]"
+                            title="Edit Add-on"
+                          >
+                            <Pencil size={13} />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteAddon(addon)}
+                            className="h-8 w-8 p-0 text-[#EF4444] hover:bg-[#FEE2E2] hover:text-[#DC2626]"
+                            title="Delete Add-on"
+                          >
+                            <Trash2 size={13} />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -1145,6 +1182,124 @@ export function MenuItemEditorDialog({
                   </Button>
                   <Button type="submit" className="admin-primary">
                     Save Option
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Addon Add/Edit Modal */}
+        {(isAddingAddon || editingAddon) && (
+          <Dialog open onOpenChange={() => { setIsAddingAddon(false); setEditingAddon(null); }}>
+            <DialogContent className="sm:max-w-[440px]">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const form = new FormData(e.currentTarget);
+                  handleSaveAddon(
+                    {
+                      name: String(form.get('name')),
+                      description: String(form.get('description')),
+                      price: Number(form.get('price')),
+                      maxQuantity: Number(form.get('maxQuantity')),
+                      available: form.get('available') === 'true',
+                    },
+                    editingAddon?.id
+                  );
+                }}
+              >
+                <DialogHeader>
+                  <DialogTitle>{editingAddon ? 'Edit Add-on' : 'Add Menu Item Add-on'}</DialogTitle>
+                  <DialogDescription>
+                    Configure add-on name, price, max quantity per order, and availability.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="addon-name" className="text-xs font-semibold">Add-on Name *</Label>
+                    <Input
+                      id="addon-name"
+                      name="name"
+                      defaultValue={editingAddon?.name ?? ''}
+                      required
+                      placeholder="e.g. Extra Cheese, Garlic Dip"
+                      className="admin-input"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="addon-desc" className="text-xs font-semibold">Description</Label>
+                    <Input
+                      id="addon-desc"
+                      name="description"
+                      defaultValue={editingAddon?.description ?? ''}
+                      placeholder="Optional details"
+                      className="admin-input"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="addon-price" className="text-xs font-semibold">Price ($) *</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">$</span>
+                        <Input
+                          id="addon-price"
+                          name="price"
+                          type="number"
+                          min="0.00"
+                          step="0.01"
+                          defaultValue={editingAddon?.price ?? 0}
+                          required
+                          placeholder="0.00"
+                          className="admin-input pl-7"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="addon-max" className="text-xs font-semibold">Max Quantity *</Label>
+                      <Input
+                        id="addon-max"
+                        name="maxQuantity"
+                        type="number"
+                        min="1"
+                        max="20"
+                        defaultValue={editingAddon?.maxQuantity ?? 3}
+                        required
+                        className="admin-input"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-xl bg-[#F9FAFB] p-3 border border-[#F3F4F6]">
+                    <div>
+                      <Label className="text-xs font-semibold">Add-on Available</Label>
+                      <p className="text-[11px] text-[#6B7280]">In-stock for customer orders</p>
+                    </div>
+                    <select
+                      name="available"
+                      defaultValue={String(editingAddon?.available ?? true)}
+                      className="h-8 rounded-lg border border-[#E5E7EB] bg-white px-2 text-xs font-semibold"
+                    >
+                      <option value="true">Yes (Available)</option>
+                      <option value="false">No (Sold Out)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => { setIsAddingAddon(false); setEditingAddon(null); }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="admin-primary">
+                    Save Add-on
                   </Button>
                 </div>
               </form>

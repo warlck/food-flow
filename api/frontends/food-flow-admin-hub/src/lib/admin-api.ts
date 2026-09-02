@@ -62,7 +62,7 @@ export interface AdminMenuItem {
   available: boolean;
   rank?: number | null;
   modifierGroups?: AdminModifierGroup[];
-  addons?: AdminMenuItemAddonInfo[];
+  addons?: AdminAddon[];
   dateCreated?: string;
   dateUpdated?: string;
 }
@@ -97,25 +97,27 @@ export interface AdminModifierGroup {
 
 export interface AdminAddon {
   id: string;
+  menuItemId: string;
   restaurantId: string;
   name: string;
   description: string;
   price: number;
   available: boolean;
   maxQuantity: number;
+  rank?: number | null;
   dateCreated?: string;
   dateUpdated?: string;
 }
 
-export interface AdminMenuItemAddonInfo {
-  id: string;
-  addonId: string;
+export interface AddonInput {
+  menuItemId: string;
+  restaurantId: string;
   name: string;
-  description: string;
+  description?: string;
   price: number;
-  available: boolean;
-  maxQuantity: number;
-  rank: number;
+  available?: boolean;
+  maxQuantity?: number;
+  rank?: number | null;
 }
 
 export interface AdminWorkspace {
@@ -213,7 +215,6 @@ export type CategoryInput = Pick<AdminCategory, 'name' | 'description' | 'restau
 export type MenuItemInput = Pick<AdminMenuItem, 'name' | 'description' | 'price' | 'categoryId' | 'restaurantId' | 'imageUrl'> & { rank?: number | null };
 export type ModifierGroupInput = Pick<AdminModifierGroup, 'name' | 'description' | 'minSelections' | 'maxSelections' | 'menuItemId' | 'restaurantId'> & { available?: boolean; rank?: number | null };
 export type ModifierOptionInput = Pick<AdminModifierOption, 'name' | 'description' | 'priceDelta' | 'modifierGroupId' | 'restaurantId'> & { available?: boolean; rank?: number | null };
-export type AddonInput = Pick<AdminAddon, 'name' | 'description' | 'price' | 'restaurantId' | 'maxQuantity'> & { available?: boolean };
 
 interface ApiPage<T> {
   items: T[];
@@ -420,25 +421,14 @@ class AdminApi {
     return this.request<AdminModifierOption[]>('/v1/modifieroptions/order', { method: 'PUT', body: JSON.stringify(input) });
   }
 
-  getMenuItemAddons(menuItemId: string) {
-    return this.request<AdminMenuItemAddonInfo[]>(`/v1/menuitems/${menuItemId}/addons`);
-  }
-
-  replaceMenuItemAddons(menuItemId: string, input: { addons: Array<{ addonId: string; rank?: number }> }) {
-    return this.request<AdminMenuItemAddonInfo[]>(`/v1/menuitems/${menuItemId}/addons`, { method: 'PUT', body: JSON.stringify(input) });
-  }
-
-  reorderMenuItemAddons(menuItemId: string, input: { orderedIds: string[] }) {
-    return this.request<AdminMenuItemAddonInfo[]>(`/v1/menuitems/${menuItemId}/addons/order`, { method: 'PUT', body: JSON.stringify(input) });
-  }
-
-  listAddons(restaurantId: string) {
+  listAddons(restaurantId: string, menuItemId?: string) {
     const params = new URLSearchParams({
       page: '1',
       rows: '100',
-      orderBy: 'name,ASC',
+      orderBy: 'rank,ASC',
       restaurant_id: restaurantId,
     });
+    if (menuItemId) params.set('menu_item_id', menuItemId);
     return this.request<ApiPage<AdminAddon>>(`/v1/addons?${params}`);
   }
 
@@ -446,12 +436,16 @@ class AdminApi {
     return this.request<AdminAddon>('/v1/addons', { method: 'POST', body: JSON.stringify(input) });
   }
 
-  updateAddon(id: string, input: Partial<Omit<AddonInput, 'restaurantId'>> & { available?: boolean }) {
+  updateAddon(id: string, input: Partial<Omit<AddonInput, 'restaurantId' | 'menuItemId'>> & { available?: boolean }) {
     return this.request<AdminAddon>(`/v1/addons/${id}`, { method: 'PUT', body: JSON.stringify(input) });
   }
 
   deleteAddon(id: string) {
     return this.request<void>(`/v1/addons/${id}`, { method: 'DELETE' });
+  }
+
+  reorderAddons(input: { menuItemId: string; addonIds: string[] }) {
+    return this.request<AdminAddon[]>('/v1/addons/reorder', { method: 'POST', body: JSON.stringify(input) });
   }
 
   listOrders(restaurantId: string, filters: OrderFilters = {}) {
