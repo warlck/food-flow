@@ -43,6 +43,8 @@ type TimeSeriesPoint struct {
 type ItemSalesMetric struct {
 	MenuItemID   uuid.UUID
 	MenuItemName string
+	CategoryID   uuid.UUID
+	CategoryName string
 	QuantitySold int
 	TotalRevenue money.Money
 }

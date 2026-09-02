@@ -2193,6 +2193,158 @@ func orderMetrics(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.T
 			},
 		},
 		{
+			Name:    "order-metrics-item-revenue-with-modifiers-and-addons",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				org, err := busDomain.Organization.Create(ctx, organizationbus.NewOrganization{
+					Name: name.MustParse("Insights Test Org"),
+				})
+				if err != nil {
+					return fmt.Errorf("create org: %w", err)
+				}
+
+				rest, err := busDomain.Restaurant.Create(ctx, restaurantbus.NewRestaurant{
+					OrganizationID: org.ID,
+					Name:           name.MustParse("Insights Restaurant"),
+					TaxRate:        0.10,
+				})
+				if err != nil {
+					return fmt.Errorf("create rest: %w", err)
+				}
+
+				cat, err := busDomain.Category.Create(ctx, categorybus.NewCategory{
+					RestaurantID: rest.ID,
+					Name:         name.MustParse("Gourmet Mains"),
+				})
+				if err != nil {
+					return fmt.Errorf("create cat: %w", err)
+				}
+
+				item, err := busDomain.MenuItem.Create(ctx, menuitembus.NewMenuItem{
+					CategoryID:   cat.ID,
+					RestaurantID: rest.ID,
+					Name:         name.MustParse("Special Ribeye"),
+					Description:  "Prime ribeye steak",
+					Price:        money.MustParse(20.00),
+				})
+				if err != nil {
+					return fmt.Errorf("create item: %w", err)
+				}
+
+				grp, err := busDomain.ModifierGroup.Create(ctx, modifiergroupbus.NewModifierGroup{
+					MenuItemID:    item.ID,
+					RestaurantID:  rest.ID,
+					Name:          name.MustParse("Sauce Option"),
+					MinSelections: 1,
+					MaxSelections: 1,
+					Available:     true,
+				})
+				if err != nil {
+					return fmt.Errorf("create mod group: %w", err)
+				}
+
+				opt, err := busDomain.ModifierOption.Create(ctx, modifieroptionbus.NewModifierOption{
+					ModifierGroupID: grp.ID,
+					RestaurantID:    rest.ID,
+					Name:            name.MustParse("Truffle Butter"),
+					PriceDelta:      money.MustParse(4.00),
+				})
+				if err != nil {
+					return fmt.Errorf("create mod option: %w", err)
+				}
+
+				addon, err := busDomain.Addon.Create(ctx, addonbus.NewAddon{
+					RestaurantID: rest.ID,
+					Name:         name.MustParse("Grilled Asparagus"),
+					Description:  "Fresh side",
+					Price:        money.MustParse(2.50),
+					MaxQuantity:  5,
+				})
+				if err != nil {
+					return fmt.Errorf("create addon: %w", err)
+				}
+
+				if _, err := addonbus.TestAssignAddonsToMenuItem(ctx, item.ID, rest.ID, []uuid.UUID{addon.ID}, busDomain.Addon); err != nil {
+					return fmt.Errorf("assign addon: %w", err)
+				}
+
+				// Create Order: Qty 3 of Ribeye + Truffle Butter ($4.00) + 2x Asparagus ($2.50 * 2 = $5.00)
+				// Unit: 20.00 + 4.00 + 5.00 = 29.00
+				// Item total revenue: 29.00 * 3 = 87.00
+				no := orderbus.NewOrder{
+					RestaurantID:  rest.ID.String(),
+					CustomerName:  "Steak Lover",
+					CustomerEmail: "steak@example.com",
+					CustomerPhone: "555-4321",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: item.ID.String(),
+							Quantity:   3,
+							Modifiers: []orderbus.NewOrderItemModifier{
+								{
+									ModifierGroupID:  grp.ID.String(),
+									ModifierOptionID: opt.ID.String(),
+								},
+							},
+							Addons: []orderbus.NewOrderItemAddon{
+								{
+									AddonID:  addon.ID.String(),
+									Quantity: 2,
+								},
+							},
+						},
+					},
+				}
+
+				if _, err := busDomain.Order.Create(ctx, no); err != nil {
+					return fmt.Errorf("create order: %w", err)
+				}
+
+				restIDStr := rest.ID.String()
+				metrics, err := busDomain.Order.QueryOrderMetrics(ctx, orderbus.InsightsFilter{
+					RestaurantID: &restIDStr,
+				})
+				if err != nil {
+					return fmt.Errorf("query metrics: %w", err)
+				}
+
+				if len(metrics.TopItems) != 1 {
+					return fmt.Sprintf("expected 1 top item, got %d", len(metrics.TopItems))
+				}
+				topItem := metrics.TopItems[0]
+				if topItem.QuantitySold != 3 {
+					return fmt.Sprintf("top item qty sold: got %d, want 3", topItem.QuantitySold)
+				}
+				if math.Abs(topItem.TotalRevenue.Value()-87.00) > 0.01 {
+					return fmt.Sprintf("top item total revenue: got %.2f, want 87.00", topItem.TotalRevenue.Value())
+				}
+				if topItem.CategoryName != "Gourmet Mains" {
+					return fmt.Sprintf("top item category name: got %q, want 'Gourmet Mains'", topItem.CategoryName)
+				}
+
+				if len(metrics.TopAddons) != 1 {
+					return fmt.Sprintf("expected 1 top addon, got %d", len(metrics.TopAddons))
+				}
+				topAddon := metrics.TopAddons[0]
+				if topAddon.QuantitySold != 6 { // 2 per item * 3 items
+					return fmt.Sprintf("top addon qty sold: got %d, want 6", topAddon.QuantitySold)
+				}
+				if math.Abs(topAddon.TotalRevenue.Value()-15.00) > 0.01 { // 2.50 * 6 = 15.00
+					return fmt.Sprintf("top addon total revenue: got %.2f, want 15.00", topAddon.TotalRevenue.Value())
+				}
+
+				return nil
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("unexpected error: %v", got)
+				}
+				return ""
+			},
+		},
+		{
 			Name:    "order-metrics-with-multiple-restaurant-filter",
 			ExpResp: nil,
 			ExcFunc: func(ctx context.Context) any {

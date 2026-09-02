@@ -172,23 +172,49 @@ func (s *Store) QueryTopItemSales(ctx context.Context, filter orderbus.InsightsF
 	}
 
 	const q = `
+	WITH item_modifiers AS (
+		SELECT
+			order_item_id,
+			COALESCE(SUM(price_delta), 0) AS mod_total
+		FROM
+			order_item_modifiers
+		GROUP BY
+			order_item_id
+	),
+	item_addons AS (
+		SELECT
+			order_item_id,
+			COALESCE(SUM(addon_price * quantity), 0) AS addon_total
+		FROM
+			order_item_addons
+		GROUP BY
+			order_item_id
+	)
 	SELECT
 		oi.menu_item_id,
 		oi.menu_item_name,
+		oi.category_id,
+		oi.category_name,
 		COALESCE(SUM(oi.quantity), 0) AS quantity_sold,
-		COALESCE(SUM(oi.menu_item_price * oi.quantity), 0) AS total_revenue
+		COALESCE(SUM(oi.quantity * (oi.menu_item_price + COALESCE(im.mod_total, 0) + COALESCE(ia.addon_total, 0))), 0) AS total_revenue
 	FROM
 		order_items AS oi
 	JOIN
-		orders AS o ON o.order_id = oi.order_id`
+		orders AS o ON o.order_id = oi.order_id
+	LEFT JOIN
+		item_modifiers AS im ON im.order_item_id = oi.order_item_id
+	LEFT JOIN
+		item_addons AS ia ON ia.order_item_id = oi.order_item_id`
 
 	buf := bytes.NewBufferString(q)
 	s.applyInsightsFilter(filter, data, buf, "o.", true)
-	buf.WriteString(" GROUP BY oi.menu_item_id, oi.menu_item_name ORDER BY total_revenue DESC LIMIT :insights_limit")
+	buf.WriteString(" GROUP BY oi.menu_item_id, oi.menu_item_name, oi.category_id, oi.category_name ORDER BY total_revenue DESC LIMIT :insights_limit")
 
 	var rows []struct {
 		MenuItemID   uuid.UUID `db:"menu_item_id"`
 		MenuItemName string    `db:"menu_item_name"`
+		CategoryID   uuid.UUID `db:"category_id"`
+		CategoryName string    `db:"category_name"`
 		QuantitySold int       `db:"quantity_sold"`
 		TotalRevenue float64   `db:"total_revenue"`
 	}
@@ -202,6 +228,8 @@ func (s *Store) QueryTopItemSales(ctx context.Context, filter orderbus.InsightsF
 		items[i] = orderbus.ItemSalesMetric{
 			MenuItemID:   r.MenuItemID,
 			MenuItemName: r.MenuItemName,
+			CategoryID:   r.CategoryID,
+			CategoryName: r.CategoryName,
 			QuantitySold: r.QuantitySold,
 			TotalRevenue: toSafeMoney(r.TotalRevenue),
 		}
@@ -215,23 +243,49 @@ func (s *Store) QueryAllItemSales(ctx context.Context, filter orderbus.InsightsF
 	data := map[string]any{}
 
 	const q = `
+	WITH item_modifiers AS (
+		SELECT
+			order_item_id,
+			COALESCE(SUM(price_delta), 0) AS mod_total
+		FROM
+			order_item_modifiers
+		GROUP BY
+			order_item_id
+	),
+	item_addons AS (
+		SELECT
+			order_item_id,
+			COALESCE(SUM(addon_price * quantity), 0) AS addon_total
+		FROM
+			order_item_addons
+		GROUP BY
+			order_item_id
+	)
 	SELECT
 		oi.menu_item_id,
 		oi.menu_item_name,
+		oi.category_id,
+		oi.category_name,
 		COALESCE(SUM(oi.quantity), 0) AS quantity_sold,
-		COALESCE(SUM(oi.menu_item_price * oi.quantity), 0) AS total_revenue
+		COALESCE(SUM(oi.quantity * (oi.menu_item_price + COALESCE(im.mod_total, 0) + COALESCE(ia.addon_total, 0))), 0) AS total_revenue
 	FROM
 		order_items AS oi
 	JOIN
-		orders AS o ON o.order_id = oi.order_id`
+		orders AS o ON o.order_id = oi.order_id
+	LEFT JOIN
+		item_modifiers AS im ON im.order_item_id = oi.order_item_id
+	LEFT JOIN
+		item_addons AS ia ON ia.order_item_id = oi.order_item_id`
 
 	buf := bytes.NewBufferString(q)
 	s.applyInsightsFilter(filter, data, buf, "o.", true)
-	buf.WriteString(" GROUP BY oi.menu_item_id, oi.menu_item_name ORDER BY total_revenue DESC")
+	buf.WriteString(" GROUP BY oi.menu_item_id, oi.menu_item_name, oi.category_id, oi.category_name ORDER BY total_revenue DESC")
 
 	var rows []struct {
 		MenuItemID   uuid.UUID `db:"menu_item_id"`
 		MenuItemName string    `db:"menu_item_name"`
+		CategoryID   uuid.UUID `db:"category_id"`
+		CategoryName string    `db:"category_name"`
 		QuantitySold int       `db:"quantity_sold"`
 		TotalRevenue float64   `db:"total_revenue"`
 	}
@@ -245,6 +299,8 @@ func (s *Store) QueryAllItemSales(ctx context.Context, filter orderbus.InsightsF
 		items[i] = orderbus.ItemSalesMetric{
 			MenuItemID:   r.MenuItemID,
 			MenuItemName: r.MenuItemName,
+			CategoryID:   r.CategoryID,
+			CategoryName: r.CategoryName,
 			QuantitySold: r.QuantitySold,
 			TotalRevenue: toSafeMoney(r.TotalRevenue),
 		}
