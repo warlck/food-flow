@@ -54,14 +54,33 @@ func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	ord, err := a.orderBus.Create(ctx, nb)
 	if err != nil {
-		if errors.Is(err, orderbus.ErrMinSpendNotMet) || strings.Contains(err.Error(), "invalid promo code") {
+		// Order validation rejections are client-fixable request problems:
+		// surface them as 400s with their domain message, not as internal
+		// failures (review finding 24).
+		switch {
+		case errors.Is(err, orderbus.ErrMinSpendNotMet),
+			strings.Contains(err.Error(), "invalid promo code"),
+			errors.Is(err, orderbus.ErrMenuItemUnavailable),
+			errors.Is(err, orderbus.ErrModifierRequired),
+			errors.Is(err, orderbus.ErrModifierSelectionLimit),
+			errors.Is(err, orderbus.ErrModifierGroupNotFound),
+			errors.Is(err, orderbus.ErrModifierGroupUnavailable),
+			errors.Is(err, orderbus.ErrModifierOptionNotFound),
+			errors.Is(err, orderbus.ErrModifierOptionUnavailable),
+			errors.Is(err, orderbus.ErrAddonNotAssigned),
+			errors.Is(err, orderbus.ErrAddonUnavailable),
+			errors.Is(err, orderbus.ErrAddonQuantityOutOfRange),
+			errors.Is(err, orderbus.ErrDeliveryOutOfRange),
+			errors.Is(err, orderbus.ErrDeliveryCoordinatesRequired),
+			errors.Is(err, orderbus.ErrRestaurantLocationMissing):
 			return errs.New(errs.InvalidArgument, err)
-		}
+
 		// Never clamp order money values: an amount beyond the supported
 		// maximum must surface as a client error, not an internal failure.
-		if errors.Is(err, money.ErrOverflow) {
+		case errors.Is(err, money.ErrOverflow):
 			return errs.New(errs.InvalidArgument, fmt.Errorf("order total exceeds the maximum supported amount"))
 		}
+
 		return fmt.Errorf("create: order[%+v]: %w", ord, err)
 	}
 
