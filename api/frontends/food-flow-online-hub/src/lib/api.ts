@@ -4,8 +4,29 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 // API Types based on backend response
+export interface ApiModifierOption {
+  id: string;
+  name: string;
+  description: string;
+  priceDelta: number;
+  available: boolean;
+  rank?: number | null;
+}
+
+export interface ApiModifierGroup {
+  id: string;
+  name: string;
+  description: string;
+  minSelections: number;
+  maxSelections: number;
+  available: boolean;
+  rank?: number | null;
+  options: ApiModifierOption[];
+}
+
 export interface ApiAddon {
   id: string;
+  addonId?: string;
   name: string;
   description: string;
   price: number;
@@ -21,8 +42,10 @@ export interface ApiMenuItem {
   price: number;
   imageUrl: string;
   available: boolean;
+  orderable?: boolean;
   rank?: number | null;
-  addons: ApiAddon[];
+  modifierGroups?: ApiModifierGroup[];
+  addons?: ApiAddon[];
 }
 
 export interface ApiCategory {
@@ -30,7 +53,9 @@ export interface ApiCategory {
   name: string;
   description: string;
   enabled: boolean;
-  mentuItems: ApiMenuItem[];
+  rank?: number | null;
+  menuItems?: ApiMenuItem[];
+  mentuItems?: ApiMenuItem[];
 }
 
 export interface ApiDaySchedule {

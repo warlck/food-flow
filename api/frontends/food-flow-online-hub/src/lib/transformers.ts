@@ -1,5 +1,5 @@
-import { ApiRestaurantDetails, ApiCategory, ApiMenuItem, ApiAddon } from '@/lib/api';
-import { MenuItem, Restaurant, Addon } from '@/types';
+import { ApiRestaurantDetails, ApiCategory, ApiMenuItem, ApiAddon, ApiModifierGroup } from '@/lib/api';
+import { MenuItem, Restaurant, Addon, ModifierGroup } from '@/types';
 
 /**
  * Transform API restaurant data to frontend Restaurant type
@@ -53,9 +53,9 @@ export function transformApiRestaurant(apiData: ApiRestaurantDetails): Restauran
 
 /**
  * Transform API menu items to frontend MenuItem type.
- * Note: The backend sales-service `/v1/restaurants/:id/details` orders menu items
- * and addons by `rank` (ranked items first, then tiebreakers). Iterating in order
- * preserves the display ordering on the storefront.
+ * Note: The backend sales-service `/v1/restaurants/:id/details` orders menu items,
+ * modifier groups, options, and addons by `rank` (ranked items first, then tiebreakers).
+ * Iterating in order preserves the display ordering on the storefront.
  */
 export function transformApiMenuItems(
   apiData: ApiRestaurantDetails
@@ -67,10 +67,31 @@ export function transformApiMenuItems(
     if (category.enabled) {
       categoriesSet.add(category.name);
       
-      category.mentuItems.forEach((apiItem: ApiMenuItem) => {
+      const categoryItems = category.menuItems ?? category.mentuItems ?? [];
+      categoryItems.forEach((apiItem: ApiMenuItem) => {
+        // Transform modifier groups if they exist
+        const modifierGroups: ModifierGroup[] = apiItem.modifierGroups?.map((mg: ApiModifierGroup) => ({
+          id: mg.id,
+          name: mg.name,
+          description: mg.description,
+          minSelections: mg.minSelections,
+          maxSelections: mg.maxSelections,
+          available: mg.available,
+          rank: mg.rank,
+          options: (mg.options ?? []).map((opt) => ({
+            id: opt.id,
+            name: opt.name,
+            description: opt.description,
+            priceDelta: opt.priceDelta,
+            available: opt.available,
+            rank: opt.rank,
+          })),
+        })) || [];
+
         // Transform addons if they exist (ordered by rank from backend)
         const addons: Addon[] = apiItem.addons?.map((apiAddon: ApiAddon) => ({
           id: apiAddon.id,
+          addonId: apiAddon.addonId || apiAddon.id,
           name: apiAddon.name,
           description: apiAddon.description,
           price: apiAddon.price,
@@ -87,10 +108,12 @@ export function transformApiMenuItems(
           image: apiItem.imageUrl,
           category: category.name,
           available: apiItem.available,
-          preparationTime: 15, // Default value since not in API
+          orderable: apiItem.orderable ?? apiItem.available,
+          preparationTime: 15,
           restaurantId: apiData.id,
           rank: apiItem.rank,
           tags: [],
+          modifierGroups: modifierGroups.length > 0 ? modifierGroups : undefined,
           addons: addons.length > 0 ? addons : undefined,
         });
       });

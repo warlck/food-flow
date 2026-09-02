@@ -1,17 +1,23 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { CartItem, MenuItem, OrderType, SelectedAddon } from '@/types';
+import { CartItem, MenuItem, OrderType, SelectedAddon, SelectedModifier } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 import { ValidatePromoResponse, orderService } from '@/services/orderService';
 
 // Generate a unique ID for cart items
 const generateCartItemId = () => `cart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-interface CartContextType {
+export interface CartContextType {
   items: CartItem[];
   orderType: OrderType;
   restaurantId: string | null;
   appliedPromo: ValidatePromoResponse | null;
-  addToCart: (item: MenuItem, quantity?: number, selectedAddons?: SelectedAddon[], specialInstructions?: string) => void;
+  addToCart: (
+    item: MenuItem,
+    quantity?: number,
+    selectedModifiers?: SelectedModifier[],
+    selectedAddons?: SelectedAddon[],
+    specialInstructions?: string
+  ) => void;
   updateQuantity: (cartItemId: string, quantity: number) => void;
   removeFromCart: (cartItemId: string) => void;
   clearCart: () => void;
@@ -27,20 +33,54 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// Helper to calculate total price for an item including addons
-const calculateItemTotal = (item: CartItem): number => {
-  let itemTotal = item.menuItem.price * item.quantity;
-  if (item.selectedAddons) {
-    item.selectedAddons.forEach((selectedAddon) => {
-      itemTotal += selectedAddon.addon.price * selectedAddon.quantity * item.quantity;
+// Helper to calculate total price for an item including modifiers and addons
+export const calculateItemUnitPrice = (
+  item: MenuItem,
+  selectedModifiers?: SelectedModifier[],
+  selectedAddons?: SelectedAddon[]
+): number => {
+  let unit = item.price;
+  if (selectedModifiers) {
+    selectedModifiers.forEach((m) => {
+      unit += m.priceDelta;
     });
   }
-  return itemTotal;
+  if (selectedAddons) {
+    selectedAddons.forEach((a) => {
+      unit += a.addon.price * a.quantity;
+    });
+  }
+  return unit;
+};
+
+export const calculateItemTotal = (item: CartItem): number => {
+  const unitPrice = item.unitPrice ?? calculateItemUnitPrice(item.menuItem, item.selectedModifiers, item.selectedAddons);
+  return unitPrice * item.quantity;
 };
 
 // Helper to calculate total price for all cart items
-const calculateCartTotal = (cartItems: CartItem[]): number => {
+export const calculateCartTotal = (cartItems: CartItem[]): number => {
   return cartItems.reduce((total, item) => total + calculateItemTotal(item), 0);
+};
+
+export const generateCustomizationKey = (
+  menuItemId: string,
+  modifiers?: SelectedModifier[],
+  addons?: SelectedAddon[],
+  instructions?: string
+): string => {
+  const sortedMods = [...(modifiers ?? [])]
+    .sort((a, b) => a.modifierOptionId.localeCompare(b.modifierOptionId))
+    .map((m) => `${m.modifierGroupId}:${m.modifierOptionId}`)
+    .join('|');
+
+  const sortedAddons = [...(addons ?? [])]
+    .sort((a, b) => (a.addon.addonId || a.addon.id).localeCompare(b.addon.addonId || b.addon.id))
+    .map((a) => `${a.addon.addonId || a.addon.id}:${a.quantity}`)
+    .join('|');
+
+  const instr = (instructions ?? '').trim();
+  return `${menuItemId}__m[${sortedMods}]__a[${sortedAddons}]__i[${instr}]`;
 };
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -62,10 +102,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (savedCart) {
       try {
         const parsedCart = JSON.parse(savedCart);
-        // Ensure all items have cartItemId (for backward compatibility)
+        // Ensure all items have cartItemId & unitPrice
         const cartWithIds = parsedCart.map((item: CartItem) => ({
           ...item,
-          cartItemId: item.cartItemId || generateCartItemId()
+          cartItemId: item.cartItemId || generateCartItemId(),
+          unitPrice: item.unitPrice ?? calculateItemUnitPrice(item.menuItem, item.selectedModifiers, item.selectedAddons),
         }));
         setItems(cartWithIds);
       } catch (error) {
@@ -157,7 +198,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [items, restaurantId, promoCode]);
 
-  const addToCart = (menuItem: MenuItem, quantity: number = 1, selectedAddons?: SelectedAddon[], specialInstructions?: string) => {
+  const addToCart = (
+    menuItem: MenuItem,
+    quantity: number = 1,
+    selectedModifiers?: SelectedModifier[],
+    selectedAddons?: SelectedAddon[],
+    specialInstructions?: string
+  ) => {
     const isDifferentRestaurant = Boolean(
       menuItem.restaurantId && restaurantId && menuItem.restaurantId !== restaurantId
     );
@@ -174,37 +221,33 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setRestaurantId(menuItem.restaurantId);
     }
 
-    setItems(prevItems => {
+    setItems((prevItems) => {
       const currentItems = isDifferentRestaurant ? [] : prevItems;
-
-      // When addons or special instructions are provided, always add as new item
-      if ((selectedAddons && selectedAddons.length > 0) || (specialInstructions && specialInstructions.length > 0)) {
-        toast({
-          description: `Added ${menuItem.name} to cart`,
-          variant: "default",
-        });
-        return [...currentItems, { 
-          cartItemId: generateCartItemId(),
-          menuItem, 
-          quantity, 
-          selectedAddons, 
-          specialInstructions 
-        }];
-      }
-
-      // Check if item is already in cart (without addons and without special instructions)
-      const existingItemIndex = currentItems.findIndex(
-        item => item.menuItem.id === menuItem.id && 
-        (!item.selectedAddons || item.selectedAddons.length === 0) && 
-        (!item.specialInstructions || item.specialInstructions.length === 0)
+      const customKey = generateCustomizationKey(
+        menuItem.id,
+        selectedModifiers,
+        selectedAddons,
+        specialInstructions
       );
 
-      if (existingItemIndex >= 0) {
-        // Update existing item quantity
+      const existingIdx = currentItems.findIndex((item) => {
+        const itemKey = generateCustomizationKey(
+          item.menuItem.id,
+          item.selectedModifiers,
+          item.selectedAddons,
+          item.specialInstructions
+        );
+        return itemKey === customKey;
+      });
+
+      const unitPrice = calculateItemUnitPrice(menuItem, selectedModifiers, selectedAddons);
+
+      if (existingIdx >= 0) {
         const updatedItems = [...currentItems];
-        updatedItems[existingItemIndex] = {
-          ...updatedItems[existingItemIndex],
-          quantity: updatedItems[existingItemIndex].quantity + quantity
+        updatedItems[existingIdx] = {
+          ...updatedItems[existingIdx],
+          quantity: updatedItems[existingIdx].quantity + quantity,
+          unitPrice,
         };
         toast({
           description: `Updated ${menuItem.name} quantity in cart`,
@@ -212,16 +255,22 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         return updatedItems;
       } else {
-        // Add new item to cart
         toast({
           description: `Added ${menuItem.name} to cart`,
           variant: "default",
         });
-        return [...currentItems, { 
-          cartItemId: generateCartItemId(),
-          menuItem, 
-          quantity 
-        }];
+        return [
+          ...currentItems,
+          {
+            cartItemId: generateCartItemId(),
+            menuItem,
+            quantity,
+            selectedModifiers: selectedModifiers && selectedModifiers.length > 0 ? selectedModifiers : undefined,
+            selectedAddons: selectedAddons && selectedAddons.length > 0 ? selectedAddons : undefined,
+            specialInstructions: specialInstructions && specialInstructions.trim() !== '' ? specialInstructions.trim() : undefined,
+            unitPrice,
+          },
+        ];
       }
     });
   };
