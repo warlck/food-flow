@@ -22,6 +22,17 @@ func query200(sd apitest.SeedData) []apitest.Table {
 		return addons[i].ID <= addons[j].ID
 	})
 
+	itemAddons := make([]addonapp.Addon, 0, len(sd.Addons))
+	for _, a := range sd.Addons {
+		if a.MenuItemID == sd.MenuItems[0].ID {
+			itemAddons = append(itemAddons, toAppAddon(a.Addon))
+		}
+	}
+
+	sort.Slice(itemAddons, func(i, j int) bool {
+		return itemAddons[i].ID <= itemAddons[j].ID
+	})
+
 	table := []apitest.Table{
 		{
 			Name:       "basic",
@@ -35,6 +46,40 @@ func query200(sd apitest.SeedData) []apitest.Table {
 				RowsPerPage: 10,
 				Total:       len(addons),
 				Items:       addons,
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "by-menu-item",
+			URL:        fmt.Sprintf("/v1/addons?page=1&rows=10&orderBy=addon_id,ASC&menu_item_id=%s", sd.MenuItems[0].ID),
+			Token:      sd.Admins[0].Token,
+			StatusCode: http.StatusOK,
+			Method:     http.MethodGet,
+			GotResp:    &query.Result[addonapp.Addon]{},
+			ExpResp: &query.Result[addonapp.Addon]{
+				Page:        1,
+				RowsPerPage: 10,
+				Total:       len(itemAddons),
+				Items:       itemAddons,
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "by-menu-item-empty",
+			URL:        fmt.Sprintf("/v1/addons?page=1&rows=10&orderBy=addon_id,ASC&menu_item_id=%s", sd.MenuItems[1].ID),
+			Token:      sd.Admins[0].Token,
+			StatusCode: http.StatusOK,
+			Method:     http.MethodGet,
+			GotResp:    &query.Result[addonapp.Addon]{},
+			ExpResp: &query.Result[addonapp.Addon]{
+				Page:        1,
+				RowsPerPage: 10,
+				Total:       0,
+				Items:       []addonapp.Addon{},
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
