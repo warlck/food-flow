@@ -219,14 +219,16 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		// ---------------------------------------------------------------------
 		// Process Addons
 		// ---------------------------------------------------------------------
-		assignedAddons, err := b.addonBus.QueryMenuItemAddons(ctx, menuItem.ID)
+		menuItemAddons, err := b.addonBus.QueryAll(ctx, addonbus.QueryFilter{
+			MenuItemID: &menuItem.ID,
+		}, addonbus.DefaultOrderBy)
 		if err != nil {
 			return Order{}, fmt.Errorf("lookup menu item addons: %w", err)
 		}
 
-		assignedMap := make(map[uuid.UUID]addonbus.MenuItemAddonInfo, len(assignedAddons))
-		for _, a := range assignedAddons {
-			assignedMap[a.Addon.ID] = a
+		assignedMap := make(map[uuid.UUID]addonbus.Addon, len(menuItemAddons))
+		for _, a := range menuItemAddons {
+			assignedMap[a.ID] = a
 		}
 
 		var itemAddons []OrderItemAddon
@@ -244,12 +246,11 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 			}
 			seenAddonIDs[addonID] = true
 
-			assigned, exists := assignedMap[addonID]
+			addon, exists := assignedMap[addonID]
 			if !exists {
 				return Order{}, fmt.Errorf("%w: addon %s cannot be applied to menu item %s", ErrAddonNotAssigned, newAddon.AddonID, newItem.MenuItemID)
 			}
 
-			addon := assigned.Addon
 			if addon.RestaurantID != restaurantID {
 				return Order{}, fmt.Errorf("addon %s does not belong to restaurant %s", newAddon.AddonID, no.RestaurantID)
 			}

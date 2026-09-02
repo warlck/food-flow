@@ -91,28 +91,19 @@ func insertSeedData(busDomain dbtest.BusDomain) (unittest.SeedData, error) {
 	}
 
 	// Seed addons
-	addons1, err := addonbus.TestSeedAddons(ctx, 2, rests[0].ID, busDomain.Addon)
+	addons1, err := addonbus.TestSeedAddons(ctx, 2, items1[0].ID, rests[0].ID, busDomain.Addon)
 	if err != nil {
 		return unittest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
 	}
 
-	addons1OtherCat, err := addonbus.TestSeedAddons(ctx, 1, rests[0].ID, busDomain.Addon)
+	addons1OtherCat, err := addonbus.TestSeedAddons(ctx, 1, items1[1].ID, rests[0].ID, busDomain.Addon)
 	if err != nil {
 		return unittest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
 	}
 
-	addons2, err := addonbus.TestSeedAddons(ctx, 1, rests[1].ID, busDomain.Addon)
+	addons2, err := addonbus.TestSeedAddons(ctx, 1, items2[0].ID, rests[1].ID, busDomain.Addon)
 	if err != nil {
 		return unittest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
-	}
-
-	// Assign addons1 to items1[0]
-	if _, err := addonbus.TestAssignAddonsToMenuItem(ctx, items1[0].ID, rests[0].ID, []uuid.UUID{addons1[0].ID, addons1[1].ID}, busDomain.Addon); err != nil {
-		return unittest.SeedData{}, fmt.Errorf("assigning addons: %w", err)
-	}
-	// Assign addons1OtherCat to items1[1]
-	if _, err := addonbus.TestAssignAddonsToMenuItem(ctx, items1[1].ID, rests[0].ID, []uuid.UUID{addons1OtherCat[0].ID}, busDomain.Addon); err != nil {
-		return unittest.SeedData{}, fmt.Errorf("assigning addons: %w", err)
 	}
 
 	// Seed orders
@@ -1147,6 +1138,7 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				}
 
 				addon, err := busDomain.Addon.Create(ctx, addonbus.NewAddon{
+					MenuItemID:   item.ID,
 					RestaurantID: sd.Restaurants[0].ID,
 					Name:         name.MustParse("Extra Cheese"),
 					Description:  "Gouda cheese slice",
@@ -1154,10 +1146,6 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 					MaxQuantity:  5,
 				})
 				if err != nil {
-					return err
-				}
-
-				if _, err := addonbus.TestAssignAddonsToMenuItem(ctx, item.ID, sd.Restaurants[0].ID, []uuid.UUID{addon.ID}, busDomain.Addon); err != nil {
 					return err
 				}
 
@@ -1389,18 +1377,15 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			ExcFunc: func(ctx context.Context) any {
 				avail := false
 				addon, err := busDomain.Addon.Create(ctx, addonbus.NewAddon{
+					MenuItemID:   sd.MenuItems[0].ID,
 					RestaurantID: sd.Restaurants[0].ID,
-					Name:         name.MustParse("Unavailable Addon"),
-					Description:  "temporarily unavailable",
+					Name:         name.MustParse("Unavailable Sauce"),
+					Description:  "Truffle mayo",
 					Price:        money.MustParse(1.50),
 					Available:    &avail,
 					MaxQuantity:  2,
 				})
 				if err != nil {
-					return err
-				}
-
-				if _, err := addonbus.TestAssignAddonsToMenuItem(ctx, sd.MenuItems[0].ID, sd.Restaurants[0].ID, []uuid.UUID{addon.ID}, busDomain.Addon); err != nil {
 					return err
 				}
 
@@ -2254,6 +2239,7 @@ func orderMetrics(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.T
 				}
 
 				addon, err := busDomain.Addon.Create(ctx, addonbus.NewAddon{
+					MenuItemID:   item.ID,
 					RestaurantID: rest.ID,
 					Name:         name.MustParse("Grilled Asparagus"),
 					Description:  "Fresh side",
@@ -2262,10 +2248,6 @@ func orderMetrics(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.T
 				})
 				if err != nil {
 					return fmt.Errorf("create addon: %w", err)
-				}
-
-				if _, err := addonbus.TestAssignAddonsToMenuItem(ctx, item.ID, rest.ID, []uuid.UUID{addon.ID}, busDomain.Addon); err != nil {
-					return fmt.Errorf("assign addon: %w", err)
 				}
 
 				// Create Order: Qty 3 of Ribeye + Truffle Butter ($4.00) + 2x Asparagus ($2.50 * 2 = $5.00)
