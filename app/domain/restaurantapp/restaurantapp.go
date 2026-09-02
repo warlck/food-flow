@@ -204,6 +204,26 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 		})
 	}
 
+	// Fetch addons for this restaurant
+	addons, err := a.addonBus.QueryAll(ctx, addonbus.QueryFilter{RestaurantID: &restaurantID}, addonbus.DefaultOrderBy)
+	if err != nil {
+		return fmt.Errorf("query addons: restaurantID[%s]: %w", restaurantID, err)
+	}
+
+	// Group addons by menu item ID
+	addonsByItem := make(map[uuid.UUID][]Addon)
+	for _, addn := range addons {
+		addonsByItem[addn.MenuItemID] = append(addonsByItem[addn.MenuItemID], Addon{
+			ID:          addn.ID.String(),
+			Name:        addn.Name.String(),
+			Description: addn.Description,
+			Price:       addn.Price.Value(),
+			Available:   addn.Available,
+			MaxQuantity: addn.MaxQuantity,
+			Rank:        addn.Rank,
+		})
+	}
+
 	// Group menu items by category ID
 	itemsByCategory := make(map[uuid.UUID][]MenuItem)
 	for _, item := range menuItems {
@@ -212,23 +232,9 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 			itemGroups = []ModifierGroup{}
 		}
 
-		// Query assigned addons for this item
-		assignedAddons, err := a.addonBus.QueryMenuItemAddons(ctx, item.ID)
-		if err != nil {
-			return fmt.Errorf("query menu item addons: %w", err)
-		}
-
-		appAddons := make([]Addon, 0, len(assignedAddons))
-		for _, aInfo := range assignedAddons {
-			appAddons = append(appAddons, Addon{
-				ID:          aInfo.Addon.ID.String(),
-				Name:        aInfo.Addon.Name.String(),
-				Description: aInfo.Addon.Description,
-				Price:       aInfo.Addon.Price.Value(),
-				Available:   aInfo.Addon.Available,
-				MaxQuantity: aInfo.Addon.MaxQuantity,
-				Rank:        aInfo.Rank,
-			})
+		appAddons := addonsByItem[item.ID]
+		if appAddons == nil {
+			appAddons = []Addon{}
 		}
 
 		// Calculate orderable
