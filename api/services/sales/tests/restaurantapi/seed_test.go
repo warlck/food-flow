@@ -109,23 +109,28 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("ranking menu item 1 : %w", err)
 	}
 
-	rankedAddons, err := addonbus.TestSeedAddons(ctx, 3, rests[4].ID, busDomain.Addon)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding ranked addons : %w", err)
+	var allRankedAddons []addonbus.Addon
+	for _, item := range rankedItems {
+		itemAddons, err := addonbus.TestSeedAddons(ctx, 3, item.ID, rests[4].ID, busDomain.Addon)
+		if err != nil {
+			return apitest.SeedData{}, fmt.Errorf("seeding ranked addons : %w", err)
+		}
+		// itemAddons[0] -> rank 20, itemAddons[1] -> rank 10, itemAddons[2] -> unranked.
+		if itemAddons[0], err = busDomain.Addon.Update(ctx, itemAddons[0], addonbus.UpdateAddon{Rank: opt.NewNullInt(20)}); err != nil {
+			return apitest.SeedData{}, fmt.Errorf("ranking addon 0 : %w", err)
+		}
+		if itemAddons[1], err = busDomain.Addon.Update(ctx, itemAddons[1], addonbus.UpdateAddon{Rank: opt.NewNullInt(10)}); err != nil {
+			return apitest.SeedData{}, fmt.Errorf("ranking addon 1 : %w", err)
+		}
+		if itemAddons[2], err = busDomain.Addon.Update(ctx, itemAddons[2], addonbus.UpdateAddon{Rank: opt.NewNullIntNull()}); err != nil {
+			return apitest.SeedData{}, fmt.Errorf("ranking addon 2 : %w", err)
+		}
+		allRankedAddons = append(allRankedAddons, itemAddons...)
 	}
 
-	// Assign addons to ranked items with item-level ranks (20, 10, nil)
-	rank20 := 20
-	rank10 := 10
-	addonAssignments := []addonbus.ItemAddonAssignment{
-		{AddonID: rankedAddons[0].ID, Rank: &rank20},
-		{AddonID: rankedAddons[1].ID, Rank: &rank10},
-		{AddonID: rankedAddons[2].ID, Rank: nil},
-	}
-	for _, item := range rankedItems {
-		if _, err := busDomain.Addon.ReplaceMenuItemAddons(ctx, item.ID, rests[4].ID, addonAssignments); err != nil {
-			return apitest.SeedData{}, fmt.Errorf("assigning addons to menu item: %w", err)
-		}
+	appRankedAddons := make([]apitest.Addon, len(allRankedAddons))
+	for i, a := range allRankedAddons {
+		appRankedAddons[i] = apitest.Addon{Addon: a}
 	}
 
 	// -------------------------------------------------------------------------
@@ -179,11 +184,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 			{MenuItem: rankedItems[1]},
 			{MenuItem: rankedItems[2]},
 		},
-		Addons: []apitest.Addon{
-			{Addon: rankedAddons[0]},
-			{Addon: rankedAddons[1]},
-			{Addon: rankedAddons[2]},
-		},
+		Addons: appRankedAddons,
 	}
 
 	return sd, nil

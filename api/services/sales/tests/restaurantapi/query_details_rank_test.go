@@ -66,34 +66,24 @@ func queryByIDWithDetailsRanked200(sd apitest.SeedData) []apitest.Table {
 					}
 				}
 
-				// Addons: assigned per item; ranked ascending first (10, 20), unranked last.
+				// Addons: owned per item; ranked ascending first (10, 20), unranked last.
 				rank10 := 10
 				rank20 := 20
-				wantAddons := []struct {
-					id   string
-					rank *int
-				}{
-					{sd.Addons[1].ID.String(), &rank10},
-					{sd.Addons[0].ID.String(), &rank20},
-					{sd.Addons[2].ID.String(), nil},
-				}
+				wantRanks := []*int{&rank10, &rank20, nil}
 
 				for _, gotItem := range cat.MenuItems {
 					gotAddons := gotItem.Addons
-					if len(gotAddons) != len(wantAddons) {
-						return fmt.Sprintf("menu item %s: expected %d addons, got %d", gotItem.ID, len(wantAddons), len(gotAddons))
+					if len(gotAddons) != len(wantRanks) {
+						return fmt.Sprintf("menu item %s: expected %d addons, got %d", gotItem.ID, len(wantRanks), len(gotAddons))
 					}
 
-					for i, want := range wantAddons {
+					for i, wantRank := range wantRanks {
 						gotAddon := gotAddons[i]
-						if gotAddon.ID != want.id {
-							return fmt.Sprintf("menu item %s addon position %d: expected %s, got %s", gotItem.ID, i, want.id, gotAddon.ID)
-						}
-						if (gotAddon.Rank == nil) != (want.rank == nil) {
+						if (gotAddon.Rank == nil) != (wantRank == nil) {
 							return fmt.Sprintf("menu item %s addon position %d: rank nil mismatch (got %+v)", gotItem.ID, i, gotAddon.Rank)
 						}
-						if gotAddon.Rank != nil && *gotAddon.Rank != *want.rank {
-							return fmt.Sprintf("menu item %s addon position %d: expected rank %d, got %d", gotItem.ID, i, *want.rank, *gotAddon.Rank)
+						if gotAddon.Rank != nil && *gotAddon.Rank != *wantRank {
+							return fmt.Sprintf("menu item %s addon position %d: expected rank %d, got %d", gotItem.ID, i, *wantRank, *gotAddon.Rank)
 						}
 					}
 				}

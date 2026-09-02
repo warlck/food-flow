@@ -18,6 +18,7 @@ func create201(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusCreated,
 			Input: &addonapp.NewAddon{
+				MenuItemID:   sd.MenuItems[0].ID.String(),
 				RestaurantID: sd.Restaurants[0].ID.String(),
 				Name:         "Extra Special Sauce",
 				Description:  "Special homemade sauce",
@@ -26,6 +27,7 @@ func create201(sd apitest.SeedData) []apitest.Table {
 			},
 			GotResp: &addonapp.Addon{},
 			ExpResp: &addonapp.Addon{
+				MenuItemID:   sd.MenuItems[0].ID.String(),
 				RestaurantID: sd.Restaurants[0].ID.String(),
 				Name:         "Extra Special Sauce",
 				Description:  "Special homemade sauce",
@@ -65,7 +67,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			GotResp:    &errs.Error{},
 			ExpResp: &errs.Error{
 				Code:    errs.InvalidArgument,
-				Message: `validate: [{"field":"restaurantId","error":"restaurantId is a required field"},{"field":"name","error":"name is a required field"}]`,
+				Message: `validate: [{"field":"menuItemId","error":"menuItemId is a required field"},{"field":"restaurantId","error":"restaurantId is a required field"},{"field":"name","error":"name is a required field"}]`,
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
@@ -78,6 +80,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &addonapp.NewAddon{
+				MenuItemID:   sd.MenuItems[0].ID.String(),
 				RestaurantID: sd.Restaurants[0].ID.String(),
 				Name:         "AB",
 				Price:        2.50,

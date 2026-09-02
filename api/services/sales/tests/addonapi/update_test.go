@@ -28,12 +28,14 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			GotResp: &addonapp.Addon{},
 			ExpResp: &addonapp.Addon{
 				ID:           sd.Addons[0].ID.String(),
+				MenuItemID:   sd.Addons[0].MenuItemID.String(),
 				RestaurantID: sd.Addons[0].RestaurantID.String(),
 				Name:         "Updated Extra Cheese",
 				Description:  "Extra melted cheese portion",
 				Price:        3.00,
 				Available:    sd.Addons[0].Available,
 				MaxQuantity:  sd.Addons[0].MaxQuantity,
+				Rank:         sd.Addons[0].Rank,
 				DateCreated:  sd.Addons[0].DateCreated.Format("2006-01-02T15:04:05Z07:00"),
 			},
 			CmpFunc: func(got any, exp any) string {
