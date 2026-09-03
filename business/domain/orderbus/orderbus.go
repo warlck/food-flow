@@ -33,14 +33,14 @@ func errorsNew(text string) error {
 
 // Business manages the set of APIs for order access.
 type Business struct {
-	log              *logger.Logger
-	storer           Storer
-	menuItemBus      *menuitembus.Business
-	restaurantBus    *restaurantbus.Business
-	addonBus         *addonbus.Business
-	promoBus         *promobus.Business
-	categoryBus      *categorybus.Business
-	modifierGroupBus *modifiergroupbus.Business
+	log               *logger.Logger
+	storer            Storer
+	menuItemBus       *menuitembus.Business
+	restaurantBus     *restaurantbus.Business
+	addonBus          *addonbus.Business
+	promoBus          *promobus.Business
+	categoryBus       *categorybus.Business
+	modifierGroupBus  *modifiergroupbus.Business
 	modifierOptionBus *modifieroptionbus.Business
 }
 

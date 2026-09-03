@@ -1101,7 +1101,7 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			},
 		},
 		{
-			Name: "order-with-modifiers-and-addons",
+			Name:    "order-with-modifiers-and-addons",
 			ExpResp: nil,
 			ExcFunc: func(ctx context.Context) any {
 				item, err := busDomain.MenuItem.Create(ctx, menuitembus.NewMenuItem{
