@@ -66,6 +66,7 @@ func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 			errors.Is(err, orderbus.ErrModifierGroupNotFound),
 			errors.Is(err, orderbus.ErrModifierGroupUnavailable),
 			errors.Is(err, orderbus.ErrModifierOptionNotFound),
+			errors.Is(err, orderbus.ErrModifierOptionForeign),
 			errors.Is(err, orderbus.ErrModifierOptionUnavailable),
 			errors.Is(err, orderbus.ErrAddonNotAssigned),
 			errors.Is(err, orderbus.ErrAddonUnavailable),

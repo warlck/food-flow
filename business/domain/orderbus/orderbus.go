@@ -192,7 +192,7 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 				}
 
 				if option.ModifierGroupID != g.ID || option.RestaurantID != restaurantID {
-					return Order{}, fmt.Errorf("%w: option %s does not belong to group %s", ErrModifierOptionNotFound, option.ID, g.ID)
+					return Order{}, fmt.Errorf("%w: option %s does not belong to group %s", ErrModifierOptionForeign, option.ID, g.ID)
 				}
 
 				if !option.Available {

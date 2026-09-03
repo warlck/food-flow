@@ -22,6 +22,7 @@ var (
 	ErrMenuItemUnavailable       = errors.New("menu item is unavailable")
 	ErrModifierGroupNotFound     = errors.New("modifier group not found")
 	ErrModifierOptionNotFound    = errors.New("modifier option not found")
+	ErrModifierOptionForeign     = errors.New("modifier option is not valid for this item")
 	ErrModifierRequired          = errors.New("modifier selection required")
 	ErrModifierOptionUnavailable = errors.New("modifier option is unavailable")
 	ErrModifierGroupUnavailable  = errors.New("modifier group is unavailable")

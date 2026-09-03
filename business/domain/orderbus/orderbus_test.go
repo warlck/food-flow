@@ -1605,6 +1605,90 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			},
 		},
 		{
+			Name:    "modifier-option-foreign-group",
+			ExpResp: orderbus.ErrModifierOptionForeign,
+			ExcFunc: func(ctx context.Context) any {
+				item, err := busDomain.MenuItem.Create(ctx, menuitembus.NewMenuItem{
+					CategoryID:   sd.Categories[0].ID,
+					RestaurantID: sd.Restaurants[0].ID,
+					Name:         name.MustParse("Item With Foreign Option"),
+					Description:  "desc",
+					Price:        money.MustParse(14.00),
+				})
+				if err != nil {
+					return err
+				}
+
+				targetGroup, err := busDomain.ModifierGroup.Create(ctx, modifiergroupbus.NewModifierGroup{
+					MenuItemID:    item.ID,
+					RestaurantID:  sd.Restaurants[0].ID,
+					Name:          name.MustParse("Target Sauce Group"),
+					MinSelections: 1,
+					MaxSelections: 1,
+					Available:     true,
+				})
+				if err != nil {
+					return err
+				}
+
+				foreignGroup, err := busDomain.ModifierGroup.Create(ctx, modifiergroupbus.NewModifierGroup{
+					MenuItemID:    item.ID,
+					RestaurantID:  sd.Restaurants[0].ID,
+					Name:          name.MustParse("Foreign Sauce Group"),
+					MinSelections: 0,
+					MaxSelections: 1,
+					Available:     true,
+				})
+				if err != nil {
+					return err
+				}
+
+				foreignOption, err := busDomain.ModifierOption.Create(ctx, modifieroptionbus.NewModifierOption{
+					ModifierGroupID: foreignGroup.ID,
+					RestaurantID:    sd.Restaurants[0].ID,
+					Name:            name.MustParse("Foreign Sauce Option"),
+					PriceDelta:      money.MustParse(1.00),
+				})
+				if err != nil {
+					return err
+				}
+
+				_, err = busDomain.Order.Create(ctx, orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[0].ID.String(),
+					CustomerName:  "Foreign Option Customer",
+					CustomerEmail: "foreignoption@example.com",
+					CustomerPhone: "555-9999",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: item.ID.String(),
+							Quantity:   1,
+							Modifiers: []orderbus.NewOrderItemModifier{
+								{
+									ModifierGroupID:  targetGroup.ID.String(),
+									ModifierOptionID: foreignOption.ID.String(),
+								},
+							},
+						},
+					},
+				})
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, exists := got.(error)
+				if !exists {
+					return "expected an error"
+				}
+
+				if !errors.Is(gotErr, exp.(error)) {
+					return fmt.Sprintf("got %v, expected %v", gotErr, exp)
+				}
+
+				return ""
+			},
+		},
+		{
 			Name:    "unavailable-required-group-suspends-requirement",
 			ExpResp: nil,
 			ExcFunc: func(ctx context.Context) any {

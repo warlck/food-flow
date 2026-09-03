@@ -137,6 +137,51 @@ func Test_OrderModifierValidation(t *testing.T) {
 	}
 	test.Run(t, requiredTable, "modifiervalidation-required")
 
+	foreignGroup, err := busDomain.ModifierGroup.Create(ctx, modifiergroupbus.NewModifierGroup{
+		MenuItemID:    reqItem.ID,
+		RestaurantID:  restaurants[0].ID,
+		Name:          name.MustParse("Foreign Sauce Group"),
+		MinSelections: 0,
+		MaxSelections: 1,
+		Available:     true,
+	})
+	if err != nil {
+		t.Fatalf("seeding foreign option group: %s", err)
+	}
+
+	foreignOption, err := busDomain.ModifierOption.Create(ctx, modifieroptionbus.NewModifierOption{
+		ModifierGroupID: foreignGroup.ID,
+		RestaurantID:    restaurants[0].ID,
+		Name:            name.MustParse("Foreign Sauce Option"),
+		PriceDelta:      money.MustParse(1.00),
+	})
+	if err != nil {
+		t.Fatalf("seeding foreign option: %s", err)
+	}
+
+	foreignTable := []apitest.Table{
+		{
+			Name:       "foreign-option-selection-rejected",
+			URL:        "/v1/orders",
+			Token:      apitest.Token(busDomain, test.Auth, admins[0].Email.Address),
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input: newOrder(reqItem.ID.String(), []orderapp.NewOrderItemModifier{
+				{
+					ModifierGroupID:  reqGroup.ID.String(),
+					ModifierOptionID: foreignOption.ID.String(),
+				},
+			}),
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.InvalidArgument, "modifier option is not valid for this item: option %s does not belong to group %s",
+				foreignOption.ID.String(), reqGroup.ID.String()),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+	test.Run(t, foreignTable, "modifiervalidation-foreign-option")
+
 	// -------------------------------------------------------------------------
 	// Fixture: an item whose required group is suspended. No selection must
 	// succeed (201); a submitted selection must 400 with the group message.
