@@ -128,6 +128,11 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding single modifier option : %w", err)
 	}
 
+	createGroups, err := modifiergroupbus.TestSeedModifierGroups(ctx, 1, items1[1].ID, rests[0].ID, busDomain.ModifierGroup)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding create test modifier group : %w", err)
+	}
+
 	allOptions := append(options1, otherOptions...)
 	allOptions = append(allOptions, extraOptions...)
 	appOptions := make([]apitest.ModifierOption, len(allOptions))
@@ -137,6 +142,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	allGroups := append(groups1, otherGroups...)
 	allGroups = append(allGroups, extraGroups...)
+	allGroups = append(allGroups, createGroups...)
 	appGroups := make([]apitest.ModifierGroup, len(allGroups))
 	for i, g := range allGroups {
 		appGroups[i] = apitest.ModifierGroup{ModifierGroup: g}

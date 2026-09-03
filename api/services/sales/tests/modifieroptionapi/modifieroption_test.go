@@ -27,9 +27,18 @@ func Test_ModifierOption(t *testing.T) {
 	test.Run(t, queryByID403(sd), "querybyid-403")
 	test.Run(t, queryByID404(sd), "querybyid-404")
 
+	test.Run(t, create201(sd), "create-201")
+	test.Run(t, create400(sd), "create-400")
+	test.Run(t, create401(sd), "create-401")
+	test.Run(t, create403(sd), "create-403")
+
 	test.Run(t, update200(sd), "update-200")
 	test.Run(t, update400(sd), "update-400")
 	test.Run(t, update404(sd), "update-404")
+
+	test.Run(t, reorder200(sd), "reorder-200")
+	test.Run(t, reorder400(sd), "reorder-400")
+	test.Run(t, reorder401(sd), "reorder-401")
 
 	test.Run(t, delete200(sd), "delete-200")
 	test.Run(t, delete400(sd), "delete-400")
