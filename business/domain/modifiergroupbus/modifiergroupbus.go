@@ -29,7 +29,7 @@ type Storer interface {
 	Create(ctx context.Context, group ModifierGroup) error
 	Update(ctx context.Context, group ModifierGroup) error
 	Delete(ctx context.Context, group ModifierGroup) error
-	Reorder(ctx context.Context, groups []ModifierGroup) error
+	Reorder(ctx context.Context, menuItemID uuid.UUID, orderedIDs []uuid.UUID) ([]ModifierGroup, error)
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]ModifierGroup, error)
 	QueryAll(ctx context.Context, filter QueryFilter, orderBy order.By) ([]ModifierGroup, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
@@ -164,34 +164,8 @@ func (b *Business) Reorder(ctx context.Context, menuItemID uuid.UUID, orderedIDs
 		seen[id] = true
 	}
 
-	existing, err := b.storer.QueryAll(ctx, QueryFilter{MenuItemID: &menuItemID}, order.NewBy(OrderByID, order.ASC))
+	reordered, err := b.storer.Reorder(ctx, menuItemID, orderedIDs)
 	if err != nil {
-		return nil, fmt.Errorf("query modifier groups for reorder: %w", err)
-	}
-
-	if len(existing) != len(orderedIDs) {
-		return nil, fmt.Errorf("%w: exact set mismatch: expected %d modifier groups, got %d", ErrInvalidReorder, len(existing), len(orderedIDs))
-	}
-
-	existingMap := make(map[uuid.UUID]ModifierGroup, len(existing))
-	for _, grp := range existing {
-		existingMap[grp.ID] = grp
-	}
-
-	now := time.Now()
-	reordered := make([]ModifierGroup, len(orderedIDs))
-	for i, id := range orderedIDs {
-		grp, exists := existingMap[id]
-		if !exists {
-			return nil, fmt.Errorf("%w: modifier group id %s does not belong to menu item %s", ErrInvalidReorder, id, menuItemID)
-		}
-		rankVal := (i + 1) * 10
-		grp.Rank = &rankVal
-		grp.DateUpdated = now
-		reordered[i] = grp
-	}
-
-	if err := b.storer.Reorder(ctx, reordered); err != nil {
 		return nil, fmt.Errorf("reorder modifier groups: %w", err)
 	}
 

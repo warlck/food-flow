@@ -370,6 +370,27 @@ func reorder(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
 				return ""
 			},
 		},
+		{
+			Name:    "stale-exact-set-error",
+			ExpResp: modifiergroupbus.ErrInvalidReorder,
+			ExcFunc: func(ctx context.Context) any {
+				_, err := busDomain.ModifierGroup.Reorder(ctx, sd.MenuItemID, []uuid.UUID{
+					sd.Groups[0].ID,
+					sd.Groups[1].ID,
+				})
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return "expected error response"
+				}
+				if !errors.Is(gotErr, modifiergroupbus.ErrInvalidReorder) {
+					return fmt.Sprintf("expected ErrInvalidReorder, got %v", gotErr)
+				}
+				return ""
+			},
+		},
 	}
 
 	return table

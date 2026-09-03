@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -68,34 +69,103 @@ func (s *Store) Update(ctx context.Context, group modifiergroupbus.ModifierGroup
 	return nil
 }
 
-// Reorder updates the rank of a list of modifier groups atomically in a transaction.
-func (s *Store) Reorder(ctx context.Context, groups []modifiergroupbus.ModifierGroup) error {
+// Reorder verifies the exact current set and updates modifier group ranks in one transaction.
+func (s *Store) Reorder(ctx context.Context, menuItemID uuid.UUID, orderedIDs []uuid.UUID) ([]modifiergroupbus.ModifierGroup, error) {
 	tx, err := s.db.(*sqlx.DB).BeginTxx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin transaction: %w", err)
+		return nil, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	const q = `
+	data := struct {
+		MenuItemID uuid.UUID `db:"menu_item_id"`
+	}{
+		MenuItemID: menuItemID,
+	}
+
+	// Lock the parent so concurrent child inserts cannot pass their foreign-key
+	// check until the exact-set validation and rank updates commit.
+	const lockParent = `
+	SELECT
+		menu_item_id
+	FROM
+		menu_items
+	WHERE
+		menu_item_id = :menu_item_id
+	FOR UPDATE`
+
+	var parent struct {
+		MenuItemID uuid.UUID `db:"menu_item_id"`
+	}
+	if err := sqldb.NamedQueryStruct(ctx, s.log, tx, lockParent, data, &parent); err != nil {
+		return nil, fmt.Errorf("lock menu item for modifier group reorder: %w", err)
+	}
+
+	const query = `
+	SELECT
+		modifier_group_id, menu_item_id, restaurant_id, name, description, min_selections, max_selections, available, rank, date_created, date_updated
+	FROM
+		modifier_groups
+	WHERE
+		menu_item_id = :menu_item_id
+	ORDER BY
+		modifier_group_id
+	FOR UPDATE`
+
+	var dbGroups []modifierGroup
+	if err := sqldb.NamedQuerySlice(ctx, s.log, tx, query, data, &dbGroups); err != nil {
+		return nil, fmt.Errorf("query modifier groups for reorder: %w", err)
+	}
+
+	groups, err := toBusModifierGroups(dbGroups)
+	if err != nil {
+		return nil, fmt.Errorf("convert modifier groups for reorder: %w", err)
+	}
+	if len(groups) != len(orderedIDs) {
+		return nil, fmt.Errorf("%w: exact set mismatch: expected %d modifier groups, got %d",
+			modifiergroupbus.ErrInvalidReorder, len(groups), len(orderedIDs))
+	}
+
+	existing := make(map[uuid.UUID]modifiergroupbus.ModifierGroup, len(groups))
+	for _, group := range groups {
+		existing[group.ID] = group
+	}
+
+	now := time.Now()
+	reordered := make([]modifiergroupbus.ModifierGroup, len(orderedIDs))
+	for i, id := range orderedIDs {
+		group, exists := existing[id]
+		if !exists {
+			return nil, fmt.Errorf("%w: modifier group id %s does not belong to menu item %s",
+				modifiergroupbus.ErrInvalidReorder, id, menuItemID)
+		}
+		rank := (i + 1) * 10
+		group.Rank = &rank
+		group.DateUpdated = now
+		reordered[i] = group
+	}
+
+	const update = `
 	UPDATE
 		modifier_groups
 	SET
 		"rank" = :rank,
 		"date_updated" = :date_updated
 	WHERE
-		modifier_group_id = :modifier_group_id`
+		modifier_group_id = :modifier_group_id
+		AND menu_item_id = :menu_item_id`
 
-	for _, group := range groups {
-		if err := sqldb.NamedExecContext(ctx, s.log, tx, q, toDBModifierGroup(group)); err != nil {
-			return fmt.Errorf("namedexeccontext: %w", err)
+	for _, group := range reordered {
+		if err := sqldb.NamedExecContext(ctx, s.log, tx, update, toDBModifierGroup(group)); err != nil {
+			return nil, fmt.Errorf("update modifier group rank: %w", err)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit: %w", err)
+		return nil, fmt.Errorf("commit: %w", err)
 	}
 
-	return nil
+	return reordered, nil
 }
 
 // Delete removes a modifier group from the database.
