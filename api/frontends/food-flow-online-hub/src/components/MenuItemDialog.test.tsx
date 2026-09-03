@@ -95,4 +95,35 @@ describe('MenuItemDialog unavailable modifier group rendering', () => {
       modifierOptionId: 'opt-mild',
     });
   });
+
+  it('renders a None option for optional groups and clears selection when clicked', () => {
+    const optionalGroup: ModifierGroup = {
+      id: 'grp-opt',
+      name: 'Extra Sauce',
+      minSelections: 0,
+      maxSelections: 1,
+      available: true,
+      options: [
+        { id: 'opt-bbq', name: 'BBQ Sauce', priceDelta: 0.5, available: true },
+      ],
+    };
+
+    renderDialog([optionalGroup]);
+
+    expect(screen.getByText('None')).toBeDefined();
+    expect(screen.getByText('No selection')).toBeDefined();
+
+    // Click BBQ option
+    fireEvent.click(screen.getByText('BBQ Sauce'));
+
+    // Now click None
+    fireEvent.click(screen.getByText('None'));
+
+    const addButton = screen.getByRole('button', { name: /add to cart/i });
+    fireEvent.click(addButton);
+
+    expect(addToCart).toHaveBeenCalledTimes(1);
+    const [, , submittedModifiers] = addToCart.mock.calls[0];
+    expect(submittedModifiers).toBeUndefined();
+  });
 });

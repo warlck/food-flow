@@ -68,10 +68,17 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
 
   // Handle single-select modifier option (Radio)
   const handleSelectRadioOption = (groupId: string, optionId: string) => {
-    setSelectedModifiers((prev) => ({
-      ...prev,
-      [groupId]: [optionId],
-    }));
+    setSelectedModifiers((prev) => {
+      if (!optionId || optionId === 'none') {
+        const next = { ...prev };
+        delete next[groupId];
+        return next;
+      }
+      return {
+        ...prev,
+        [groupId]: [optionId],
+      };
+    });
   };
 
   // Handle multi-select modifier option (Checkbox)
@@ -297,10 +304,32 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
 
                     {isSingleSelect ? (
                       <RadioGroup
-                        value={currentSelections[0] || ''}
+                        value={currentSelections[0] || 'none'}
                         onValueChange={(val) => handleSelectRadioOption(group.id, val)}
                         className="space-y-2"
                       >
+                        {group.minSelections === 0 && (
+                          <div
+                            key="none"
+                            className={`flex items-center justify-between rounded-lg p-3 transition-colors cursor-pointer ${
+                              !currentSelections[0] || currentSelections[0] === 'none'
+                                ? 'border border-food-primary bg-food-primary/5'
+                                : 'bg-white border border-gray-200'
+                            }`}
+                            onClick={() => handleSelectRadioOption(group.id, 'none')}
+                          >
+                            <div className="flex items-center gap-3">
+                              <RadioGroupItem id={`opt-none-${group.id}`} value="none" />
+                              <Label
+                                htmlFor={`opt-none-${group.id}`}
+                                className="font-medium text-sm text-gray-700 cursor-pointer"
+                              >
+                                None
+                              </Label>
+                            </div>
+                            <span className="text-xs text-gray-400">No selection</span>
+                          </div>
+                        )}
                         {group.options.map((opt) => {
                           const id = `opt-${opt.id}`;
                           const isSelected = currentSelections.includes(opt.id);
