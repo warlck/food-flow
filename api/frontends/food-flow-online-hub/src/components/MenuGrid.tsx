@@ -46,29 +46,15 @@ const MenuGrid: React.FC<MenuGridProps> = ({ items, categories, onCartUpdate }) 
       );
     };
 
-    // Category items are rank-ordered by the backend (ranked first, then by price), so index 0 / `find` yields the highest-ranked match.
-    const pickForCategory = (categoryItems: MenuItemType[]) => {
-      if (categoryItems.length === 0) return null;
-      if (!query) return categoryItems[0];
-      return categoryItems.find(matchesQuery) ?? null;
-    };
-
+    // Spec §10.2: every menu item is an individual card. `items` arrives in
+    // backend order (categories in order, then rank/price within a category),
+    // so filtering preserves it.
     if (selectedCategory !== 'All') {
-      const categoryItems = itemsByCategory.get(selectedCategory) ?? [];
-      const picked = pickForCategory(categoryItems);
-      return picked ? [picked] : [];
+      return (itemsByCategory.get(selectedCategory) ?? []).filter(matchesQuery);
     }
 
-    // Preserve backend category order.
-    const out: MenuItemType[] = [];
-    for (const category of categories) {
-      const categoryItems = itemsByCategory.get(category) ?? [];
-      const picked = pickForCategory(categoryItems);
-      if (picked) out.push(picked);
-    }
-
-    return out;
-  }, [categories, itemsByCategory, searchQuery, selectedCategory]);
+    return items.filter(matchesQuery);
+  }, [items, itemsByCategory, searchQuery, selectedCategory]);
 
   return (
     <SidebarProvider>
@@ -101,7 +87,6 @@ const MenuGrid: React.FC<MenuGridProps> = ({ items, categories, onCartUpdate }) 
                   <MenuItem
                     key={item.id}
                     item={item}
-                    categoryItems={itemsByCategory.get(item.category)}
                     onCartUpdate={onCartUpdate}
                   />
                 ))}

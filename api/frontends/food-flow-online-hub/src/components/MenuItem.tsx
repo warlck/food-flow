@@ -11,19 +11,22 @@ import { Button } from '@/components/ui/button';
 import { MenuItem as MenuItemType } from '@/types';
 import { Plus, Tag, Layers, Puzzle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { minOrderablePrice } from '@/lib/transformers';
 import MenuItemDialog from './MenuItemDialog';
 
 interface MenuItemProps {
   item: MenuItemType;
-  categoryItems?: MenuItemType[];
   onCartUpdate?: () => void;
 }
 
-const MenuItem: React.FC<MenuItemProps> = ({ item, categoryItems, onCartUpdate }) => {
+const MenuItem: React.FC<MenuItemProps> = ({ item, onCartUpdate }) => {
   const [imageError, setImageError] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const isOrderable = item.orderable ?? item.available ?? false;
+  // Spec §10.2: minimum orderable price with a "From" prefix when the
+  // amount is only a floor.
+  const price = minOrderablePrice(item);
 
   const handlePrimaryClick = () => {
     setIsDialogOpen(true);
@@ -118,7 +121,9 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, categoryItems, onCartUpdate }
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start">
             <CardTitle className="text-base font-bold line-clamp-2 text-gray-900">{item.name}</CardTitle>
-            <span className="font-bold text-food-primary shrink-0 ml-2">${item.price.toFixed(2)}</span>
+            <span className="font-bold text-food-primary shrink-0 ml-2">
+              {price.fromPrefix ? 'From ' : ''}${price.amount.toFixed(2)}
+            </span>
           </div>
           {item.tags && item.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
@@ -154,7 +159,6 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, categoryItems, onCartUpdate }
 
       <MenuItemDialog
         item={item}
-        categoryItems={categoryItems}
         isOpen={isDialogOpen}
         onClose={handleCloseDialog}
       />

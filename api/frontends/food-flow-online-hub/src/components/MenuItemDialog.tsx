@@ -20,7 +20,6 @@ import { Textarea } from '@/components/ui/textarea';
 
 interface MenuItemDialogProps {
   item: MenuItemType | null;
-  categoryItems?: MenuItemType[];
   isOpen: boolean;
   onClose: () => void;
 }
@@ -31,7 +30,6 @@ function formatCurrency(amount: number) {
 
 const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
   item,
-  categoryItems,
   isOpen,
   onClose,
 }) => {

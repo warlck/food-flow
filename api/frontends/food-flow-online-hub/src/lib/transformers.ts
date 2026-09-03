@@ -126,13 +126,42 @@ export function transformApiMenuItems(
   };
 }
 
+export interface MinOrderablePrice {
+  /** Base price plus the minimum available delta from each active required group. */
+  amount: number;
+  /** True when the quoted amount is only a floor, so the card must say "From". */
+  fromPrefix: boolean;
+}
+
 /**
- * Cheapest price among the *available* items in a category. Used so the
- * category card and the dialog header quote the same base price, and so the
- * "+$X" deltas are relative to a price the customer can actually pay.
- * Returns null when the category has no available items.
+ * Minimum orderable price for a menu-item card (spec §10.2): the base price
+ * plus the minimum available delta from each active required group. Optional
+ * groups contribute zero. `fromPrefix` is true when any active group offers
+ * more than one available option with different deltas, or when optional
+ * selections can increase the price; otherwise the amount is exact.
  */
-export function cheapestAvailablePrice(categoryItems: MenuItem[]): number | null {
-  const prices = categoryItems.filter((mi) => mi.available).map((mi) => mi.price);
-  return prices.length === 0 ? null : Math.min(...prices);
+export function minOrderablePrice(item: MenuItem): MinOrderablePrice {
+  let amount = item.price;
+  let fromPrefix = false;
+
+  for (const group of item.modifierGroups ?? []) {
+    if (!group.available) continue;
+    const availableDeltas = group.options
+      .filter((opt) => opt.available)
+      .map((opt) => opt.priceDelta);
+    if (availableDeltas.length === 0) continue;
+
+    if (group.minSelections > 0) {
+      // Required group: contributes its cheapest available delta.
+      amount += Math.min(...availableDeltas);
+      if (availableDeltas.length > 1 && new Set(availableDeltas).size > 1) {
+        fromPrefix = true;
+      }
+    } else if (availableDeltas.some((delta) => delta > 0)) {
+      // Optional group: contributes zero, but selections can raise the price.
+      fromPrefix = true;
+    }
+  }
+
+  return { amount, fromPrefix };
 }
