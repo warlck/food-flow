@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/sdk/order"
 	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/foundation/logger"
@@ -15,9 +16,11 @@ import (
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound       = errors.New("menu item not found")
-	ErrInvalidOrder   = errors.New("invalid menu item order")
-	ErrInvalidReorder = errors.New("invalid reorder set")
+	ErrNotFound                   = errors.New("menu item not found")
+	ErrInvalidOrder               = errors.New("invalid menu item order")
+	ErrInvalidReorder             = errors.New("invalid reorder set")
+	ErrCategoryNotFound           = errors.New("category not found")
+	ErrCategoryRestaurantMismatch = errors.New("category does not belong to restaurant")
 )
 
 // Storer interface declares the behavior this package needs to persist and retrieve data.
@@ -33,17 +36,24 @@ type Storer interface {
 	QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]MenuItem, error)
 }
 
+// CategoryStorer declares the category lookup required to enforce ownership.
+type CategoryStorer interface {
+	QueryByID(ctx context.Context, categoryID uuid.UUID) (categorybus.Category, error)
+}
+
 // Business manages the set of APIs for menu item access.
 type Business struct {
-	log    *logger.Logger
-	storer Storer
+	log            *logger.Logger
+	storer         Storer
+	categoryStorer CategoryStorer
 }
 
 // NewBusiness constructs a menu item business API for use.
-func NewBusiness(log *logger.Logger, storer Storer) *Business {
+func NewBusiness(log *logger.Logger, storer Storer, categoryStorer CategoryStorer) *Business {
 	return &Business{
-		log:    log,
-		storer: storer,
+		log:            log,
+		storer:         storer,
+		categoryStorer: categoryStorer,
 	}
 }
 
@@ -51,6 +61,10 @@ func NewBusiness(log *logger.Logger, storer Storer) *Business {
 func (b *Business) Create(ctx context.Context, ni NewMenuItem) (MenuItem, error) {
 	if ni.Rank != nil && *ni.Rank < 1 {
 		return MenuItem{}, fmt.Errorf("rank must be >= 1")
+	}
+
+	if err := b.validateCategory(ctx, ni.CategoryID, ni.RestaurantID); err != nil {
+		return MenuItem{}, err
 	}
 
 	now := time.Now()
@@ -88,6 +102,9 @@ func (b *Business) Update(ctx context.Context, item MenuItem, ui UpdateMenuItem)
 		item.Price = *ui.Price
 	}
 	if ui.CategoryID != nil {
+		if err := b.validateCategory(ctx, *ui.CategoryID, item.RestaurantID); err != nil {
+			return MenuItem{}, err
+		}
 		item.CategoryID = *ui.CategoryID
 	}
 	if ui.ImageURL != nil {
@@ -110,6 +127,18 @@ func (b *Business) Update(ctx context.Context, item MenuItem, ui UpdateMenuItem)
 	}
 
 	return item, nil
+}
+
+func (b *Business) validateCategory(ctx context.Context, categoryID uuid.UUID, restaurantID uuid.UUID) error {
+	category, err := b.categoryStorer.QueryByID(ctx, categoryID)
+	if err != nil {
+		return fmt.Errorf("%w: category %s: %v", ErrCategoryNotFound, categoryID, err)
+	}
+	if category.RestaurantID != restaurantID {
+		return fmt.Errorf("%w: category %s restaurant %s, menu item restaurant %s",
+			ErrCategoryRestaurantMismatch, categoryID, category.RestaurantID, restaurantID)
+	}
+	return nil
 }
 
 // Reorder updates the display rank of all menu items in a category.

@@ -215,7 +215,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 	categoryBus := categorybus.NewBusiness(log, categorystore)
 
 	menuitemstore := menuitemdb.NewStore(log, db)
-	menuitemBus := menuitembus.NewBusiness(log, menuitemstore)
+	menuitemBus := menuitembus.NewBusiness(log, menuitemstore, categoryBus)
 
 	modifiergroupstore := modifiergroupdb.NewStore(log, db)
 	modifieroptionstore := modifieroptiondb.NewStore(log, db)

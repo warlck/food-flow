@@ -58,6 +58,9 @@ func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	item, err := a.menuItemBus.Create(ctx, nb)
 	if err != nil {
+		if errors.Is(err, menuitembus.ErrCategoryNotFound) || errors.Is(err, menuitembus.ErrCategoryRestaurantMismatch) {
+			return errs.New(errs.InvalidArgument, err)
+		}
 		return fmt.Errorf("create: menuItem[%+v]: %w", item, err)
 	}
 
@@ -152,6 +155,9 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	updItem, err := a.menuItemBus.Update(ctx, item, ub)
 	if err != nil {
+		if errors.Is(err, menuitembus.ErrCategoryNotFound) || errors.Is(err, menuitembus.ErrCategoryRestaurantMismatch) {
+			return errs.New(errs.InvalidArgument, err)
+		}
 		return errs.Newf(errs.Internal, "update: menuItemID[%s] ub[%+v]: %s", menuItemID, ub, err)
 	}
 

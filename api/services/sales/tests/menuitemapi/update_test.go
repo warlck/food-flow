@@ -165,6 +165,28 @@ func update400(sd apitest.SeedData) []apitest.Table {
 				return ""
 			},
 		},
+		{
+			Name:       "move-to-category-from-different-restaurant",
+			URL:        "/v1/menuitems/" + sd.MenuItems[1].ID.String(),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusBadRequest,
+			Input: &menuitemapp.UpdateMenuItem{
+				CategoryID: dbtest.StringPointer(sd.Categories[2].ID.String()),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code: errs.InvalidArgument,
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr := got.(*errs.Error)
+				expErr := exp.(*errs.Error)
+				if gotErr.Code != expErr.Code {
+					return fmt.Sprintf("code mismatch: got %v, exp %v", gotErr.Code, expErr.Code)
+				}
+				return ""
+			},
+		},
 	}
 
 	return table

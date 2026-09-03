@@ -345,6 +345,30 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				return cmp.Diff(gotResp, expResp)
 			},
 		},
+		{
+			Name:    "category-from-different-restaurant",
+			ExpResp: menuitembus.ErrCategoryRestaurantMismatch,
+			ExcFunc: func(ctx context.Context) any {
+				_, err := busDomain.MenuItem.Create(ctx, menuitembus.NewMenuItem{
+					Name:         name.MustParse("Cross Restaurant Item"),
+					Description:  "invalid ownership fixture",
+					Price:        money.MustParse(12.99),
+					CategoryID:   sd.Categories[2].ID,
+					RestaurantID: sd.Restaurants[0].ID,
+				})
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return "expected an error"
+				}
+				if !errors.Is(gotErr, exp.(error)) {
+					return fmt.Sprintf("got %v, expected %v", gotErr, exp)
+				}
+				return ""
+			},
+		},
 	}
 
 	return table
@@ -470,6 +494,26 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				expResp.DateUpdated = gotResp.DateUpdated
 
 				return cmp.Diff(gotResp, expResp)
+			},
+		},
+		{
+			Name:    "move-to-category-from-different-restaurant",
+			ExpResp: menuitembus.ErrCategoryRestaurantMismatch,
+			ExcFunc: func(ctx context.Context) any {
+				_, err := busDomain.MenuItem.Update(ctx, sd.MenuItems[0].MenuItem, menuitembus.UpdateMenuItem{
+					CategoryID: &sd.Categories[2].ID,
+				})
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return "expected an error"
+				}
+				if !errors.Is(gotErr, exp.(error)) {
+					return fmt.Sprintf("got %v, expected %v", gotErr, exp)
+				}
+				return ""
 			},
 		},
 	}
