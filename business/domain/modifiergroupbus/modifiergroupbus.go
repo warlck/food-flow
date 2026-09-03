@@ -131,7 +131,9 @@ func (b *Business) Update(ctx context.Context, group ModifierGroup, ug UpdateMod
 
 	// A required group must not be enabled while none of its options are
 	// available; the item would become unorderable.
-	if ug.Available != nil && *ug.Available && group.MinSelections >= 1 {
+	isBeingEnabled := ug.Available != nil && *ug.Available && group.MinSelections >= 1
+	isBeingMadeRequired := ug.MinSelections != nil && *ug.MinSelections >= 1 && group.Available
+	if isBeingEnabled || isBeingMadeRequired {
 		count, err := b.optionStorer.CountAvailable(ctx, group.ID)
 		if err != nil {
 			return ModifierGroup{}, fmt.Errorf("count available options: %w", err)

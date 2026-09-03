@@ -83,6 +83,11 @@ func (app NewModifierGroup) Validate() error {
 	if err := errs.Check(app); err != nil {
 		return fmt.Errorf("validate: %w", err)
 	}
+
+	if app.Available && app.MinSelections >= 1 {
+		return errs.NewFieldErrors("available", fmt.Errorf("required modifier group cannot be active before options are added"))
+	}
+
 	return nil
 }
 

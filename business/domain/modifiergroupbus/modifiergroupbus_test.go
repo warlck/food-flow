@@ -505,6 +505,38 @@ func updateAvailability(busDomain dbtest.BusDomain, sd seedData) []unittest.Tabl
 				return cmp.Diff(got, exp)
 			},
 		},
+		{
+			Name:    "change-optional-to-required-without-options",
+			ExpResp: modifiergroupbus.ErrRequiredNoOptions,
+			ExcFunc: func(ctx context.Context) any {
+				optional, err := busDomain.ModifierGroup.Create(ctx, modifiergroupbus.NewModifierGroup{
+					MenuItemID:    sd.MenuItemID,
+					RestaurantID:  sd.RestaurantID,
+					Name:          name.MustParse("Optional Group To Require"),
+					MinSelections: 0,
+					MaxSelections: 1,
+					Available:     true,
+				})
+				if err != nil {
+					return err
+				}
+				one := 1
+				_, err = busDomain.ModifierGroup.Update(ctx, optional, modifiergroupbus.UpdateModifierGroup{
+					MinSelections: &one,
+				})
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return "expected error response"
+				}
+				if !errors.Is(gotErr, modifiergroupbus.ErrRequiredNoOptions) {
+					return fmt.Sprintf("expected ErrRequiredNoOptions, got %v", gotErr)
+				}
+				return ""
+			},
+		},
 	}
 
 	return table

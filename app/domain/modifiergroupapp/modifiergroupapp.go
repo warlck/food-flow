@@ -66,6 +66,9 @@ func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	group, err := a.modifierGroupBus.Create(ctx, ng)
 	if err != nil {
+		if errors.Is(err, modifiergroupbus.ErrRequiredNoOptions) {
+			return errs.New(errs.InvalidArgument, err)
+		}
 		return fmt.Errorf("create: modifierGroup[%+v]: %w", group, err)
 	}
 
