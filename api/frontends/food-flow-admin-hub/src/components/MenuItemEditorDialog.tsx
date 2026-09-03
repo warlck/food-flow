@@ -659,6 +659,7 @@ export function MenuItemEditorDialog({
                                 type="button"
                                 disabled={groupIdx === 0}
                                 onClick={() => handleMoveGroup(groupIdx, 'up')}
+                                aria-label={`Move ${group.name} up`}
                                 className="p-0.5 text-[#9CA3AF] hover:text-[#111827] disabled:opacity-30"
                               >
                                 <ChevronUp size={14} />
@@ -667,6 +668,7 @@ export function MenuItemEditorDialog({
                                 type="button"
                                 disabled={groupIdx === modifierGroups.length - 1}
                                 onClick={() => handleMoveGroup(groupIdx, 'down')}
+                                aria-label={`Move ${group.name} down`}
                                 className="p-0.5 text-[#9CA3AF] hover:text-[#111827] disabled:opacity-30"
                               >
                                 <ChevronDown size={14} />
@@ -703,6 +705,7 @@ export function MenuItemEditorDialog({
                               <Switch
                                 checked={group.available}
                                 onCheckedChange={(val) => handleToggleGroupAvailable(group, val)}
+                                aria-label={`Toggle ${group.name} availability`}
                               />
                             </div>
                             <Button
@@ -710,6 +713,7 @@ export function MenuItemEditorDialog({
                               variant="ghost"
                               size="sm"
                               onClick={() => setEditingGroup(group)}
+                              aria-label={`Edit ${group.name}`}
                               className="h-7 px-2 text-xs text-[#6B7280] hover:text-[#111827]"
                             >
                               Edit
@@ -719,6 +723,7 @@ export function MenuItemEditorDialog({
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDeleteGroup(group)}
+                              aria-label={`Delete ${group.name}`}
                               className="h-7 px-2 text-xs text-[#EF4444] hover:bg-red-50"
                             >
                               <Trash2 size={13} />
@@ -760,6 +765,7 @@ export function MenuItemEditorDialog({
                                         type="button"
                                         disabled={optIdx === 0}
                                         onClick={() => handleMoveOption(group, optIdx, 'up')}
+                                        aria-label={`Move ${opt.name} up`}
                                         className="p-0.5 text-[#9CA3AF] hover:text-[#111827] disabled:opacity-30"
                                       >
                                         <ChevronUp size={12} />
@@ -768,6 +774,7 @@ export function MenuItemEditorDialog({
                                         type="button"
                                         disabled={optIdx === (group.options?.length ?? 1) - 1}
                                         onClick={() => handleMoveOption(group, optIdx, 'down')}
+                                        aria-label={`Move ${opt.name} down`}
                                         className="p-0.5 text-[#9CA3AF] hover:text-[#111827] disabled:opacity-30"
                                       >
                                         <ChevronDown size={12} />
@@ -791,6 +798,7 @@ export function MenuItemEditorDialog({
                                       <Switch
                                         checked={opt.available}
                                         onCheckedChange={(val) => handleToggleOptionAvailable(group, opt, val)}
+                                        aria-label={`Toggle ${opt.name} availability`}
                                       />
                                     </div>
                                     <Button
@@ -798,6 +806,7 @@ export function MenuItemEditorDialog({
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => setEditingOption({ group, option: opt })}
+                                      aria-label={`Edit ${opt.name}`}
                                       className="h-6 px-1.5 text-[11px] text-[#6B7280] hover:text-[#111827]"
                                     >
                                       Edit
@@ -807,6 +816,7 @@ export function MenuItemEditorDialog({
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => handleDeleteOption(group, opt)}
+                                      aria-label={`Delete ${opt.name}`}
                                       className="h-6 px-1.5 text-[11px] text-[#EF4444] hover:bg-red-50"
                                     >
                                       <Trash2 size={12} />
@@ -877,8 +887,9 @@ export function MenuItemEditorDialog({
                             type="button"
                             disabled={index === 0}
                             onClick={() => handleMoveAddon(index, 'up')}
+                            aria-label={`Move ${addon.name} up`}
                             className="p-1 text-[#9CA3AF] hover:text-[#111827] disabled:opacity-30"
-                            title="Move Up"
+                            title={`Move ${addon.name} up`}
                           >
                             <ChevronUp size={14} />
                           </button>
@@ -886,8 +897,9 @@ export function MenuItemEditorDialog({
                             type="button"
                             disabled={index === addons.length - 1}
                             onClick={() => handleMoveAddon(index, 'down')}
+                            aria-label={`Move ${addon.name} down`}
                             className="p-1 text-[#9CA3AF] hover:text-[#111827] disabled:opacity-30"
-                            title="Move Down"
+                            title={`Move ${addon.name} down`}
                           >
                             <ChevronDown size={14} />
                           </button>
@@ -928,6 +940,7 @@ export function MenuItemEditorDialog({
                             variant="ghost"
                             size="sm"
                             onClick={() => setEditingAddon(addon)}
+                            aria-label={`Edit ${addon.name}`}
                             className="h-8 w-8 p-0 text-[#6B7280] hover:text-[#111827]"
                             title="Edit Add-on"
                           >
@@ -938,6 +951,7 @@ export function MenuItemEditorDialog({
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteAddon(addon)}
+                            aria-label={`Delete ${addon.name}`}
                             className="h-8 w-8 p-0 text-[#EF4444] hover:bg-[#FEE2E2] hover:text-[#DC2626]"
                             title="Delete Add-on"
                           >

@@ -29,6 +29,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { ImageField } from '@/components/ImageField';
 import { MenuItemEditorDialog } from '@/components/MenuItemEditorDialog';
+import { OrderItemSelections } from '@/components/OrderItemSelections';
 import { useAuth } from '@/context/AuthContext';
 import {
   AdminCategory, AdminInsights, AdminMenuItem, AdminOrder, AdminOrganization, AdminPromotion, AdminRestaurant, AdminWorkspace,
@@ -1478,28 +1479,7 @@ function OrderDetailDialog({ order, busy, onClose, onAdvance, onMarkPaid, onCanc
                     <div key={item.id} className="flex items-start justify-between gap-3 p-3.5 text-xs">
                       <div className="min-w-0">
                         <div className="font-semibold text-[#333333]">{item.quantity} × {item.menuItemName}</div>
-                        {item.modifiers && item.modifiers.length > 0 && (
-                          <div className="mt-1 space-y-0.5">
-                            {item.modifiers.map((mod) => (
-                              <div key={mod.id} className="flex items-center justify-between gap-3 text-[11px] text-[#6B7280]">
-                                <span>+ {mod.modifierOptionName} ({mod.modifierGroupName})</span>
-                                <span className="text-[#FF4500]">
-                                  {mod.priceDelta === 0 ? '+$0.00' : `+${formatCurrency(mod.priceDelta * item.quantity)}`}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {item.addons && item.addons.length > 0 && (
-                          <div className="mt-1 space-y-0.5">
-                            {item.addons.map((addon) => (
-                              <div key={addon.id} className="flex items-center justify-between gap-3 text-[11px] text-[#6B7280]">
-                                <span>+ {addon.addonName} ×{addon.quantity}</span>
-                                <span className="text-[#FF4500]">+{formatCurrency(addon.addonPrice * addon.quantity * item.quantity)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        <OrderItemSelections item={item} />
                         {item.specialInstructions && <div className="mt-1 text-[11px] italic text-[#9CA3AF]">&ldquo;{item.specialInstructions}&rdquo;</div>}
                       </div>
                       <div className="shrink-0 font-semibold text-[#333333]">{formatCurrency(item.menuItemPrice * item.quantity)}</div>
