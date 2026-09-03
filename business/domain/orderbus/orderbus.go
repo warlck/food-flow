@@ -115,7 +115,7 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		}
 
 		if menuItem.RestaurantID != restaurantID {
-			return Order{}, fmt.Errorf("menu item %s does not belong to restaurant %s", newItem.MenuItemID, no.RestaurantID)
+			return Order{}, fmt.Errorf("%w: menu item %s does not belong to restaurant %s", ErrMenuItemRestaurantMismatch, newItem.MenuItemID, no.RestaurantID)
 		}
 
 		if !menuItem.Available {
@@ -247,7 +247,7 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 			}
 
 			if seenAddonIDs[addonID] {
-				return Order{}, fmt.Errorf("duplicate addon ID %s", newAddon.AddonID)
+				return Order{}, fmt.Errorf("%w: %s", ErrDuplicateAddon, newAddon.AddonID)
 			}
 			seenAddonIDs[addonID] = true
 
@@ -257,7 +257,7 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 			}
 
 			if addon.RestaurantID != restaurantID {
-				return Order{}, fmt.Errorf("addon %s does not belong to restaurant %s", newAddon.AddonID, no.RestaurantID)
+				return Order{}, fmt.Errorf("%w: addon %s does not belong to restaurant %s", ErrAddonRestaurantMismatch, newAddon.AddonID, no.RestaurantID)
 			}
 
 			if !addon.Available {

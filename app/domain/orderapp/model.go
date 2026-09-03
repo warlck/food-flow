@@ -184,7 +184,7 @@ func ToAppOrders(orders []orderbus.Order) []Order {
 
 // NewOrder defines the data needed to add a new order.
 type NewOrder struct {
-	RestaurantID        string              `json:"restaurantId" validate:"required"`
+	RestaurantID        string              `json:"restaurantId" validate:"required,uuid"`
 	CustomerName        string              `json:"customerName" validate:"required"`
 	CustomerEmail       string              `json:"customerEmail" validate:"required,email"`
 	CustomerPhone       string              `json:"customerPhone" validate:"required"`
@@ -198,7 +198,7 @@ type NewOrder struct {
 
 // NewOrderItem defines the data needed to add an item to an order.
 type NewOrderItem struct {
-	MenuItemID          string                 `json:"menuItemId" validate:"required"`
+	MenuItemID          string                 `json:"menuItemId" validate:"required,uuid"`
 	Quantity            int                    `json:"quantity" validate:"required,min=1"`
 	SpecialInstructions string                 `json:"specialInstructions"`
 	Modifiers           []NewOrderItemModifier `json:"modifiers" validate:"omitempty,dive"`
@@ -213,7 +213,7 @@ type NewOrderItemModifier struct {
 
 // NewOrderItemAddon defines the data needed to add an addon to an order item.
 type NewOrderItemAddon struct {
-	AddonID  string `json:"addonId" validate:"required"`
+	AddonID  string `json:"addonId" validate:"required,uuid"`
 	Quantity int    `json:"quantity" validate:"required,min=1"`
 }
 

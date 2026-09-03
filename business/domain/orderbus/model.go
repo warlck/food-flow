@@ -27,9 +27,12 @@ var (
 	ErrModifierOptionUnavailable = errors.New("modifier option is unavailable")
 	ErrModifierGroupUnavailable  = errors.New("modifier group is unavailable")
 	ErrModifierSelectionLimit    = errors.New("modifier selection limit exceeded")
-	ErrAddonNotAssigned          = errors.New("addon is not assigned to menu item")
-	ErrAddonUnavailable          = errors.New("addon is unavailable")
-	ErrAddonQuantityOutOfRange   = errors.New("addon quantity out of range")
+	ErrAddonNotAssigned           = errors.New("addon is not assigned to menu item")
+	ErrAddonUnavailable           = errors.New("addon is unavailable")
+	ErrAddonQuantityOutOfRange    = errors.New("addon quantity out of range")
+	ErrDuplicateAddon             = errors.New("duplicate addon ID")
+	ErrMenuItemRestaurantMismatch = errors.New("menu item does not belong to restaurant")
+	ErrAddonRestaurantMismatch    = errors.New("addon does not belong to restaurant")
 )
 
 // Order statuses - lifecycle of an order
