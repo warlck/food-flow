@@ -21,6 +21,7 @@ var (
 	ErrInvalidReorder             = errors.New("invalid reorder set")
 	ErrCategoryNotFound           = errors.New("category not found")
 	ErrCategoryRestaurantMismatch = errors.New("category does not belong to restaurant")
+	ErrInvalidPrice               = errors.New("price must be greater than zero")
 )
 
 // Storer interface declares the behavior this package needs to persist and retrieve data.
@@ -59,6 +60,9 @@ func NewBusiness(log *logger.Logger, storer Storer, categoryStorer CategoryStore
 
 // Create adds a new menu item to the system.
 func (b *Business) Create(ctx context.Context, ni NewMenuItem) (MenuItem, error) {
+	if ni.Price.Value() <= 0 {
+		return MenuItem{}, ErrInvalidPrice
+	}
 	if ni.Rank != nil && *ni.Rank < 1 {
 		return MenuItem{}, fmt.Errorf("rank must be >= 1")
 	}
@@ -99,6 +103,9 @@ func (b *Business) Update(ctx context.Context, item MenuItem, ui UpdateMenuItem)
 		item.Description = *ui.Description
 	}
 	if ui.Price != nil {
+		if ui.Price.Value() <= 0 {
+			return MenuItem{}, ErrInvalidPrice
+		}
 		item.Price = *ui.Price
 	}
 	if ui.CategoryID != nil {

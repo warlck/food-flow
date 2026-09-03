@@ -432,6 +432,30 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				return ""
 			},
 		},
+		{
+			Name:    "zero-price",
+			ExpResp: menuitembus.ErrInvalidPrice,
+			ExcFunc: func(ctx context.Context) any {
+				_, err := busDomain.MenuItem.Create(ctx, menuitembus.NewMenuItem{
+					Name:         name.MustParse("Zero Price Item"),
+					Description:  "free item not allowed as menu base",
+					Price:        money.MustParse(0),
+					CategoryID:   sd.Categories[0].ID,
+					RestaurantID: sd.Restaurants[0].ID,
+				})
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return "expected an error"
+				}
+				if !errors.Is(gotErr, exp.(error)) {
+					return fmt.Sprintf("got %v, expected %v", gotErr, exp)
+				}
+				return ""
+			},
+		},
 	}
 
 	return table
@@ -565,6 +589,27 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			ExcFunc: func(ctx context.Context) any {
 				_, err := busDomain.MenuItem.Update(ctx, sd.MenuItems[0].MenuItem, menuitembus.UpdateMenuItem{
 					CategoryID: &sd.Categories[2].ID,
+				})
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return "expected an error"
+				}
+				if !errors.Is(gotErr, exp.(error)) {
+					return fmt.Sprintf("got %v, expected %v", gotErr, exp)
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "zero-price",
+			ExpResp: menuitembus.ErrInvalidPrice,
+			ExcFunc: func(ctx context.Context) any {
+				zeroPrice := money.MustParse(0)
+				_, err := busDomain.MenuItem.Update(ctx, sd.MenuItems[0].MenuItem, menuitembus.UpdateMenuItem{
+					Price: &zeroPrice,
 				})
 				return err
 			},
