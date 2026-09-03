@@ -55,7 +55,6 @@ export interface ApiCategory {
   enabled: boolean;
   rank?: number | null;
   menuItems?: ApiMenuItem[];
-  mentuItems?: ApiMenuItem[];
 }
 
 export interface ApiDaySchedule {

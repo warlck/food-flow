@@ -67,7 +67,7 @@ export function transformApiMenuItems(
     if (category.enabled) {
       categoriesSet.add(category.name);
       
-      const categoryItems = category.menuItems ?? category.mentuItems ?? [];
+      const categoryItems = category.menuItems ?? [];
       categoryItems.forEach((apiItem: ApiMenuItem) => {
         // Transform modifier groups if they exist
         const modifierGroups: ModifierGroup[] = apiItem.modifierGroups?.map((mg: ApiModifierGroup) => ({
