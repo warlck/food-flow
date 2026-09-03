@@ -40,6 +40,26 @@ func query200(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(got, exp)
 			},
 		},
+		{
+			Name:       "by-rank",
+			URL:        fmt.Sprintf("/v1/categories?page=1&rows=100&orderBy=rank,ASC&restaurant_id=%s", sd.Restaurants[0].ID),
+			Token:      sd.Admins[0].Token,
+			StatusCode: http.StatusOK,
+			Method:     http.MethodGet,
+			GotResp:    &query.Result[categoryapi.Category]{},
+			ExpResp: &query.Result[categoryapi.Category]{
+				Page:        1,
+				RowsPerPage: 100,
+				Total:       2,
+				Items: []categoryapi.Category{
+					toAppCategory(sd.Categories[0].Category),
+					toAppCategory(sd.Categories[1].Category),
+				},
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
 	}
 
 	return table
