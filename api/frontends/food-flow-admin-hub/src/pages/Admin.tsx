@@ -1042,7 +1042,7 @@ function SetupGuide({ restaurant, categoryCount, itemCount }: { restaurant: Admi
   );
 }
 
-function CategoryRail({
+export function CategoryRail({
   categories,
   counts,
   total,
@@ -1072,10 +1072,14 @@ function CategoryRail({
     <aside className="w-full border-b border-[#E5E7EB] bg-[#FAFAFA] lg:w-[240px] lg:shrink-0 lg:border-b-0 lg:border-r">
       <div className="flex items-center justify-between px-4 pb-2 pt-4">
         <span className="text-[10px] font-bold uppercase tracking-[.13em] text-[#9CA3AF]">Categories</span>
-        <div className="flex items-center gap-1">
-          <button onClick={() => onAddItem(selected !== 'all' ? selected : undefined)} className="flex h-6 items-center gap-1 rounded-md px-1.5 text-[11px] font-semibold text-[#FF4500] hover:bg-[#FFF1EB]" title="Add menu item" aria-label="Add menu item"><Plus size={13} /> Item</button>
-          <button onClick={onAdd} className="flex h-6 w-6 items-center justify-center rounded-md text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#111827]" title="Add category" aria-label="Add category"><Plus size={14} /></button>
-        </div>
+        <button
+          onClick={onAdd}
+          className="flex h-6 items-center gap-1 rounded-md px-1.5 text-[11px] font-semibold text-[#FF4500] hover:bg-[#FFF1EB]"
+          title="Add category"
+          aria-label="Add category"
+        >
+          <Plus size={13} /> Category
+        </button>
       </div>
       <div className="flex gap-1 overflow-x-auto px-2 pb-3 lg:block lg:space-y-0.5 lg:overflow-visible lg:pb-5">
         <button onClick={() => onSelect('all')} className={`admin-category-button flex min-w-fit items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] font-semibold lg:w-full ${selected === 'all' ? 'active' : ''}`}>
