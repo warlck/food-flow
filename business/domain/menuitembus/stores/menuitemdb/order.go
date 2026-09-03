@@ -21,5 +21,9 @@ func orderByClause(orderBy order.By) (string, error) {
 		return "", fmt.Errorf("field %q does not exist", orderBy.Field)
 	}
 
+	if orderBy.Field == menuitembus.OrderByRank {
+		return fmt.Sprintf(" ORDER BY rank %s NULLS LAST, price ASC, name ASC, menu_item_id ASC", orderBy.Direction), nil
+	}
+
 	return " ORDER BY " + by + " " + orderBy.Direction, nil
 }

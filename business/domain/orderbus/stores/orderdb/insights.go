@@ -13,14 +13,12 @@ import (
 	"github.com/warlck/food-flow/business/types/money"
 )
 
-func toSafeMoney(val float64) money.Money {
-	if val < 0 || math.IsNaN(val) || math.IsInf(val, 0) {
-		val = 0
-	}
-	if val > 1_000_000_000 {
-		val = 1_000_000_000
-	}
-	return money.MustParse(math.Round(val*100) / 100)
+// toMoney converts a SQL aggregate into a money value, rounding to two
+// decimal places. It never clamps: an aggregate that is negative,
+// non-finite, or above the maximum supported amount returns an error the
+// caller must propagate.
+func toMoney(val float64) (money.Money, error) {
+	return money.Parse(math.Round(val*100) / 100)
 }
 
 // applyInsightsFilter appends WHERE constraints for insights queries.
@@ -102,17 +100,46 @@ func (s *Store) QuerySalesSummary(ctx context.Context, filter orderbus.InsightsF
 		aov = row.TotalCollected / float64(validOrders)
 	}
 
+	grossSales, err := toMoney(row.GrossSales)
+	if err != nil {
+		return orderbus.SalesSummary{}, fmt.Errorf("gross sales: %w", err)
+	}
+	netSales, err := toMoney(row.NetSales)
+	if err != nil {
+		return orderbus.SalesSummary{}, fmt.Errorf("net sales: %w", err)
+	}
+	averageOrderValue, err := toMoney(aov)
+	if err != nil {
+		return orderbus.SalesSummary{}, fmt.Errorf("average order value: %w", err)
+	}
+	totalDiscounts, err := toMoney(row.TotalDiscounts)
+	if err != nil {
+		return orderbus.SalesSummary{}, fmt.Errorf("total discounts: %w", err)
+	}
+	totalDeliveryFees, err := toMoney(row.TotalDeliveryFees)
+	if err != nil {
+		return orderbus.SalesSummary{}, fmt.Errorf("total delivery fees: %w", err)
+	}
+	totalTax, err := toMoney(row.TotalTax)
+	if err != nil {
+		return orderbus.SalesSummary{}, fmt.Errorf("total tax: %w", err)
+	}
+	totalCollected, err := toMoney(row.TotalCollected)
+	if err != nil {
+		return orderbus.SalesSummary{}, fmt.Errorf("total collected: %w", err)
+	}
+
 	return orderbus.SalesSummary{
-		GrossSales:        toSafeMoney(row.GrossSales),
-		NetSales:          toSafeMoney(row.NetSales),
+		GrossSales:        grossSales,
+		NetSales:          netSales,
 		TotalOrders:       row.TotalOrders,
 		CompletedOrders:   row.CompletedOrders,
 		CancelledOrders:   row.CancelledOrders,
-		AverageOrderValue: toSafeMoney(aov),
-		TotalDiscounts:    toSafeMoney(row.TotalDiscounts),
-		TotalDeliveryFees: toSafeMoney(row.TotalDeliveryFees),
-		TotalTax:          toSafeMoney(row.TotalTax),
-		TotalCollected:    toSafeMoney(row.TotalCollected),
+		AverageOrderValue: averageOrderValue,
+		TotalDiscounts:    totalDiscounts,
+		TotalDeliveryFees: totalDeliveryFees,
+		TotalTax:          totalTax,
+		TotalCollected:    totalCollected,
 	}, nil
 }
 
@@ -152,13 +179,29 @@ func (s *Store) QuerySalesOverTime(ctx context.Context, filter orderbus.Insights
 		if r.OrderCount > 0 {
 			aov = r.TotalCollected / float64(r.OrderCount)
 		}
+		grossSales, err := toMoney(r.GrossSales)
+		if err != nil {
+			return nil, fmt.Errorf("gross sales for %s: %w", r.Date, err)
+		}
+		netSales, err := toMoney(r.NetSales)
+		if err != nil {
+			return nil, fmt.Errorf("net sales for %s: %w", r.Date, err)
+		}
+		totalCollected, err := toMoney(r.TotalCollected)
+		if err != nil {
+			return nil, fmt.Errorf("total collected for %s: %w", r.Date, err)
+		}
+		averageOrder, err := toMoney(aov)
+		if err != nil {
+			return nil, fmt.Errorf("average order for %s: %w", r.Date, err)
+		}
 		points[i] = orderbus.TimeSeriesPoint{
 			Date:           r.Date,
-			GrossSales:     toSafeMoney(r.GrossSales),
-			NetSales:       toSafeMoney(r.NetSales),
-			TotalCollected: toSafeMoney(r.TotalCollected),
+			GrossSales:     grossSales,
+			NetSales:       netSales,
+			TotalCollected: totalCollected,
 			OrderCount:     r.OrderCount,
-			AverageOrder:   toSafeMoney(aov),
+			AverageOrder:   averageOrder,
 		}
 	}
 
@@ -172,23 +215,49 @@ func (s *Store) QueryTopItemSales(ctx context.Context, filter orderbus.InsightsF
 	}
 
 	const q = `
+	WITH item_modifiers AS (
+		SELECT
+			order_item_id,
+			COALESCE(SUM(price_delta), 0) AS mod_total
+		FROM
+			order_item_modifiers
+		GROUP BY
+			order_item_id
+	),
+	item_addons AS (
+		SELECT
+			order_item_id,
+			COALESCE(SUM(addon_price * quantity), 0) AS addon_total
+		FROM
+			order_item_addons
+		GROUP BY
+			order_item_id
+	)
 	SELECT
 		oi.menu_item_id,
 		oi.menu_item_name,
+		oi.category_id,
+		oi.category_name,
 		COALESCE(SUM(oi.quantity), 0) AS quantity_sold,
-		COALESCE(SUM(oi.menu_item_price * oi.quantity), 0) AS total_revenue
+		COALESCE(SUM(oi.quantity * (oi.menu_item_price + COALESCE(im.mod_total, 0) + COALESCE(ia.addon_total, 0))), 0) AS total_revenue
 	FROM
 		order_items AS oi
 	JOIN
-		orders AS o ON o.order_id = oi.order_id`
+		orders AS o ON o.order_id = oi.order_id
+	LEFT JOIN
+		item_modifiers AS im ON im.order_item_id = oi.order_item_id
+	LEFT JOIN
+		item_addons AS ia ON ia.order_item_id = oi.order_item_id`
 
 	buf := bytes.NewBufferString(q)
 	s.applyInsightsFilter(filter, data, buf, "o.", true)
-	buf.WriteString(" GROUP BY oi.menu_item_id, oi.menu_item_name ORDER BY total_revenue DESC LIMIT :insights_limit")
+	buf.WriteString(" GROUP BY oi.menu_item_id, oi.menu_item_name, oi.category_id, oi.category_name ORDER BY total_revenue DESC LIMIT :insights_limit")
 
 	var rows []struct {
 		MenuItemID   uuid.UUID `db:"menu_item_id"`
 		MenuItemName string    `db:"menu_item_name"`
+		CategoryID   uuid.UUID `db:"category_id"`
+		CategoryName string    `db:"category_name"`
 		QuantitySold int       `db:"quantity_sold"`
 		TotalRevenue float64   `db:"total_revenue"`
 	}
@@ -199,11 +268,17 @@ func (s *Store) QueryTopItemSales(ctx context.Context, filter orderbus.InsightsF
 
 	items := make([]orderbus.ItemSalesMetric, len(rows))
 	for i, r := range rows {
+		totalRevenue, err := toMoney(r.TotalRevenue)
+		if err != nil {
+			return nil, fmt.Errorf("total revenue for item %s: %w", r.MenuItemID, err)
+		}
 		items[i] = orderbus.ItemSalesMetric{
 			MenuItemID:   r.MenuItemID,
 			MenuItemName: r.MenuItemName,
+			CategoryID:   r.CategoryID,
+			CategoryName: r.CategoryName,
 			QuantitySold: r.QuantitySold,
-			TotalRevenue: toSafeMoney(r.TotalRevenue),
+			TotalRevenue: totalRevenue,
 		}
 	}
 
@@ -215,23 +290,49 @@ func (s *Store) QueryAllItemSales(ctx context.Context, filter orderbus.InsightsF
 	data := map[string]any{}
 
 	const q = `
+	WITH item_modifiers AS (
+		SELECT
+			order_item_id,
+			COALESCE(SUM(price_delta), 0) AS mod_total
+		FROM
+			order_item_modifiers
+		GROUP BY
+			order_item_id
+	),
+	item_addons AS (
+		SELECT
+			order_item_id,
+			COALESCE(SUM(addon_price * quantity), 0) AS addon_total
+		FROM
+			order_item_addons
+		GROUP BY
+			order_item_id
+	)
 	SELECT
 		oi.menu_item_id,
 		oi.menu_item_name,
+		oi.category_id,
+		oi.category_name,
 		COALESCE(SUM(oi.quantity), 0) AS quantity_sold,
-		COALESCE(SUM(oi.menu_item_price * oi.quantity), 0) AS total_revenue
+		COALESCE(SUM(oi.quantity * (oi.menu_item_price + COALESCE(im.mod_total, 0) + COALESCE(ia.addon_total, 0))), 0) AS total_revenue
 	FROM
 		order_items AS oi
 	JOIN
-		orders AS o ON o.order_id = oi.order_id`
+		orders AS o ON o.order_id = oi.order_id
+	LEFT JOIN
+		item_modifiers AS im ON im.order_item_id = oi.order_item_id
+	LEFT JOIN
+		item_addons AS ia ON ia.order_item_id = oi.order_item_id`
 
 	buf := bytes.NewBufferString(q)
 	s.applyInsightsFilter(filter, data, buf, "o.", true)
-	buf.WriteString(" GROUP BY oi.menu_item_id, oi.menu_item_name ORDER BY total_revenue DESC")
+	buf.WriteString(" GROUP BY oi.menu_item_id, oi.menu_item_name, oi.category_id, oi.category_name ORDER BY total_revenue DESC")
 
 	var rows []struct {
 		MenuItemID   uuid.UUID `db:"menu_item_id"`
 		MenuItemName string    `db:"menu_item_name"`
+		CategoryID   uuid.UUID `db:"category_id"`
+		CategoryName string    `db:"category_name"`
 		QuantitySold int       `db:"quantity_sold"`
 		TotalRevenue float64   `db:"total_revenue"`
 	}
@@ -242,11 +343,17 @@ func (s *Store) QueryAllItemSales(ctx context.Context, filter orderbus.InsightsF
 
 	items := make([]orderbus.ItemSalesMetric, len(rows))
 	for i, r := range rows {
+		totalRevenue, err := toMoney(r.TotalRevenue)
+		if err != nil {
+			return nil, fmt.Errorf("total revenue for item %s: %w", r.MenuItemID, err)
+		}
 		items[i] = orderbus.ItemSalesMetric{
 			MenuItemID:   r.MenuItemID,
 			MenuItemName: r.MenuItemName,
+			CategoryID:   r.CategoryID,
+			CategoryName: r.CategoryName,
 			QuantitySold: r.QuantitySold,
-			TotalRevenue: toSafeMoney(r.TotalRevenue),
+			TotalRevenue: totalRevenue,
 		}
 	}
 
@@ -289,11 +396,15 @@ func (s *Store) QueryTopAddonSales(ctx context.Context, filter orderbus.Insights
 
 	addons := make([]orderbus.TopAddonMetric, len(rows))
 	for i, r := range rows {
+		totalRevenue, err := toMoney(r.TotalRevenue)
+		if err != nil {
+			return nil, fmt.Errorf("total revenue for addon %s: %w", r.AddonID, err)
+		}
 		addons[i] = orderbus.TopAddonMetric{
 			AddonID:      r.AddonID,
 			AddonName:    r.AddonName,
 			QuantitySold: r.QuantitySold,
-			TotalRevenue: toSafeMoney(r.TotalRevenue),
+			TotalRevenue: totalRevenue,
 		}
 	}
 
@@ -337,10 +448,14 @@ func (s *Store) QueryOrderTypes(ctx context.Context, filter orderbus.InsightsFil
 		if sumCount > 0 {
 			pct = (float64(r.Count) / float64(sumCount)) * 100
 		}
+		totalRevenue, err := toMoney(r.TotalRevenue)
+		if err != nil {
+			return nil, fmt.Errorf("total revenue for %s orders: %w", r.OrderType, err)
+		}
 		types[i] = orderbus.OrderTypeMetric{
 			OrderType:    r.OrderType,
 			Count:        r.Count,
-			TotalRevenue: toSafeMoney(r.TotalRevenue),
+			TotalRevenue: totalRevenue,
 			Percentage:   pct,
 		}
 	}
@@ -376,10 +491,14 @@ func (s *Store) QueryPeakHours(ctx context.Context, filter orderbus.InsightsFilt
 
 	hours := make([]orderbus.HourlyMetric, len(rows))
 	for i, r := range rows {
+		totalRevenue, err := toMoney(r.TotalRevenue)
+		if err != nil {
+			return nil, fmt.Errorf("total revenue for hour %d: %w", r.Hour, err)
+		}
 		hours[i] = orderbus.HourlyMetric{
 			Hour:         r.Hour,
 			Count:        r.Count,
-			TotalRevenue: toSafeMoney(r.TotalRevenue),
+			TotalRevenue: totalRevenue,
 		}
 	}
 

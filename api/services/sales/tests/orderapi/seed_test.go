@@ -132,7 +132,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	// -------------------------------------------------------------------------
 	// Create addons
 
-	addons, err := addonbus.TestSeedAddons(ctx, 2, categories[0].ID, restaurants[0].ID, busDomain.Addon)
+	addons, err := addonbus.TestSeedAddons(ctx, 2, menuItems[0].ID, restaurants[0].ID, busDomain.Addon)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding addons: %w", err)
 	}

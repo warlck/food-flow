@@ -58,6 +58,11 @@ func (a *app) create(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	item, err := a.menuItemBus.Create(ctx, nb)
 	if err != nil {
+		if errors.Is(err, menuitembus.ErrCategoryNotFound) ||
+			errors.Is(err, menuitembus.ErrCategoryRestaurantMismatch) ||
+			errors.Is(err, menuitembus.ErrInvalidPrice) {
+			return errs.New(errs.InvalidArgument, err)
+		}
 		return fmt.Errorf("create: menuItem[%+v]: %w", item, err)
 	}
 
@@ -152,6 +157,11 @@ func (a *app) update(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	updItem, err := a.menuItemBus.Update(ctx, item, ub)
 	if err != nil {
+		if errors.Is(err, menuitembus.ErrCategoryNotFound) ||
+			errors.Is(err, menuitembus.ErrCategoryRestaurantMismatch) ||
+			errors.Is(err, menuitembus.ErrInvalidPrice) {
+			return errs.New(errs.InvalidArgument, err)
+		}
 		return errs.Newf(errs.Internal, "update: menuItemID[%s] ub[%+v]: %s", menuItemID, ub, err)
 	}
 
@@ -224,17 +234,13 @@ func (a *app) reorder(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		orderedIDs[i] = id
 	}
 
-	if err := a.menuItemBus.Reorder(ctx, categoryID, orderedIDs); err != nil {
-		if errors.Is(err, menuitembus.ErrInvalidOrder) {
+	reordered, err := a.menuItemBus.Reorder(ctx, categoryID, orderedIDs)
+	if err != nil {
+		if errors.Is(err, menuitembus.ErrInvalidReorder) || errors.Is(err, menuitembus.ErrInvalidOrder) {
 			return errs.New(errs.InvalidArgument, err)
 		}
 		return errs.Newf(errs.Internal, "reorder: %s", err)
 	}
 
-	items, err := a.menuItemBus.QueryByCategoryID(ctx, categoryID)
-	if err != nil {
-		return errs.Newf(errs.Internal, "query reordered menu items: categoryID[%s]: %s", categoryID, err)
-	}
-
-	return web.Respond(ctx, w, ToAppMenuItems(items), http.StatusOK)
+	return web.Respond(ctx, w, ToAppMenuItems(reordered), http.StatusOK)
 }

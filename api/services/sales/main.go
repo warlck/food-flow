@@ -26,6 +26,10 @@ import (
 	"github.com/warlck/food-flow/business/domain/imagebus/stores/imagedb"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/menuitembus/stores/menuitemdb"
+	"github.com/warlck/food-flow/business/domain/modifiergroupbus"
+	"github.com/warlck/food-flow/business/domain/modifiergroupbus/stores/modifiergroupdb"
+	"github.com/warlck/food-flow/business/domain/modifieroptionbus"
+	"github.com/warlck/food-flow/business/domain/modifieroptionbus/stores/modifieroptiondb"
 	"github.com/warlck/food-flow/business/domain/orderbus"
 	"github.com/warlck/food-flow/business/domain/orderbus/stores/orderdb"
 	"github.com/warlck/food-flow/business/domain/organizationbus"
@@ -211,7 +215,13 @@ func run(ctx context.Context, log *logger.Logger) error {
 	categoryBus := categorybus.NewBusiness(log, categorystore)
 
 	menuitemstore := menuitemdb.NewStore(log, db)
-	menuitemBus := menuitembus.NewBusiness(log, menuitemstore)
+	menuitemBus := menuitembus.NewBusiness(log, menuitemstore, categoryBus)
+
+	modifiergroupstore := modifiergroupdb.NewStore(log, db)
+	modifieroptionstore := modifieroptiondb.NewStore(log, db)
+
+	modifiergroupBus := modifiergroupbus.NewBusiness(log, modifiergroupstore, modifieroptionstore)
+	modifieroptionBus := modifieroptionbus.NewBusiness(log, modifieroptionstore, modifiergroupstore)
 
 	addonstore := addondb.NewStore(log, db)
 	addonBus := addonbus.NewBusiness(log, addonstore)
@@ -220,7 +230,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 	promoBus := promobus.NewBusiness(log, promostore)
 
 	orderstore := orderdb.NewStore(log, db)
-	orderBus := orderbus.NewBusiness(log, orderstore, menuitemBus, restaurantBus, addonBus, promoBus)
+	orderBus := orderbus.NewBusiness(log, orderstore, menuitemBus, restaurantBus, addonBus, promoBus, categoryBus, modifiergroupBus, modifieroptionBus)
 
 	// -------------------------------------------------------------------------
 	// Image upload support
@@ -295,6 +305,8 @@ func run(ctx context.Context, log *logger.Logger) error {
 				RestaurantBus:       restaurantBus,
 				CategoryBus:         categoryBus,
 				MenuItemBus:         menuitemBus,
+				ModifierGroupBus:    modifiergroupBus,
+				ModifierOptionBus:   modifieroptionBus,
 				OrderBus:            orderBus,
 				AddonBus:            addonBus,
 				PromoBus:            promoBus,

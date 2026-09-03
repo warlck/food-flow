@@ -468,6 +468,18 @@ const OrderTracking: React.FC = () => {
                           <p className="font-medium text-white text-sm">
                             {item.quantity}x {item.menuItemName}
                           </p>
+                          {item.modifiers && item.modifiers.length > 0 && (
+                            <div className="ml-6 mt-1 space-y-0.5">
+                              {item.modifiers.map((mod) => (
+                                <div key={mod.id} className="flex justify-between text-xs text-gray-400">
+                                  <span>+ {mod.modifierOptionName} ({mod.modifierGroupName})</span>
+                                  <span className="text-food-primary">
+                                    {mod.priceDelta === 0 ? '+$0.00' : `+$${(mod.priceDelta * item.quantity).toFixed(2)}`}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                           {item.addons && item.addons.length > 0 && (
                             <div className="ml-6 mt-1 space-y-0.5">
                               {item.addons.map((addon) => (

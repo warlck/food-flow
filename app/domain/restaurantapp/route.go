@@ -9,6 +9,8 @@ import (
 	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
+	"github.com/warlck/food-flow/business/domain/modifiergroupbus"
+	"github.com/warlck/food-flow/business/domain/modifieroptionbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/foundation/logger"
 	"github.com/warlck/food-flow/foundation/web"
@@ -16,13 +18,15 @@ import (
 
 // Config contains all the mandatory systems required by handlers.
 type Config struct {
-	Build         string
-	Log           *logger.Logger
-	AuthClient    *authclient.Client
-	RestaurantBus *restaurantbus.Business
-	CategoryBus   *categorybus.Business
-	MenuItemBus   *menuitembus.Business
-	AddonBus      *addonbus.Business
+	Build             string
+	Log               *logger.Logger
+	AuthClient        *authclient.Client
+	RestaurantBus     *restaurantbus.Business
+	CategoryBus       *categorybus.Business
+	MenuItemBus       *menuitembus.Business
+	ModifierGroupBus  *modifiergroupbus.Business
+	ModifierOptionBus *modifieroptionbus.Business
+	AddonBus          *addonbus.Business
 }
 
 // Routes adds specific routes for this group.
@@ -32,7 +36,7 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 	ruleAdmin := mid.Authorize(cfg.AuthClient, auth.RuleAdminOnly)
 
-	api := newApp(cfg.RestaurantBus, cfg.CategoryBus, cfg.MenuItemBus, cfg.AddonBus)
+	api := newApp(cfg.RestaurantBus, cfg.CategoryBus, cfg.MenuItemBus, cfg.ModifierGroupBus, cfg.ModifierOptionBus, cfg.AddonBus)
 	app.HandleFunc(http.MethodGet, version, "/restaurants", api.query, authen)
 	app.HandleFunc(http.MethodGet, version, "/restaurants/{restaurant_id}", api.queryByID, authen)
 	app.HandleFunc(http.MethodGet, version, "/restaurants/{restaurant_id}/details", api.queryByIDWithDetails)

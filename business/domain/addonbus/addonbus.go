@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,21 +15,21 @@ import (
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound     = errors.New("addon not found")
-	ErrInvalidOrder = errors.New("invalid addon order")
+	ErrNotFound       = errors.New("addon not found")
+	ErrInvalidReorder = errors.New("invalid reorder set")
+	ErrDuplicateName  = errors.New("addon name already exists for this menu item")
 )
 
-// Storer interface declares the behavior this package needs to persist and
-// retrieve data.
+// Storer interface declares the behavior this package needs to persist and retrieve data.
 type Storer interface {
 	Create(ctx context.Context, addon Addon) error
 	Update(ctx context.Context, addon Addon) error
 	Delete(ctx context.Context, addon Addon) error
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]Addon, error)
+	QueryAll(ctx context.Context, filter QueryFilter, orderBy order.By) ([]Addon, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, addonID uuid.UUID) (Addon, error)
-	QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]Addon, error)
-	Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) error
+	Reorder(ctx context.Context, menuItemID uuid.UUID, addonIDs []uuid.UUID) error
 }
 
 // Business manages the set of APIs for addon access.
@@ -45,23 +46,50 @@ func NewBusiness(log *logger.Logger, storer Storer) *Business {
 	}
 }
 
-// Create adds a new addon to the system.
+// Create adds a new addon to the menu item.
 func (b *Business) Create(ctx context.Context, na NewAddon) (Addon, error) {
-	now := time.Now()
+	if na.Price.Value() < 0 {
+		return Addon{}, fmt.Errorf("price must be >= 0")
+	}
 
 	maxQty := na.MaxQuantity
 	if maxQty <= 0 {
-		maxQty = 10 // default max quantity
+		maxQty = 10
 	}
+
+	available := true
+	if na.Available != nil {
+		available = *na.Available
+	}
+
+	if na.Rank != nil && *na.Rank < 1 {
+		return Addon{}, fmt.Errorf("rank must be >= 1")
+	}
+
+	// Check duplicate name within the menu item
+	existing, err := b.storer.QueryAll(ctx, QueryFilter{
+		MenuItemID: &na.MenuItemID,
+		Name:       &na.Name,
+	}, DefaultOrderBy)
+	if err != nil {
+		return Addon{}, fmt.Errorf("checking duplicate name: %w", err)
+	}
+	for _, a := range existing {
+		if strings.EqualFold(a.Name.String(), na.Name.String()) {
+			return Addon{}, ErrDuplicateName
+		}
+	}
+
+	now := time.Now()
 
 	addon := Addon{
 		ID:           uuid.New(),
-		CategoryID:   na.CategoryID,
+		MenuItemID:   na.MenuItemID,
 		RestaurantID: na.RestaurantID,
 		Name:         na.Name,
 		Description:  na.Description,
 		Price:        na.Price,
-		Available:    true,
+		Available:    available,
 		MaxQuantity:  maxQty,
 		Rank:         na.Rank,
 		DateCreated:  now,
@@ -78,6 +106,20 @@ func (b *Business) Create(ctx context.Context, na NewAddon) (Addon, error) {
 // Update modifies information about an addon.
 func (b *Business) Update(ctx context.Context, addon Addon, ua UpdateAddon) (Addon, error) {
 	if ua.Name != nil {
+		if !strings.EqualFold(ua.Name.String(), addon.Name.String()) {
+			existing, err := b.storer.QueryAll(ctx, QueryFilter{
+				MenuItemID: &addon.MenuItemID,
+				Name:       ua.Name,
+			}, DefaultOrderBy)
+			if err != nil {
+				return Addon{}, fmt.Errorf("checking duplicate name: %w", err)
+			}
+			for _, a := range existing {
+				if a.ID != addon.ID && strings.EqualFold(a.Name.String(), ua.Name.String()) {
+					return Addon{}, ErrDuplicateName
+				}
+			}
+		}
 		addon.Name = *ua.Name
 	}
 
@@ -86,6 +128,9 @@ func (b *Business) Update(ctx context.Context, addon Addon, ua UpdateAddon) (Add
 	}
 
 	if ua.Price != nil {
+		if ua.Price.Value() < 0 {
+			return Addon{}, fmt.Errorf("price must be >= 0")
+		}
 		addon.Price = *ua.Price
 	}
 
@@ -94,11 +139,17 @@ func (b *Business) Update(ctx context.Context, addon Addon, ua UpdateAddon) (Add
 	}
 
 	if ua.MaxQuantity != nil {
+		if *ua.MaxQuantity <= 0 {
+			return Addon{}, fmt.Errorf("max_quantity must be >= 1")
+		}
 		addon.MaxQuantity = *ua.MaxQuantity
 	}
 
-	if ua.Rank != nil {
-		addon.Rank = ua.Rank
+	if ua.Rank.Present {
+		if ua.Rank.Value != nil && *ua.Rank.Value < 1 {
+			return Addon{}, fmt.Errorf("rank must be >= 1")
+		}
+		addon.Rank = ua.Rank.Value
 	}
 
 	addon.DateUpdated = time.Now()
@@ -129,6 +180,16 @@ func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.
 	return addons, nil
 }
 
+// QueryAll retrieves all addons matching the filter without pagination.
+func (b *Business) QueryAll(ctx context.Context, filter QueryFilter, orderBy order.By) ([]Addon, error) {
+	addons, err := b.storer.QueryAll(ctx, filter, orderBy)
+	if err != nil {
+		return nil, fmt.Errorf("queryall: %w", err)
+	}
+
+	return addons, nil
+}
+
 // Count returns the total number of addons.
 func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
 	return b.storer.Count(ctx, filter)
@@ -144,42 +205,47 @@ func (b *Business) QueryByID(ctx context.Context, addonID uuid.UUID) (Addon, err
 	return addon, nil
 }
 
-// QueryByCategoryID finds all addons for a specific category.
-func (b *Business) QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]Addon, error) {
-	addons, err := b.storer.QueryByCategoryID(ctx, categoryID)
-	if err != nil {
-		return nil, fmt.Errorf("query: categoryID[%s]: %w", categoryID, err)
+// Reorder updates the ranks of addons on a menu item in a transaction.
+func (b *Business) Reorder(ctx context.Context, menuItemID uuid.UUID, orderedAddonIDs []uuid.UUID) ([]Addon, error) {
+	if len(orderedAddonIDs) == 0 {
+		return nil, fmt.Errorf("%w: ordered IDs cannot be empty", ErrInvalidReorder)
 	}
 
-	return addons, nil
-}
-
-// Reorder updates the display rank of all addons in a category.
-func (b *Business) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) error {
-	addons, err := b.storer.QueryByCategoryID(ctx, categoryID)
-	if err != nil {
-		return fmt.Errorf("query category addons: %w", err)
-	}
-
-	if len(addons) != len(orderedIDs) {
-		return fmt.Errorf("%w: orderedIds must contain all addons in the category exactly once", ErrInvalidOrder)
-	}
-
-	addonMap := make(map[uuid.UUID]bool, len(addons))
-	for _, a := range addons {
-		addonMap[a.ID] = true
-	}
-
-	for _, id := range orderedIDs {
-		if !addonMap[id] {
-			return fmt.Errorf("%w: orderedIds contains invalid or duplicate addon id", ErrInvalidOrder)
+	seen := make(map[uuid.UUID]bool, len(orderedAddonIDs))
+	for _, id := range orderedAddonIDs {
+		if seen[id] {
+			return nil, fmt.Errorf("%w: duplicate addon id %s", ErrInvalidReorder, id)
 		}
-		delete(addonMap, id)
+		seen[id] = true
 	}
 
-	if err := b.storer.Reorder(ctx, categoryID, orderedIDs); err != nil {
-		return fmt.Errorf("reorder: %w", err)
+	existing, err := b.storer.QueryAll(ctx, QueryFilter{
+		MenuItemID: &menuItemID,
+	}, DefaultOrderBy)
+	if err != nil {
+		return nil, fmt.Errorf("query addons for reorder: %w", err)
 	}
 
-	return nil
+	if len(existing) != len(orderedAddonIDs) {
+		return nil, fmt.Errorf("%w: exact set mismatch: expected %d addons, got %d", ErrInvalidReorder, len(existing), len(orderedAddonIDs))
+	}
+
+	existingMap := make(map[uuid.UUID]Addon, len(existing))
+	for _, a := range existing {
+		existingMap[a.ID] = a
+	}
+
+	for _, id := range orderedAddonIDs {
+		if _, exists := existingMap[id]; !exists {
+			return nil, fmt.Errorf("%w: addon id %s does not belong to menu item %s", ErrInvalidReorder, id, menuItemID)
+		}
+	}
+
+	if err := b.storer.Reorder(ctx, menuItemID, orderedAddonIDs); err != nil {
+		return nil, fmt.Errorf("reorder addons: %w", err)
+	}
+
+	return b.storer.QueryAll(ctx, QueryFilter{
+		MenuItemID: &menuItemID,
+	}, DefaultOrderBy)
 }

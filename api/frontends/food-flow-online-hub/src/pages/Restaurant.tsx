@@ -77,7 +77,7 @@ const Menu: React.FC = () => {
           <ScrollArea className="flex-1 pr-3" style={{ height: 'calc(100vh - 240px)' }}>
             <div className="space-y-0">
               {items.map((item) => (
-                <CartItemComponent key={item.menuItem.id} item={item} />
+                <CartItemComponent key={item.cartItemId} item={item} />
               ))}
             </div>
           </ScrollArea>

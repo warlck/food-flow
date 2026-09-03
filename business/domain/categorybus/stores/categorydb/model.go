@@ -15,6 +15,7 @@ type category struct {
 	Description  string    `db:"description"`
 	RestaurantID uuid.UUID `db:"restaurant_id"`
 	Enabled      bool      `db:"enabled"`
+	Rank         *int      `db:"rank"`
 	DateCreated  time.Time `db:"date_created"`
 	DateUpdated  time.Time `db:"date_updated"`
 }
@@ -26,6 +27,7 @@ func toDBCategory(bus categorybus.Category) category {
 		Description:  bus.Description,
 		RestaurantID: bus.RestaurantID,
 		Enabled:      bus.Enabled,
+		Rank:         bus.Rank,
 		DateCreated:  bus.DateCreated.UTC(),
 		DateUpdated:  bus.DateUpdated.UTC(),
 	}
@@ -43,6 +45,7 @@ func toBusCategory(db category) (categorybus.Category, error) {
 		Description:  db.Description,
 		RestaurantID: db.RestaurantID,
 		Enabled:      db.Enabled,
+		Rank:         db.Rank,
 		DateCreated:  db.DateCreated.In(time.Local),
 		DateUpdated:  db.DateUpdated.In(time.Local),
 	}

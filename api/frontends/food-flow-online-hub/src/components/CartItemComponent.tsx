@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { useCart } from '@/context/CartContext';
+import { useCart, calculateItemUnitPrice } from '@/context/CartContext';
 import { CartItem } from '@/types';
 import { Trash2, Minus, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -9,20 +9,19 @@ interface CartItemProps {
   item: CartItem;
 }
 
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+}
+
 const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
   const { updateQuantity, removeFromCart } = useCart();
-  const { cartItemId, menuItem, quantity, selectedAddons } = item;
+  const { cartItemId, menuItem, quantity, selectedModifiers, selectedAddons } = item;
 
-  // Calculate total price including addons
+  // Calculate total price including modifiers and addons
   const itemTotalPrice = useMemo(() => {
-    let total = menuItem.price * quantity;
-    if (selectedAddons) {
-      selectedAddons.forEach(({ addon, quantity: addonQty }) => {
-        total += addon.price * addonQty * quantity;
-      });
-    }
-    return total;
-  }, [menuItem.price, quantity, selectedAddons]);
+    const unit = item.unitPrice ?? calculateItemUnitPrice(menuItem, selectedModifiers, selectedAddons);
+    return unit * quantity;
+  }, [item.unitPrice, menuItem, quantity, selectedModifiers, selectedAddons]);
 
   const handleQuantityChange = (newQuantity: number) => {
     updateQuantity(cartItemId, newQuantity);
@@ -49,7 +48,7 @@ const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
           <div className="flex justify-between items-start">
             <h3 className="font-medium text-sm truncate">{menuItem.name}</h3>
             <p className="font-semibold text-food-primary text-sm whitespace-nowrap">
-              ${itemTotalPrice.toFixed(2)}
+              {formatCurrency(itemTotalPrice)}
             </p>
           </div>
 
@@ -98,13 +97,27 @@ const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
             </Button>
           </div>
 
+          {/* Selected Modifiers Display */}
+          {selectedModifiers && selectedModifiers.length > 0 && (
+            <div className="mt-1 space-y-0.5 text-xs text-gray-600">
+              {selectedModifiers.map((mod) => (
+                <div key={mod.modifierOptionId} className="flex justify-between">
+                  <span>+ {mod.modifierOptionName} <span className="text-gray-400">({mod.modifierGroupName})</span></span>
+                  <span className="text-food-primary">
+                    {mod.priceDelta === 0 ? 'Free' : `+${formatCurrency(mod.priceDelta * quantity)}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Selected Addons Display */}
           {selectedAddons && selectedAddons.length > 0 && (
-            <div className="mt-1 text-xs text-gray-600">
+            <div className="mt-1 space-y-0.5 text-xs text-gray-600">
               {selectedAddons.map(({ addon, quantity: addonQty }) => (
                 <div key={addon.id} className="flex justify-between">
                   <span>+ {addon.name} x{addonQty}</span>
-                  <span className="text-food-primary">+${(addon.price * addonQty).toFixed(2)}</span>
+                  <span className="text-food-primary">+{formatCurrency(addon.price * addonQty * quantity)}</span>
                 </div>
               ))}
             </div>
@@ -123,4 +136,3 @@ const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
 };
 
 export default CartItemComponent;
-

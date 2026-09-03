@@ -2,8 +2,14 @@
 package money
 
 import (
+	"errors"
 	"fmt"
+	"math"
 )
+
+// ErrOverflow is returned when a money value exceeds the maximum supported
+// amount of 99,999,999.99, matching the database NUMERIC(10,2) range.
+var ErrOverflow = errors.New("money value exceeds the maximum supported amount")
 
 // Money represents a money in the system.
 type Money struct {
@@ -35,8 +41,14 @@ func (m Money) MarshalText() ([]byte, error) {
 // Parse parses the float value and returns a money if the value complies
 // with the rules for money.
 func Parse(value float64) (Money, error) {
-	if value < 0 || value > 1_000_000_000 {
+	if math.IsNaN(value) || math.IsInf(value, 0) {
+		return Money{}, fmt.Errorf("invalid money %v: value must be finite", value)
+	}
+	if value < 0 {
 		return Money{}, fmt.Errorf("invalid money %.2f", value)
+	}
+	if value > 99_999_999.99 {
+		return Money{}, fmt.Errorf("invalid money %.2f: %w", value, ErrOverflow)
 	}
 
 	return Money{value}, nil

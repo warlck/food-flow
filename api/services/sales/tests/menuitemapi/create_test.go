@@ -182,6 +182,27 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
+			Name:       "category-from-different-restaurant",
+			URL:        "/v1/menuitems",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input: &menuitemapp.NewMenuItem{
+				CategoryID:   sd.Categories[2].ID.String(),
+				RestaurantID: sd.Restaurants[0].ID.String(),
+				Name:         "Cross Restaurant Item",
+				Description:  "invalid ownership fixture",
+				Price:        19.99,
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code: errs.InvalidArgument,
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got.(*errs.Error).Code, exp.(*errs.Error).Code)
+			},
+		},
+		{
 			Name:       "invalid-name-disallowed-char",
 			URL:        "/v1/menuitems",
 			Token:      sd.Admins[0].Token,

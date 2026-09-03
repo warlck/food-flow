@@ -6,12 +6,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/business/types/money"
 	"github.com/warlck/food-flow/business/types/name"
+	"github.com/warlck/food-flow/business/types/opt"
 )
 
-// Addon represents an addon for a category in the system.
+// Addon represents a menu-item level addon in the system.
 type Addon struct {
 	ID           uuid.UUID
-	CategoryID   uuid.UUID
+	MenuItemID   uuid.UUID
 	RestaurantID uuid.UUID
 	Name         name.Name
 	Description  string
@@ -25,11 +26,12 @@ type Addon struct {
 
 // NewAddon contains information needed to create a new addon.
 type NewAddon struct {
-	CategoryID   uuid.UUID
+	MenuItemID   uuid.UUID
 	RestaurantID uuid.UUID
 	Name         name.Name
 	Description  string
 	Price        money.Money
+	Available    *bool
 	MaxQuantity  int
 	Rank         *int
 }
@@ -41,5 +43,5 @@ type UpdateAddon struct {
 	Price       *money.Money
 	Available   *bool
 	MaxQuantity *int
-	Rank        *int
+	Rank        opt.NullInt
 }

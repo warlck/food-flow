@@ -224,8 +224,12 @@ const CheckoutMobile: React.FC = () => {
         menuItemId: item.menuItem.id,
         quantity: item.quantity,
         specialInstructions: item.specialInstructions,
+        modifiers: item.selectedModifiers?.map((m) => ({
+          modifierGroupId: m.modifierGroupId,
+          modifierOptionId: m.modifierOptionId,
+        })),
         addons: item.selectedAddons?.map(({ addon, quantity: addonQty }) => ({
-          addonId: addon.id,
+          addonId: addon.addonId || addon.id,
           quantity: addonQty,
         })),
       })),

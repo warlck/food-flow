@@ -1,12 +1,14 @@
 package menuitemapi_test
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/warlck/food-flow/app/domain/menuitemapp"
 	"github.com/warlck/food-flow/app/sdk/apitest"
 	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
+	"github.com/warlck/food-flow/business/types/opt"
 )
 
 func update200(sd apitest.SeedData) []apitest.Table {
@@ -54,7 +56,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
 			Input: &menuitemapp.UpdateMenuItem{
-				Rank: dbtest.IntPointer(42),
+				Rank: opt.NewNullInt(42),
 			},
 			GotResp: &menuitemapp.MenuItem{},
 			ExpResp: &menuitemapp.MenuItem{},
@@ -94,7 +96,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 				expErr := exp.(*errs.Error)
 
 				if gotErr.Code != expErr.Code {
-					return "error code mismatch"
+					return fmt.Sprintf("code mismatch: got %v, exp %v", gotErr.Code, expErr.Code)
 				}
 
 				// Just check it contains validation error
@@ -112,23 +114,23 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &menuitemapp.UpdateMenuItem{
-				Rank: dbtest.IntPointer(0),
+				Rank: opt.NewNullInt(0),
 			},
 			GotResp: &errs.Error{},
 			ExpResp: &errs.Error{
 				Code:    errs.InvalidArgument,
-				Message: `validate: [{"field":"rank","error":"rank must be 1 or greater"}]`,
+				Message: `[{"field":"rank","error":"rank must be 1 or greater"}]`,
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotErr := got.(*errs.Error)
 				expErr := exp.(*errs.Error)
 
 				if gotErr.Code != expErr.Code {
-					return "error code mismatch"
+					return fmt.Sprintf("code mismatch: got %v, exp %v", gotErr.Code, expErr.Code)
 				}
 
 				if gotErr.Message != expErr.Message {
-					return "error message mismatch"
+					return fmt.Sprintf("message mismatch: got %q, exp %q", gotErr.Message, expErr.Message)
 				}
 
 				return ""
@@ -141,25 +143,47 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &menuitemapp.UpdateMenuItem{
-				Rank: dbtest.IntPointer(-1),
+				Rank: opt.NewNullInt(-1),
 			},
 			GotResp: &errs.Error{},
 			ExpResp: &errs.Error{
 				Code:    errs.InvalidArgument,
-				Message: `validate: [{"field":"rank","error":"rank must be 1 or greater"}]`,
+				Message: `[{"field":"rank","error":"rank must be 1 or greater"}]`,
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotErr := got.(*errs.Error)
 				expErr := exp.(*errs.Error)
 
 				if gotErr.Code != expErr.Code {
-					return "error code mismatch"
+					return fmt.Sprintf("code mismatch: got %v, exp %v", gotErr.Code, expErr.Code)
 				}
 
 				if gotErr.Message != expErr.Message {
-					return "error message mismatch"
+					return fmt.Sprintf("message mismatch: got %q, exp %q", gotErr.Message, expErr.Message)
 				}
 
+				return ""
+			},
+		},
+		{
+			Name:       "move-to-category-from-different-restaurant",
+			URL:        "/v1/menuitems/" + sd.MenuItems[1].ID.String(),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusBadRequest,
+			Input: &menuitemapp.UpdateMenuItem{
+				CategoryID: dbtest.StringPointer(sd.Categories[2].ID.String()),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code: errs.InvalidArgument,
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr := got.(*errs.Error)
+				expErr := exp.(*errs.Error)
+				if gotErr.Code != expErr.Code {
+					return fmt.Sprintf("code mismatch: got %v, exp %v", gotErr.Code, expErr.Code)
+				}
 				return ""
 			},
 		},

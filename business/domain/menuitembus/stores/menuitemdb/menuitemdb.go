@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -217,7 +216,7 @@ func (s *Store) QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]
 	WHERE
 		category_id = :category_id
 	ORDER BY
-		rank ASC, price ASC, name ASC, menu_item_id ASC`
+		rank ASC NULLS LAST, price ASC, name ASC, menu_item_id ASC`
 
 	var dbItems []menuItem
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbItems); err != nil {
@@ -228,7 +227,7 @@ func (s *Store) QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]
 }
 
 // Reorder updates the rank of menu items in a category transactionally in steps of 10.
-func (s *Store) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) error {
+func (s *Store) Reorder(ctx context.Context, items []menuitembus.MenuItem) error {
 	tx, err := s.db.(*sqlx.DB).BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
@@ -242,24 +241,10 @@ func (s *Store) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []
 		"rank" = :rank,
 		"date_updated" = :date_updated
 	WHERE
-		menu_item_id = :menu_item_id AND category_id = :category_id`
+		menu_item_id = :menu_item_id`
 
-	now := time.Now().UTC()
-	for i, id := range orderedIDs {
-		rank := (i + 1) * 10
-		data := struct {
-			Rank        int       `db:"rank"`
-			DateUpdated time.Time `db:"date_updated"`
-			MenuItemID  uuid.UUID `db:"menu_item_id"`
-			CategoryID  uuid.UUID `db:"category_id"`
-		}{
-			Rank:        rank,
-			DateUpdated: now,
-			MenuItemID:  id,
-			CategoryID:  categoryID,
-		}
-
-		if err := sqldb.NamedExecContext(ctx, s.log, tx, q, data); err != nil {
+	for _, itm := range items {
+		if err := sqldb.NamedExecContext(ctx, s.log, tx, q, toDBMenuItem(itm)); err != nil {
 			return fmt.Errorf("namedexeccontext: %w", err)
 		}
 	}

@@ -1,9 +1,9 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowRight, Banknote, BarChart3, Bike, BookOpen, Boxes, Building2, Calendar, Check, ChevronDown, ChevronRight,
+  ArrowRight, Banknote, BarChart3, Bike, BookOpen, Boxes, Building2, Calendar, Check, ChevronDown, ChevronRight, ChevronUp,
   ChefHat, CircleAlert, Clock, Clock3, Copy, CreditCard, DollarSign, Grid2X2, GripVertical, HelpCircle, ImageOff, LayoutDashboard, List,
   Loader2, LogOut, Mail, MapPin, Menu, MoreHorizontal, PackageCheck, Pencil, Percent, Phone, Plus, Receipt, ReceiptText,
-  Puzzle, RefreshCw, Search, Settings, ShoppingBag, Sparkles, Store, Tag, Trash2, TrendingUp, Truck, UtensilsCrossed, XCircle,
+  RefreshCw, Search, Settings, ShoppingBag, Sparkles, Store, Tag, Trash2, TrendingUp, Truck, UtensilsCrossed, XCircle,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -28,9 +28,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { ImageField } from '@/components/ImageField';
+import { MenuItemEditorDialog } from '@/components/MenuItemEditorDialog';
+import { OrderItemSelections } from '@/components/OrderItemSelections';
 import { useAuth } from '@/context/AuthContext';
 import {
-  AddonInput, AdminAddon, AdminCategory, AdminInsights, AdminMenuItem, AdminOrder, AdminOrganization, AdminPromotion, AdminRestaurant, AdminWorkspace,
+  AdminCategory, AdminInsights, AdminMenuItem, AdminOrder, AdminOrganization, AdminPromotion, AdminRestaurant, AdminWorkspace,
   CategoryInput, DEFAULT_OPERATING_HOURS, DaySchedule, MenuItemInput, OperatingHours, OrderStatus, OrderType, PaymentStatus, PromotionInput, RestaurantInput, adminApi,
 } from '@/lib/admin-api';
 import './Admin.css';
@@ -38,8 +40,6 @@ import './Admin.css';
 type EditorState =
   | { kind: 'restaurant'; value?: AdminRestaurant }
   | { kind: 'category'; value?: AdminCategory }
-  | { kind: 'item'; value?: AdminMenuItem; categoryId?: string }
-  | { kind: 'addon'; value?: AdminAddon; categoryId?: string }
   | { kind: 'promotion'; value?: AdminPromotion }
   | null;
 
@@ -364,12 +364,69 @@ export default function Admin() {
     await loadWorkspace(id);
   };
 
+  const [menuItemEditor, setMenuItemEditor] = useState<{ open: boolean; item?: AdminMenuItem; categoryId?: string }>({ open: false });
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
   // Serializes drops: a new drop is ignored while a reorder request is in
   // flight, preventing overlapping requests whose snapshot reverts would
   // otherwise desync the workspace from the server.
   const isReorderingRef = useRef(false);
+
+  const handleReorderCategories = async (draggedId: string, targetId: string) => {
+    if (!workspace || draggedId === targetId || isReorderingRef.current) return;
+    const categories = [...workspace.categories];
+    const fromIndex = categories.findIndex((c) => c.id === draggedId);
+    const toIndex = categories.findIndex((c) => c.id === targetId);
+    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
+
+    const reordered = [...categories];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+
+    const orderedIds = reordered.map((c) => c.id);
+    const updatedRanks = new Map<string, number>();
+    orderedIds.forEach((id, index) => {
+      updatedRanks.set(id, (index + 1) * 10);
+    });
+
+    const previousCategories = workspace.categories;
+    setWorkspace((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        categories: current.categories.map((cat) => {
+          if (updatedRanks.has(cat.id)) {
+            return { ...cat, rank: updatedRanks.get(cat.id)! };
+          }
+          return cat;
+        }),
+      };
+    });
+
+    isReorderingRef.current = true;
+    try {
+      const updated = await adminApi.reorderCategories({ restaurantId: workspace.restaurant.id, orderedIds });
+      const byId = new Map(updated.map((cat) => [cat.id, cat]));
+      setWorkspace((current) => current ? {
+        ...current,
+        categories: current.categories.map((cat) => byId.get(cat.id) ?? cat),
+      } : current);
+      toast.success('Categories reordered');
+    } catch (error) {
+      setWorkspace((current) => current ? { ...current, categories: previousCategories } : current);
+      toast.error(error instanceof Error ? error.message : 'Failed to reorder categories');
+      void loadWorkspace(selectedId, true);
+    } finally {
+      isReorderingRef.current = false;
+    }
+  };
+
+  const handleMoveCategory = (index: number, direction: 'up' | 'down') => {
+    if (!workspace) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= workspace.categories.length) return;
+    handleReorderCategories(workspace.categories[index].id, workspace.categories[targetIndex].id);
+  };
 
   const handleReorderItems = async (categoryId: string, draggedId: string, targetId: string) => {
     if (!workspace || draggedId === targetId || isReorderingRef.current) return;
@@ -433,87 +490,27 @@ export default function Admin() {
     }
   };
 
-  const handleReorderAddons = async (categoryId: string, draggedId: string, targetId: string) => {
-    if (!workspace || draggedId === targetId || isReorderingRef.current) return;
-    const categoryAddons = workspace.addons
-      .filter((addon) => addon.categoryId === categoryId)
-      .sort((a, b) => {
-        const rA = a.rank != null ? a.rank : undefined;
-        const rB = b.rank != null ? b.rank : undefined;
-        if (rA !== undefined && rB === undefined) return -1;
-        if (rA === undefined && rB !== undefined) return 1;
-        if (rA !== undefined && rB !== undefined && rA !== rB) return rA - rB;
-        if (a.price !== b.price) return a.price - b.price;
-        if (a.name !== b.name) return a.name.localeCompare(b.name);
-        return a.id.localeCompare(b.id);
-      });
-
-    const fromIndex = categoryAddons.findIndex((a) => a.id === draggedId);
-    const toIndex = categoryAddons.findIndex((a) => a.id === targetId);
-    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
-
-    const reordered = [...categoryAddons];
-    const [moved] = reordered.splice(fromIndex, 1);
-    reordered.splice(toIndex, 0, moved);
-
-    const orderedIds = reordered.map((a) => a.id);
-    const updatedRanks = new Map<string, number>();
-    orderedIds.forEach((id, index) => {
-      updatedRanks.set(id, (index + 1) * 10);
-    });
-
-    const previousAddons = workspace.addons;
-    setWorkspace((current) => {
-      if (!current) return current;
-      return {
-        ...current,
-        addons: current.addons.map((addon) => {
-          if (updatedRanks.has(addon.id)) {
-            return { ...addon, rank: updatedRanks.get(addon.id)! };
-          }
-          return addon;
-        }),
-      };
-    });
-
-    isReorderingRef.current = true;
-    try {
-      const updated = await adminApi.reorderAddons({ categoryId, orderedIds });
-      // Adopt the server-returned ranks as the source of truth.
-      const byId = new Map(updated.map((addon) => [addon.id, addon]));
+  const handleSaveMenuItem = async (input: MenuItemInput, existingId?: string): Promise<AdminMenuItem> => {
+    if (existingId) {
+      const updated = await adminApi.updateMenuItem(existingId, input);
       setWorkspace((current) => current ? {
         ...current,
-        addons: current.addons.map((addon) => byId.get(addon.id) ?? addon),
+        menuItems: current.menuItems.map((m) => m.id === existingId ? { ...m, ...updated } : m),
       } : current);
-      toast.success('Add-ons reordered');
-    } catch (error) {
-      setWorkspace((current) => current ? { ...current, addons: previousAddons } : current);
-      toast.error(error instanceof Error ? error.message : 'Failed to reorder add-ons');
-      void loadWorkspace(selectedId, true);
-    } finally {
-      isReorderingRef.current = false;
+      return updated;
+    } else {
+      const created = await adminApi.createMenuItem(input);
+      setWorkspace((current) => current ? {
+        ...current,
+        menuItems: [...current.menuItems, created],
+      } : current);
+      return created;
     }
   };
 
   const deleteItem = async (item: AdminMenuItem) => {
     if (!window.confirm(`Delete ${item.name}? This cannot be undone.`)) return;
     await mutateWorkspace(() => adminApi.deleteMenuItem(item.id), 'Menu item deleted');
-  };
-
-  const toggleAddonAvailability = async (addon: AdminAddon, available: boolean) => {
-    setWorkspace((current) => current ? { ...current, addons: current.addons.map((entry) => entry.id === addon.id ? { ...entry, available } : entry) } : current);
-    try {
-      await adminApi.updateAddon(addon.id, { available });
-      toast.success(available ? 'Add-on is now available' : 'Add-on marked unavailable');
-    } catch (error) {
-      setWorkspace((current) => current ? { ...current, addons: current.addons.map((entry) => entry.id === addon.id ? { ...entry, available: addon.available } : entry) } : current);
-      toast.error(error instanceof Error ? error.message : 'Add-on availability could not be changed');
-    }
-  };
-
-  const deleteAddon = async (addon: AdminAddon) => {
-    if (!window.confirm(`Delete ${addon.name}? This removes it from every item in this category.`)) return;
-    await mutateWorkspace(() => adminApi.deleteAddon(addon.id), 'Add-on deleted');
   };
 
   useEffect(() => {
@@ -800,8 +797,10 @@ export default function Admin() {
                         selected={selectedCategory}
                         onSelect={setSelectedCategory}
                         onAdd={() => setEditor({ kind: 'category' })}
-                        onAddItem={(catId) => setEditor({ kind: 'item', categoryId: catId })}
+                        onAddItem={(catId) => setMenuItemEditor({ open: true, categoryId: catId })}
                         onEdit={(category) => setEditor({ kind: 'category', value: category })}
+                        onReorder={handleReorderCategories}
+                        onMove={handleMoveCategory}
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-col gap-3 border-b border-[#E5E7EB] p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
@@ -812,7 +811,7 @@ export default function Admin() {
                           <div className="flex flex-wrap items-center gap-2">
                             <Button
                               className="admin-primary h-9 gap-1.5 rounded-lg px-3 text-xs"
-                              onClick={() => setEditor({ kind: 'item', categoryId: selectedCategory !== 'all' ? selectedCategory : undefined })}
+                              onClick={() => setMenuItemEditor({ open: true, categoryId: selectedCategory !== 'all' ? selectedCategory : undefined })}
                               disabled={!workspace.categories.length}
                             >
                               <Plus size={15} /> New Menu Item
@@ -842,7 +841,7 @@ export default function Admin() {
                                   item={item}
                                   category={workspace.categories.find((category) => category.id === item.categoryId)}
                                   view={view}
-                                  onEdit={() => setEditor({ kind: 'item', value: item })}
+                                  onEdit={() => setMenuItemEditor({ open: true, item })}
                                   onDelete={() => deleteItem(item)}
                                   onAvailability={(value) => toggleAvailability(item, value)}
                                   draggable
@@ -881,7 +880,7 @@ export default function Admin() {
                               <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#FED7C7] bg-white text-[#FF4500] shadow-sm"><UtensilsCrossed size={23} /></div>
                               <h3 className="text-base font-bold">No menu items here yet</h3>
                               <p className="mt-1 max-w-sm text-xs leading-relaxed text-[#6B7280]">Create a dish in this category or clear your filters to see the rest of the menu.</p>
-                              <Button className="admin-primary mt-4 h-9 gap-2 text-xs" onClick={() => setEditor({ kind: 'item' })} disabled={!workspace.categories.length}><Plus size={15} /> Create menu item</Button>
+                              <Button className="admin-primary mt-4 h-9 gap-2 text-xs" onClick={() => setMenuItemEditor({ open: true, categoryId: selectedCategory !== 'all' ? selectedCategory : undefined })} disabled={!workspace.categories.length}><Plus size={15} /> Create menu item</Button>
                             </div>
                           )}
                         </div>
@@ -893,17 +892,6 @@ export default function Admin() {
                     </div>
                   </section>
 
-                  <AddonManager
-                    categories={workspace.categories}
-                    addons={workspace.addons}
-                    selectedCategory={addonCategory}
-                    onCategoryChange={setAddonCategory}
-                    onCreate={() => setEditor({ kind: 'addon', categoryId: addonCategory || workspace.categories[0]?.id })}
-                    onEdit={(addon) => setEditor({ kind: 'addon', value: addon })}
-                    onDelete={deleteAddon}
-                    onAvailability={toggleAddonAvailability}
-                    onReorder={handleReorderAddons}
-                  />
                 </>
               )}
             </>
@@ -987,17 +975,20 @@ export default function Admin() {
             const categoryInput = input as CategoryInput;
             await mutateWorkspace(() => existingId ? adminApi.updateCategory(existingId, categoryInput) : adminApi.createCategory(categoryInput), existingId ? 'Category updated' : 'Category created');
           }
-          if (kind === 'item' && workspace) {
-            const itemInput = input as MenuItemInput;
-            await mutateWorkspace(() => existingId ? adminApi.updateMenuItem(existingId, itemInput) : adminApi.createMenuItem(itemInput), existingId ? 'Menu item updated' : 'Menu item created');
-          }
-          if (kind === 'addon' && workspace) {
-            const addonInput = input as AddonInput;
-            await mutateWorkspace(() => existingId ? adminApi.updateAddon(existingId, { name: addonInput.name, description: addonInput.description, price: addonInput.price, maxQuantity: addonInput.maxQuantity, rank: addonInput.rank }) : adminApi.createAddon(addonInput), existingId ? 'Add-on updated' : 'Add-on created');
-            setAddonCategory(addonInput.categoryId);
-          }
         }}
       />
+
+      {workspace && (
+        <MenuItemEditorDialog
+          open={menuItemEditor.open}
+          item={menuItemEditor.item}
+          defaultCategoryId={menuItemEditor.categoryId}
+          workspace={workspace}
+          onClose={() => setMenuItemEditor({ open: false })}
+          onSaveItem={handleSaveMenuItem}
+          onRefreshWorkspace={() => loadWorkspace(selectedId, true)}
+        />
+      )}
 
       <OrderDetailDialog
         order={selectedOrder}
@@ -1051,143 +1042,34 @@ function SetupGuide({ restaurant, categoryCount, itemCount }: { restaurant: Admi
   );
 }
 
-function AddonManager({ categories, addons, selectedCategory, onCategoryChange, onCreate, onEdit, onDelete, onAvailability, onReorder }: {
+function CategoryRail({
+  categories,
+  counts,
+  total,
+  selected,
+  onSelect,
+  onAdd,
+  onAddItem,
+  onEdit,
+  onReorder,
+  onMove,
+}: {
   categories: AdminCategory[];
-  addons: AdminAddon[];
-  selectedCategory: string;
-  onCategoryChange: (id: string) => void;
-  onCreate: () => void;
-  onEdit: (addon: AdminAddon) => void;
-  onDelete: (addon: AdminAddon) => void;
-  onAvailability: (addon: AdminAddon, value: boolean) => void;
-  onReorder?: (categoryId: string, draggedId: string, targetId: string) => void;
+  counts: Map<string, number>;
+  total: number;
+  selected: string;
+  onSelect: (id: string) => void;
+  onAdd: () => void;
+  onAddItem: (categoryId?: string) => void;
+  onEdit: (category: AdminCategory) => void;
+  onReorder?: (draggedId: string, targetId: string) => void;
+  onMove?: (index: number, direction: 'up' | 'down') => void;
 }) {
-  const [draggedAddonId, setDraggedAddonId] = useState<string | null>(null);
-  const [dragOverAddonId, setDragOverAddonId] = useState<string | null>(null);
-
-  const category = categories.find((entry) => entry.id === selectedCategory) ?? categories[0];
-  const visibleAddons = useMemo(() => {
-    if (!category) return [];
-    const list = addons.filter((addon) => addon.categoryId === category.id);
-    return [...list].sort((a, b) => {
-      const rA = a.rank != null ? a.rank : undefined;
-      const rB = b.rank != null ? b.rank : undefined;
-      if (rA !== undefined && rB === undefined) return -1;
-      if (rA === undefined && rB !== undefined) return 1;
-      if (rA !== undefined && rB !== undefined && rA !== rB) return rA - rB;
-      if (a.price !== b.price) return a.price - b.price;
-      if (a.name !== b.name) return a.name.localeCompare(b.name);
-      return a.id.localeCompare(b.id);
-    });
-  }, [addons, category]);
+  const [draggedCatId, setDraggedCatId] = useState<string | null>(null);
+  const [dragOverCatId, setDragOverCatId] = useState<string | null>(null);
 
   return (
-    <section className="admin-panel mt-6 overflow-hidden rounded-2xl">
-      <div className="flex flex-col gap-4 border-b border-[#E5E7EB] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]"><Puzzle size={19} /></div>
-          <div className="min-w-0">
-            <h2 className="text-[17px] font-bold tracking-[-.02em]">Category add-ons</h2>
-            <p className="mt-0.5 text-[11px] text-[#6B7280]">Options are shared by every menu item in the selected category. Drag to reorder.</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {categories.length > 0 && (
-            <Select value={category?.id ?? ''} onValueChange={onCategoryChange}>
-              <SelectTrigger className="admin-input h-9 min-w-[180px] flex-1 rounded-lg text-xs sm:flex-none"><SelectValue placeholder="Choose category" /></SelectTrigger>
-              <SelectContent>{categories.map((entry) => <SelectItem key={entry.id} value={entry.id}>{entry.name}</SelectItem>)}</SelectContent>
-            </Select>
-          )}
-          <Button className="admin-primary h-9 gap-2 rounded-lg px-3.5 text-xs" onClick={onCreate} disabled={!category}>
-            <Plus size={15} /> Add add-on
-          </Button>
-        </div>
-      </div>
-
-      {!category ? (
-        <div className="flex min-h-[150px] flex-col items-center justify-center px-5 py-8 text-center">
-          <Puzzle size={22} className="text-[#FF8C42]" />
-          <h3 className="mt-2 text-sm font-bold">Create a category first</h3>
-          <p className="mt-1 text-[11px] text-[#6B7280]">Add-ons belong to a menu category and will appear on all of its items.</p>
-        </div>
-      ) : visibleAddons.length ? (
-        <div className="grid gap-3 bg-[#FAFAFA] p-4 sm:grid-cols-2 xl:grid-cols-3">
-          {visibleAddons.map((addon) => (
-            <article
-              key={addon.id}
-              draggable
-              onDragStart={(e) => {
-                setDraggedAddonId(addon.id);
-                e.dataTransfer.setData('text/plain', addon.id);
-              }}
-              onDragOver={(e) => {
-                e.preventDefault();
-                if (draggedAddonId && draggedAddonId !== addon.id) {
-                  setDragOverAddonId(addon.id);
-                }
-              }}
-              onDragLeave={() => {
-                setDragOverAddonId(null);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOverAddonId(null);
-                if (draggedAddonId && draggedAddonId !== addon.id && onReorder && category) {
-                  onReorder(category.id, draggedAddonId, addon.id);
-                }
-                setDraggedAddonId(null);
-              }}
-              onDragEnd={() => {
-                setDraggedAddonId(null);
-                setDragOverAddonId(null);
-              }}
-              className={`admin-addon-card rounded-xl border border-[#E5E7EB] bg-white p-4 transition-all ${
-                dragOverAddonId === addon.id ? 'ring-2 ring-[#FF4500] border-[#FF4500] bg-[#FFF7F3]' : ''
-              } ${draggedAddonId === addon.id ? 'opacity-40' : ''}`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex items-start gap-2">
-                  <div className="cursor-grab active:cursor-grabbing text-[#9CA3AF] hover:text-[#FF4500] shrink-0 mt-0.5" title="Drag to reorder">
-                    <GripVertical size={15} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="truncate text-[13px] font-bold text-[#333333]">{addon.name}</h3>
-                      {addon.rank != null && <span className="rounded bg-[#FFF1EB] px-1.5 py-0.5 text-[9px] font-semibold text-[#FF4500]">#{addon.rank}</span>}
-                    </div>
-                    <p className="mt-1 line-clamp-1 text-[10px] text-[#6B7280]">{addon.description || 'No description added yet.'}</p>
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <span className="text-[12px] font-bold text-[#FF4500]">+{formatCurrency(addon.price)}</span>
-                  <ItemMenu onEdit={() => onEdit(addon)} onDelete={() => onDelete(addon)} noun="add-on" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-center justify-between border-t border-[#F3F4F6] pt-3">
-                <div>
-                  <div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${addon.available ? 'bg-[#4CAF50]' : 'bg-[#F44336]'}`} /><span className={`text-[10px] font-semibold ${addon.available ? 'text-[#2E7D32]' : 'text-[#C62828]'}`}>{addon.available ? 'Available' : 'Unavailable'}</span></div>
-                  <p className="mt-1 text-[9px] text-[#9CA3AF]">Up to {addon.maxQuantity} per item</p>
-                </div>
-                <Switch checked={addon.available} onCheckedChange={(value) => onAvailability(addon, value)} aria-label={`Toggle ${addon.name} availability`} />
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <div className="flex min-h-[150px] flex-col items-center justify-center px-5 py-8 text-center">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]"><Puzzle size={18} /></div>
-          <h3 className="mt-2 text-sm font-bold">No add-ons for {category.name}</h3>
-          <p className="mt-1 text-[11px] text-[#6B7280]">Offer extras such as toppings, sides, sauces or size upgrades.</p>
-          <Button variant="outline" className="mt-3 h-8 gap-1.5 text-[11px] hover:border-[#FF8C42] hover:text-[#FF4500]" onClick={onCreate}><Plus size={13} /> Create first add-on</Button>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function CategoryRail({ categories, counts, total, selected, onSelect, onAdd, onAddItem, onEdit }: { categories: AdminCategory[]; counts: Map<string, number>; total: number; selected: string; onSelect: (id: string) => void; onAdd: () => void; onAddItem: (categoryId?: string) => void; onEdit: (category: AdminCategory) => void }) {
-  return (
-    <aside className="w-full border-b border-[#E5E7EB] bg-[#FAFAFA] lg:w-[230px] lg:shrink-0 lg:border-b-0 lg:border-r">
+    <aside className="w-full border-b border-[#E5E7EB] bg-[#FAFAFA] lg:w-[240px] lg:shrink-0 lg:border-b-0 lg:border-r">
       <div className="flex items-center justify-between px-4 pb-2 pt-4">
         <span className="text-[10px] font-bold uppercase tracking-[.13em] text-[#9CA3AF]">Categories</span>
         <div className="flex items-center gap-1">
@@ -1199,14 +1081,65 @@ function CategoryRail({ categories, counts, total, selected, onSelect, onAdd, on
         <button onClick={() => onSelect('all')} className={`admin-category-button flex min-w-fit items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] font-semibold lg:w-full ${selected === 'all' ? 'active' : ''}`}>
           <Grid2X2 size={14} /><span className="flex-1">All items</span><span className="rounded bg-black/[.04] px-1.5 py-0.5 text-[9px]">{total}</span>
         </button>
-        {categories.map((category) => (
-          <div key={category.id} className={`group flex min-w-fit items-center rounded-lg lg:w-full ${selected === category.id ? 'admin-category-button active' : ''}`}>
+        {categories.map((category, catIdx) => (
+          <div
+            key={category.id}
+            draggable
+            onDragStart={(e) => {
+              setDraggedCatId(category.id);
+              e.dataTransfer.setData('text/plain', category.id);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              if (draggedCatId && draggedCatId !== category.id) {
+                setDragOverCatId(category.id);
+              }
+            }}
+            onDragLeave={() => setDragOverCatId(null)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOverCatId(null);
+              if (draggedCatId && draggedCatId !== category.id && onReorder) {
+                onReorder(draggedCatId, category.id);
+              }
+              setDraggedCatId(null);
+            }}
+            onDragEnd={() => {
+              setDraggedCatId(null);
+              setDragOverCatId(null);
+            }}
+            className={`group flex min-w-fit items-center rounded-lg lg:w-full transition-all ${
+              selected === category.id ? 'admin-category-button active' : ''
+            } ${dragOverCatId === category.id ? 'ring-2 ring-[#FF4500] bg-[#FFF1EB]' : ''}`}
+          >
             <button onClick={() => onSelect(category.id)} className={`admin-category-button flex min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] font-medium ${selected === category.id ? 'active !bg-transparent !shadow-none' : ''}`}>
               <span className={`h-2 w-2 shrink-0 rounded-full ${category.enabled ? 'bg-[#FFB72B]' : 'bg-[#9CA3AF]'}`} />
-              <span className="max-w-[110px] truncate">{category.name}</span>
+              <span className="max-w-[95px] truncate">{category.name}</span>
               <span className="ml-auto rounded bg-black/[.04] px-1.5 py-0.5 text-[9px]">{counts.get(category.id) ?? 0}</span>
             </button>
             <div className="mr-1 hidden items-center gap-0.5 lg:group-hover:flex">
+              {onMove && (
+                <>
+                  <button
+                    type="button"
+                    disabled={catIdx === 0}
+                    onClick={() => onMove(catIdx, 'up')}
+                    className="p-1 text-[#9CA3AF] hover:text-[#111827] disabled:opacity-20"
+                    title="Move up"
+                  >
+                    <ChevronUp size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={catIdx === categories.length - 1}
+                    onClick={() => onMove(catIdx, 'down')}
+                    className="p-1 text-[#9CA3AF] hover:text-[#111827] disabled:opacity-20"
+                    title="Move down"
+                  >
+                    <ChevronDown size={12} />
+                  </button>
+                </>
+              )}
               <button onClick={() => onAddItem(category.id)} className="p-1 text-[#9CA3AF] hover:text-[#FF4500]" title={`Add menu item to ${category.name}`} aria-label={`Add menu item to ${category.name}`}><Plus size={13} /></button>
               <button onClick={() => onEdit(category)} className="p-1 text-[#9CA3AF] hover:text-[#FF4500]" title={`Edit ${category.name}`} aria-label={`Edit ${category.name}`}><Pencil size={12} /></button>
             </div>
@@ -1537,16 +1470,7 @@ function OrderDetailDialog({ order, busy, onClose, onAdvance, onMarkPaid, onCanc
                     <div key={item.id} className="flex items-start justify-between gap-3 p-3.5 text-xs">
                       <div className="min-w-0">
                         <div className="font-semibold text-[#333333]">{item.quantity} × {item.menuItemName}</div>
-                        {item.addons && item.addons.length > 0 && (
-                          <div className="mt-1 space-y-0.5">
-                            {item.addons.map((addon) => (
-                              <div key={addon.id} className="flex items-center justify-between gap-3 text-[11px] text-[#6B7280]">
-                                <span>+ {addon.addonName} ×{addon.quantity}</span>
-                                <span className="text-[#FF4500]">+{formatCurrency(addon.addonPrice * addon.quantity * item.quantity)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        <OrderItemSelections item={item} />
                         {item.specialInstructions && <div className="mt-1 text-[11px] italic text-[#9CA3AF]">&ldquo;{item.specialInstructions}&rdquo;</div>}
                       </div>
                       <div className="shrink-0 font-semibold text-[#333333]">{formatCurrency(item.menuItemPrice * item.quantity)}</div>
@@ -1620,14 +1544,12 @@ function OrderDetailDialog({ order, busy, onClose, onAdvance, onMarkPaid, onCanc
   );
 }
 
-function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorState; workspace: AdminWorkspace | null; onClose: () => void; onSave: (kind: 'restaurant' | 'category' | 'item' | 'addon' | 'promotion', input: RestaurantInput | CategoryInput | MenuItemInput | AddonInput | PromotionInput, existingId?: string) => Promise<void> }) {
+function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorState; workspace: AdminWorkspace | null; onClose: () => void; onSave: (kind: 'restaurant' | 'category' | 'promotion', input: RestaurantInput | CategoryInput | PromotionInput, existingId?: string) => Promise<void> }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [copiedId, setCopiedId] = useState(false);
   const kind = editor?.kind;
   const existing = editor?.value;
-  const addonCategoryId = editor?.kind === 'addon' ? (editor.value as AdminAddon | undefined)?.categoryId ?? editor.categoryId ?? workspace?.categories[0]?.id ?? '' : '';
-  const itemCategoryId = editor?.kind === 'item' ? (editor.value as AdminMenuItem | undefined)?.categoryId ?? editor.categoryId ?? workspace?.categories[0]?.id ?? '' : '';
 
   // Address search & resolution state for restaurant profile
   const [addressInput, setAddressInput] = useState<string>((existing as AdminRestaurant | undefined)?.address ?? '');
@@ -1785,16 +1707,10 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
           taxRate: taxRateVal,
         }, existing?.id);
       }
-      if (kind === 'category' && workspace) await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), restaurantId: workspace.restaurant.id }, existing?.id);
-      if (kind === 'item' && workspace) {
+      if (kind === 'category' && workspace) {
         const rankStr = String(data.get('rank') ?? '').trim();
         const rankVal = rankStr !== '' ? Number(rankStr) : undefined;
-        await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), price: Number(data.get('price')), categoryId: String(data.get('categoryId')), restaurantId: workspace.restaurant.id, imageUrl: String(data.get('imageUrl')), rank: rankVal }, existing?.id);
-      }
-      if (kind === 'addon' && workspace) {
-        const rankStr = String(data.get('rank') ?? '').trim();
-        const rankVal = rankStr !== '' ? Number(rankStr) : undefined;
-        await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), price: Number(data.get('price')), maxQuantity: Number(data.get('maxQuantity')), categoryId: String(data.get('categoryId')), restaurantId: workspace.restaurant.id, rank: rankVal }, existing?.id);
+        await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), restaurantId: workspace.restaurant.id, rank: rankVal }, existing?.id);
       }
       if (kind === 'promotion' && workspace) {
         const code = String(data.get('code')).trim();
@@ -1827,8 +1743,8 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
     finally { setSaving(false); }
   };
 
-  const titles = { restaurant: existing ? 'Edit restaurant' : 'Create a restaurant', category: existing ? 'Edit category' : 'Create a category', item: existing ? 'Edit menu item' : 'Create a menu item', addon: existing ? 'Edit add-on' : 'Create an add-on', promotion: existing ? 'Edit promotion' : 'Create promotion' };
-  const descriptions = { restaurant: 'The profile guests see across your storefront.', category: 'Group related items so your menu is easy to browse.', item: 'Add the details your team and guests need.', addon: 'Offer an optional extra across every item in a category.', promotion: 'Set up discount codes and redemption rules.' };
+  const titles = { restaurant: existing ? 'Edit restaurant' : 'Create a restaurant', category: existing ? 'Edit category' : 'Create a category', promotion: existing ? 'Edit promotion' : 'Create promotion' };
+  const descriptions = { restaurant: 'The profile guests see across your storefront.', category: 'Group related items so your menu is easy to browse.', promotion: 'Set up discount codes and redemption rules.' };
 
   // Full-screen Studio layout for Restaurant Editor
   if (kind === 'restaurant') {
@@ -2213,35 +2129,20 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
     );
   }
 
-  // Standard modal for Category, MenuItem, Addon, Promotion
+  // Standard modal for Category, Addon, Promotion
   return (
     <Dialog open={Boolean(editor)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[92vh] overflow-y-auto border-[#E5E7EB] p-0 sm:max-w-[560px]">
         {kind && <form onSubmit={submit}>
-          <DialogHeader className="border-b border-[#E5E7EB] px-6 py-5 text-left"><div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]">{kind === 'category' ? <Boxes size={18} /> : kind === 'addon' ? <Puzzle size={18} /> : kind === 'promotion' ? <Tag size={18} /> : <UtensilsCrossed size={18} />}</div><DialogTitle className="text-xl tracking-[-.025em]">{titles[kind]}</DialogTitle><DialogDescription className="text-xs">{descriptions[kind]}</DialogDescription></DialogHeader>
+          <DialogHeader className="border-b border-[#E5E7EB] px-6 py-5 text-left"><div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]">{kind === 'category' ? <Boxes size={18} /> : <Tag size={18} />}</div><DialogTitle className="text-xl tracking-[-.025em]">{titles[kind]}</DialogTitle><DialogDescription className="text-xs">{descriptions[kind]}</DialogDescription></DialogHeader>
           <div className="space-y-4 px-6 py-5">
-            {kind !== 'promotion' && <Field label={kind === 'category' ? 'Category name' : kind === 'addon' ? 'Add-on name' : 'Item name'} htmlFor="name" required hint="3–100 characters"><Input id="name" name="name" defaultValue={existing?.name ?? ''} required minLength={3} maxLength={100} placeholder={kind === 'category' ? 'e.g. Seasonal plates' : kind === 'addon' ? 'e.g. Extra avocado' : 'e.g. Garden harvest bowl'} className="admin-input" /></Field>}
-            {kind !== 'promotion' && <Field label="Description" htmlFor="description" hint="Recommended"><Textarea id="description" name="description" defaultValue={existing?.description ?? ''} rows={3} placeholder="Add a concise, useful description" className="admin-input resize-none" /></Field>}
-            {kind === 'item' && workspace && <>
-              <div className="grid gap-4 sm:grid-cols-2"><Field label="Price" htmlFor="price" required><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">$</span><Input id="price" name="price" type="number" min="0.01" step="0.01" defaultValue={(existing as AdminMenuItem | undefined)?.price ?? ''} required placeholder="0.00" className="admin-input pl-7" /></div></Field><Field label="Category" htmlFor="categoryId" required><Select name="categoryId" defaultValue={itemCategoryId}><SelectTrigger className="admin-input"><SelectValue placeholder="Choose category" /></SelectTrigger><SelectContent>{workspace.categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}</SelectContent></Select></Field></div>
-              <Field label="Display Rank" htmlFor="rank" hint="Optional display priority (lower numbers appear first)"><Input id="rank" name="rank" type="number" min="1" step="1" defaultValue={(existing as AdminMenuItem | undefined)?.rank ?? ''} placeholder="e.g. 10" className="admin-input" /></Field>
-              <Field label="Dish image" htmlFor="imageUrl" hint="Optional — upload a file or paste a URL"><ImageField name="imageUrl" entityType="menu_item" restaurantId={workspace?.restaurant.id} defaultValue={(existing as AdminMenuItem | undefined)?.imageUrl ?? ''} /></Field>
-            </>}
-            {kind === 'addon' && workspace && <>
-              {existing ? (
-                <div className="rounded-lg border border-[#F3E1D9] bg-[#FFF7F3] px-3 py-2.5 text-[11px] text-[#6B4E3D]">
-                  Shared across <strong>{workspace.categories.find((category) => category.id === addonCategoryId)?.name ?? 'this category'}</strong>
-                  <input type="hidden" name="categoryId" value={addonCategoryId} />
-                </div>
-              ) : (
-                <Field label="Category" htmlFor="categoryId" required><Select name="categoryId" defaultValue={addonCategoryId}><SelectTrigger className="admin-input"><SelectValue placeholder="Choose category" /></SelectTrigger><SelectContent>{workspace.categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}</SelectContent></Select></Field>
-              )}
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Field label="Additional price" htmlFor="price" required><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">$</span><Input id="price" name="price" type="number" min="0.01" step="0.01" defaultValue={(existing as AdminAddon | undefined)?.price ?? ''} required placeholder="0.00" className="admin-input pl-7" /></div></Field>
-                <Field label="Maximum quantity" htmlFor="maxQuantity" required hint="Per order item"><Input id="maxQuantity" name="maxQuantity" type="number" min="1" max="20" step="1" defaultValue={(existing as AdminAddon | undefined)?.maxQuantity ?? 1} required className="admin-input" /></Field>
-                <Field label="Display Rank" htmlFor="rank" hint="Lower appears first"><Input id="rank" name="rank" type="number" min="1" step="1" defaultValue={(existing as AdminAddon | undefined)?.rank ?? ''} placeholder="e.g. 10" className="admin-input" /></Field>
-              </div>
-            </>}
+            {kind === 'category' && <Field label="Category name" htmlFor="name" required hint="3–100 characters"><Input id="name" name="name" defaultValue={existing?.name ?? ''} required minLength={3} maxLength={100} placeholder="e.g. Seasonal plates" className="admin-input" /></Field>}
+            {kind === 'category' && <Field label="Description" htmlFor="description" hint="Recommended"><Textarea id="description" name="description" defaultValue={existing?.description ?? ''} rows={3} placeholder="Add a concise, useful description" className="admin-input resize-none" /></Field>}
+            {kind === 'category' && (
+              <Field label="Display Rank" htmlFor="rank" hint="Optional display priority (lower numbers appear first)">
+                <Input id="rank" name="rank" type="number" min="1" step="1" defaultValue={(existing as AdminCategory | undefined)?.rank ?? ''} placeholder="e.g. 10" className="admin-input" />
+              </Field>
+            )}
             {kind === 'promotion' && (
               <>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -2351,7 +2252,7 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
             )}
             {error && <div className="rounded-lg bg-red-50 px-3 py-2.5 text-xs text-red-700">{error}</div>}
           </div>
-          <div className="flex items-center justify-end gap-2 border-t border-[#E5E7EB] bg-[#FAFAFA] px-6 py-4"><Button type="button" variant="outline" onClick={onClose} className="h-9 text-xs">Cancel</Button><Button type="submit" disabled={saving} className="admin-primary h-9 min-w-[112px] gap-2 text-xs">{saving && <Loader2 size={14} className="animate-spin" />}{existing ? 'Save changes' : kind === 'addon' ? 'Create add-on' : `Create ${kind}`}</Button></div>
+          <div className="flex items-center justify-end gap-2 border-t border-[#E5E7EB] bg-[#FAFAFA] px-6 py-4"><Button type="button" variant="outline" onClick={onClose} className="h-9 text-xs">Cancel</Button><Button type="submit" disabled={saving} className="admin-primary h-9 min-w-[112px] gap-2 text-xs">{saving && <Loader2 size={14} className="animate-spin" />}{existing ? 'Save changes' : `Create ${kind}`}</Button></div>
         </form>}
       </DialogContent>
     </Dialog>

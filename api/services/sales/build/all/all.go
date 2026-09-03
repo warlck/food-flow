@@ -7,6 +7,8 @@ import (
 	checkapi "github.com/warlck/food-flow/app/domain/checkapp"
 	imageapi "github.com/warlck/food-flow/app/domain/imageapp"
 	menuitemapi "github.com/warlck/food-flow/app/domain/menuitemapp"
+	modifiergroupapi "github.com/warlck/food-flow/app/domain/modifiergroupapp"
+	modifieroptionapi "github.com/warlck/food-flow/app/domain/modifieroptionapp"
 	orderapi "github.com/warlck/food-flow/app/domain/orderapp"
 	organizationapi "github.com/warlck/food-flow/app/domain/organizationapp"
 	promoapi "github.com/warlck/food-flow/app/domain/promoapp"
@@ -41,12 +43,14 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	restaurantapi.Routes(app, restaurantapi.Config{
-		AuthClient:    cfg.AuthClient,
-		RestaurantBus: cfg.RestaurantBus,
-		CategoryBus:   cfg.CategoryBus,
-		MenuItemBus:   cfg.MenuItemBus,
-		AddonBus:      cfg.AddonBus,
-		Log:           cfg.Log,
+		AuthClient:        cfg.AuthClient,
+		RestaurantBus:     cfg.RestaurantBus,
+		CategoryBus:       cfg.CategoryBus,
+		MenuItemBus:       cfg.MenuItemBus,
+		ModifierGroupBus:  cfg.ModifierGroupBus,
+		ModifierOptionBus: cfg.ModifierOptionBus,
+		AddonBus:          cfg.AddonBus,
+		Log:               cfg.Log,
 	})
 
 	organizationapi.Routes(app, organizationapi.Config{
@@ -70,11 +74,27 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		Log:           cfg.Log,
 	})
 
+	modifiergroupapi.Routes(app, modifiergroupapi.Config{
+		AuthClient:       cfg.AuthClient,
+		ModifierGroupBus: cfg.ModifierGroupBus,
+		RestaurantBus:    cfg.RestaurantBus,
+		MenuItemBus:      cfg.MenuItemBus,
+		Log:              cfg.Log,
+	})
+
+	modifieroptionapi.Routes(app, modifieroptionapi.Config{
+		AuthClient:        cfg.AuthClient,
+		ModifierOptionBus: cfg.ModifierOptionBus,
+		ModifierGroupBus:  cfg.ModifierGroupBus,
+		RestaurantBus:     cfg.RestaurantBus,
+		Log:               cfg.Log,
+	})
+
 	addonapi.Routes(app, addonapi.Config{
 		AuthClient:    cfg.AuthClient,
 		AddonBus:      cfg.AddonBus,
+		MenuItemBus:   cfg.MenuItemBus,
 		RestaurantBus: cfg.RestaurantBus,
-		CategoryBus:   cfg.CategoryBus,
 		Log:           cfg.Log,
 	})
 

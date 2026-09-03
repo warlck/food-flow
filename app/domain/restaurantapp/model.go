@@ -249,8 +249,30 @@ func toBusUpdateRestaurant(app UpdateRestaurant) (restaurantbus.UpdateRestaurant
 
 // =============================================================================
 
+// Option represents information about a modifier option in the restaurant API response.
+type Option struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	PriceDelta  float64 `json:"priceDelta"`
+	Available   bool    `json:"available"`
+	Rank        *int    `json:"rank,omitempty"`
+}
+
+// ModifierGroup represents information about a modifier group in the restaurant API response.
+type ModifierGroup struct {
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Description   string   `json:"description"`
+	MinSelections int      `json:"minSelections"`
+	MaxSelections int      `json:"maxSelections"`
+	Available     bool     `json:"available"`
+	Rank          *int     `json:"rank,omitempty"`
+	Options       []Option `json:"options"`
+}
+
 // Addon represents information about an addon that is included with menu items
-// in the restaurant API response
+// in the restaurant API response.
 type Addon struct {
 	ID          string  `json:"id"`
 	Name        string  `json:"name"`
@@ -261,31 +283,34 @@ type Addon struct {
 	Rank        *int    `json:"rank,omitempty"`
 }
 
-// MenuItem represents information about a menu items embedded with restaurant categories
-// that are included in the restaurant API response
+// MenuItem represents information about a menu item embedded with restaurant categories
+// in the restaurant API response.
 type MenuItem struct {
-	ID          string  `json:"id"`
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-	ImageURL    string  `json:"imageUrl"`
-	Available   bool    `json:"available"`
-	Rank        *int    `json:"rank,omitempty"`
-	Addons      []Addon `json:"addons"`
+	ID             string          `json:"id"`
+	Name           string          `json:"name"`
+	Description    string          `json:"description"`
+	Price          float64         `json:"price"`
+	ImageURL       string          `json:"imageUrl"`
+	Available      bool            `json:"available"`
+	Orderable      bool            `json:"orderable"`
+	Rank           *int            `json:"rank,omitempty"`
+	ModifierGroups []ModifierGroup `json:"modifierGroups"`
+	Addons         []Addon         `json:"addons"`
 }
 
 // Category represents information about a category that is included with restaurant
-// API response
+// API response.
 type Category struct {
 	ID          string     `json:"id"`
 	Name        string     `json:"name"`
 	Description string     `json:"description"`
 	Enabled     bool       `json:"enabled"`
-	MenuItems   []MenuItem `json:"mentuItems"`
+	Rank        *int       `json:"rank,omitempty"`
+	MenuItems   []MenuItem `json:"menuItems"`
 }
 
 // RestaurantWithMenuCategories represents information about restaurant including menu item categories
-// of the restaurant. Each category object embeds all the menuItems that in that category
+// of the restaurant. Each category object embeds all the menuItems in that category.
 type RestaurantWithMenuCategories struct {
 	ID                    string         `json:"id"`
 	Name                  string         `json:"name"`

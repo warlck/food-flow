@@ -1,20 +1,28 @@
-export interface MenuItem {
+export interface ModifierOption {
   id: string;
+  modifierGroupId?: string;
   name: string;
-  description: string;
-  price: number;
-  image: string;
-  category: string;
+  description?: string;
+  priceDelta: number;
   available: boolean;
-  preparationTime: number; // in minutes
-  restaurantId: string;
   rank?: number | null;
-  tags?: string[];
-  addons?: Addon[];
+}
+
+export interface ModifierGroup {
+  id: string;
+  menuItemId?: string;
+  name: string;
+  description?: string;
+  minSelections: number;
+  maxSelections: number;
+  available: boolean;
+  rank?: number | null;
+  options: ModifierOption[];
 }
 
 export interface Addon {
   id: string;
+  addonId?: string;
   name: string;
   description: string;
   price: number;
@@ -23,9 +31,34 @@ export interface Addon {
   rank?: number | null;
 }
 
+export interface SelectedModifier {
+  modifierGroupId: string;
+  modifierGroupName: string;
+  modifierOptionId: string;
+  modifierOptionName: string;
+  priceDelta: number;
+}
+
 export interface SelectedAddon {
   addon: Addon;
   quantity: number;
+}
+
+export interface MenuItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  image: string;
+  category: string;
+  available: boolean;
+  orderable: boolean;
+  preparationTime: number; // in minutes
+  restaurantId: string;
+  rank?: number | null;
+  tags?: string[];
+  modifierGroups?: ModifierGroup[];
+  addons?: Addon[];
 }
 
 export interface DaySchedule {
@@ -69,7 +102,9 @@ export interface CartItem {
   menuItem: MenuItem;
   quantity: number;
   specialInstructions?: string;
+  selectedModifiers?: SelectedModifier[];
   selectedAddons?: SelectedAddon[];
+  unitPrice?: number;
 }
 
 export type OrderType = 'delivery' | 'pickup';

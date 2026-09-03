@@ -24,16 +24,22 @@ export interface CreateOrderRequest {
   deliveryAddress?: DeliveryAddressRequest;
 }
 
-export interface OrderItemRequest {
-  menuItemId: string;
-  quantity: number;
-  specialInstructions?: string;
-  addons?: OrderItemAddonRequest[];
+export interface OrderItemModifierRequest {
+  modifierGroupId: string;
+  modifierOptionId: string;
 }
 
 export interface OrderItemAddonRequest {
   addonId: string;
   quantity: number;
+}
+
+export interface OrderItemRequest {
+  menuItemId: string;
+  quantity: number;
+  specialInstructions?: string;
+  modifiers?: OrderItemModifierRequest[];
+  addons?: OrderItemAddonRequest[];
 }
 
 export interface DeliveryAddressRequest {
@@ -44,6 +50,45 @@ export interface DeliveryAddressRequest {
   deliveryInstructions?: string;
   latitude: number;
   longitude: number;
+}
+
+export interface OrderItemModifier {
+  id: string;
+  modifierGroupId: string;
+  modifierGroupName: string;
+  modifierOptionId: string;
+  modifierOptionName: string;
+  priceDelta: number;
+}
+
+export interface OrderItemAddon {
+  id: string;
+  addonId: string;
+  addonName: string;
+  addonPrice: number;
+  quantity: number;
+}
+
+export interface OrderItem {
+  id: string;
+  menuItemId: string;
+  menuItemName: string;
+  menuItemPrice: number;
+  quantity: number;
+  specialInstructions?: string;
+  modifiers?: OrderItemModifier[];
+  addons?: OrderItemAddon[];
+}
+
+export interface DeliveryAddress {
+  id: string;
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  deliveryInstructions?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface Order {
@@ -68,35 +113,6 @@ export interface Order {
   deliveryAddress?: DeliveryAddress;
   dateCreated: string;
   dateUpdated: string;
-}
-
-export interface OrderItem {
-  id: string;
-  menuItemId: string;
-  menuItemName: string;
-  menuItemPrice: number;
-  quantity: number;
-  specialInstructions?: string;
-  addons?: OrderItemAddon[];
-}
-
-export interface OrderItemAddon {
-  id: string;
-  addonId: string;
-  addonName: string;
-  addonPrice: number;
-  quantity: number;
-}
-
-export interface DeliveryAddress {
-  id: string;
-  street: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  deliveryInstructions?: string;
-  latitude?: number;
-  longitude?: number;
 }
 
 export interface DeliveryQuote {

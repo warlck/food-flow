@@ -14,15 +14,19 @@ func reorder200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/addons/order",
+			URL:        "/v1/addons/reorder",
 			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPut,
+			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
+			// Swaps the middle pair. Addons[0] keeps rank 10 so update-200,
+			// which runs later and asserts the seeded rank, is unaffected.
 			Input: &addonapp.ReorderAddons{
-				CategoryID: sd.Categories[1].ID.String(),
+				MenuItemID: sd.MenuItems[0].ID.String(),
 				OrderedIDs: []string{
-					sd.Addons[3].ID.String(),
+					sd.Addons[0].ID.String(),
 					sd.Addons[2].ID.String(),
+					sd.Addons[1].ID.String(),
+					sd.Addons[3].ID.String(),
 				},
 			},
 			GotResp: &[]addonapp.Addon{},
@@ -34,20 +38,26 @@ func reorder200(sd apitest.SeedData) []apitest.Table {
 				}
 
 				addons := *gotResp
-				if len(addons) != 2 {
-					return fmt.Sprintf("expected 2 addons, got %d", len(addons))
+				if len(addons) != 4 {
+					return fmt.Sprintf("expected 4 addons, got %d", len(addons))
 				}
 
-				if addons[0].ID != sd.Addons[3].ID.String() || addons[1].ID != sd.Addons[2].ID.String() {
-					return fmt.Sprintf("unexpected order: %s, %s", addons[0].ID, addons[1].ID)
+				expIDs := []string{
+					sd.Addons[0].ID.String(),
+					sd.Addons[2].ID.String(),
+					sd.Addons[1].ID.String(),
+					sd.Addons[3].ID.String(),
 				}
 
-				if addons[0].Rank == nil || *addons[0].Rank != 10 {
-					return "first addon rank is not 10"
-				}
+				for i, expID := range expIDs {
+					if addons[i].ID != expID {
+						return fmt.Sprintf("position %d: expected addon %s, got %s", i, expID, addons[i].ID)
+					}
 
-				if addons[1].Rank == nil || *addons[1].Rank != 20 {
-					return "second addon rank is not 20"
+					expRank := (i + 1) * 10
+					if addons[i].Rank == nil || *addons[i].Rank != expRank {
+						return fmt.Sprintf("position %d: rank is not %d", i, expRank)
+					}
 				}
 
 				return ""
@@ -61,15 +71,15 @@ func reorder200(sd apitest.SeedData) []apitest.Table {
 func reorder400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
-			Name:       "mismatch-length",
-			URL:        "/v1/addons/order",
+			Name:       "subset-mismatch",
+			URL:        "/v1/addons/reorder",
 			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPut,
+			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &addonapp.ReorderAddons{
-				CategoryID: sd.Categories[1].ID.String(),
+				MenuItemID: sd.MenuItems[0].ID.String(),
 				OrderedIDs: []string{
-					sd.Addons[2].ID.String(),
+					sd.Addons[0].ID.String(),
 				},
 			},
 			GotResp: &errs.Error{},
@@ -85,15 +95,44 @@ func reorder400(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
-			Name:       "invalid-id",
-			URL:        "/v1/addons/order",
+			Name:       "duplicate-id",
+			URL:        "/v1/addons/reorder",
 			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPut,
+			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &addonapp.ReorderAddons{
-				CategoryID: sd.Categories[1].ID.String(),
+				MenuItemID: sd.MenuItems[0].ID.String(),
 				OrderedIDs: []string{
+					sd.Addons[3].ID.String(),
 					sd.Addons[2].ID.String(),
+					sd.Addons[1].ID.String(),
+					sd.Addons[1].ID.String(),
+				},
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code: errs.InvalidArgument,
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr := got.(*errs.Error)
+				if gotErr.Code != errs.InvalidArgument {
+					return "error code mismatch"
+				}
+				return ""
+			},
+		},
+		{
+			Name:       "unknown-id",
+			URL:        "/v1/addons/reorder",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input: &addonapp.ReorderAddons{
+				MenuItemID: sd.MenuItems[0].ID.String(),
+				OrderedIDs: []string{
+					sd.Addons[3].ID.String(),
+					sd.Addons[2].ID.String(),
+					sd.Addons[1].ID.String(),
 					uuid.New().String(),
 				},
 			},
@@ -110,16 +149,42 @@ func reorder400(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
-			Name:       "wrong-category-id",
-			URL:        "/v1/addons/order",
+			Name:       "addon-from-other-item",
+			URL:        "/v1/addons/reorder",
 			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPut,
+			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &addonapp.ReorderAddons{
-				CategoryID: sd.Categories[1].ID.String(),
+				MenuItemID: sd.MenuItems[0].ID.String(),
 				OrderedIDs: []string{
 					sd.Addons[3].ID.String(),
-					// Belongs to Categories[0]; same length but fails membership.
+					sd.Addons[2].ID.String(),
+					sd.Addons[1].ID.String(),
+					// Belongs to MenuItems[2]; same length but fails membership.
+					sd.Addons[4].ID.String(),
+				},
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{
+				Code: errs.InvalidArgument,
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr := got.(*errs.Error)
+				if gotErr.Code != errs.InvalidArgument {
+					return "error code mismatch"
+				}
+				return ""
+			},
+		},
+		{
+			Name:       "unknown-menu-item",
+			URL:        "/v1/addons/reorder",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input: &addonapp.ReorderAddons{
+				MenuItemID: uuid.New().String(),
+				OrderedIDs: []string{
 					sd.Addons[0].ID.String(),
 				},
 			},
@@ -144,9 +209,9 @@ func reorder401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        "/v1/addons/order",
+			URL:        "/v1/addons/reorder",
 			Token:      "",
-			Method:     http.MethodPut,
+			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
 			ExpResp: &errs.Error{
@@ -167,13 +232,15 @@ func reorder401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "wronguser",
-			URL:        "/v1/addons/order",
+			URL:        "/v1/addons/reorder",
 			Token:      sd.Users[0].Token,
-			Method:     http.MethodPut,
+			Method:     http.MethodPost,
 			StatusCode: http.StatusForbidden,
 			Input: &addonapp.ReorderAddons{
-				CategoryID: sd.Categories[1].ID.String(),
+				MenuItemID: sd.MenuItems[0].ID.String(),
 				OrderedIDs: []string{
+					sd.Addons[0].ID.String(),
+					sd.Addons[1].ID.String(),
 					sd.Addons[2].ID.String(),
 					sd.Addons[3].ID.String(),
 				},
@@ -196,13 +263,13 @@ func reorder401(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
-			Name:       "other-org-category",
-			URL:        "/v1/addons/order",
+			Name:       "other-org-item",
+			URL:        "/v1/addons/reorder",
 			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPut,
+			Method:     http.MethodPost,
 			StatusCode: http.StatusForbidden,
 			Input: &addonapp.ReorderAddons{
-				CategoryID: sd.Categories[2].ID.String(),
+				MenuItemID: sd.MenuItems[2].ID.String(),
 				OrderedIDs: []string{
 					sd.Addons[4].ID.String(),
 					sd.Addons[5].ID.String(),

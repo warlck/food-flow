@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sort"
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
@@ -13,6 +12,8 @@ import (
 	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
+	"github.com/warlck/food-flow/business/domain/modifiergroupbus"
+	"github.com/warlck/food-flow/business/domain/modifieroptionbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/order"
 	"github.com/warlck/food-flow/business/sdk/page"
@@ -21,19 +22,30 @@ import (
 
 // Handlers manages the set of restaurant endpoints.
 type app struct {
-	restaurantBus *restaurantbus.Business
-	categoryBus   *categorybus.Business
-	menuItemBus   *menuitembus.Business
-	addonBus      *addonbus.Business
+	restaurantBus     *restaurantbus.Business
+	categoryBus       *categorybus.Business
+	menuItemBus       *menuitembus.Business
+	modifierGroupBus  *modifiergroupbus.Business
+	modifierOptionBus *modifieroptionbus.Business
+	addonBus          *addonbus.Business
 }
 
 // newApp constructs a handlers for route access.
-func newApp(restaurantBus *restaurantbus.Business, categoryBus *categorybus.Business, menuItemBus *menuitembus.Business, addonBus *addonbus.Business) *app {
+func newApp(
+	restaurantBus *restaurantbus.Business,
+	categoryBus *categorybus.Business,
+	menuItemBus *menuitembus.Business,
+	modifierGroupBus *modifiergroupbus.Business,
+	modifierOptionBus *modifieroptionbus.Business,
+	addonBus *addonbus.Business,
+) *app {
 	return &app{
-		restaurantBus: restaurantBus,
-		categoryBus:   categoryBus,
-		menuItemBus:   menuItemBus,
-		addonBus:      addonBus,
+		restaurantBus:     restaurantBus,
+		categoryBus:       categoryBus,
+		menuItemBus:       menuItemBus,
+		modifierGroupBus:  modifierGroupBus,
+		modifierOptionBus: modifierOptionBus,
+		addonBus:          addonBus,
 	}
 }
 
@@ -115,7 +127,7 @@ func (a *app) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	return web.Respond(ctx, w, ToAppRestaurant(res), http.StatusOK)
 }
 
-// QueryByIDWithDetails retrieves a restaurant by its ID along with all categories and menu items.
+// QueryByIDWithDetails retrieves a restaurant by its ID along with all enabled categories and full menu hierarchy.
 func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	restaurantIDStr := web.Param(r, "restaurant_id")
 
@@ -130,19 +142,159 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 		return fmt.Errorf("querybyid: restaurantID[%s]: %w", restaurantID, err)
 	}
 
-	// Fetch categories for this restaurant
+	// Fetch categories for this restaurant (sorted by rank ASC NULLS LAST, name ASC, category_id ASC)
 	categoryFilter := categorybus.QueryFilter{
 		RestaurantID: &restaurantID,
 	}
-	// Use a large page to get all categories (adjust if needed)
-	pg := page.MustParse("1", "100")
-	categoryOrderBy := order.NewBy(categorybus.OrderByID, order.ASC)
-	categories, err := a.categoryBus.Query(ctx, categoryFilter, categoryOrderBy, pg)
+	categories, err := a.categoryBus.QueryAll(ctx, categoryFilter, categorybus.DefaultOrderBy)
 	if err != nil {
 		return fmt.Errorf("query categories: restaurantID[%s]: %w", restaurantID, err)
 	}
 
-	// Build the restaurant with nested data
+	// Fetch menu items for this restaurant
+	menuItemFilter := menuitembus.QueryFilter{
+		RestaurantID: &restaurantID,
+	}
+	menuItems, err := a.menuItemBus.QueryAll(ctx, menuItemFilter, menuitembus.DefaultOrderBy)
+	if err != nil {
+		return fmt.Errorf("query menu items: restaurantID[%s]: %w", restaurantID, err)
+	}
+
+	// Fetch modifier groups for this restaurant
+	modGroups, err := a.modifierGroupBus.QueryAll(ctx, modifiergroupbus.QueryFilter{RestaurantID: &restaurantID}, modifiergroupbus.DefaultOrderBy)
+	if err != nil {
+		return fmt.Errorf("query modifier groups: restaurantID[%s]: %w", restaurantID, err)
+	}
+
+	// Fetch modifier options for this restaurant
+	modOptions, err := a.modifierOptionBus.QueryAll(ctx, modifieroptionbus.QueryFilter{RestaurantID: &restaurantID}, modifieroptionbus.DefaultOrderBy)
+	if err != nil {
+		return fmt.Errorf("query modifier options: restaurantID[%s]: %w", restaurantID, err)
+	}
+
+	// Group modifier options by group ID
+	optionsByGroup := make(map[uuid.UUID][]Option)
+	for _, opt := range modOptions {
+		optionsByGroup[opt.ModifierGroupID] = append(optionsByGroup[opt.ModifierGroupID], Option{
+			ID:          opt.ID.String(),
+			Name:        opt.Name.String(),
+			Description: opt.Description,
+			PriceDelta:  opt.PriceDelta.Value(),
+			Available:   opt.Available,
+			Rank:        opt.Rank,
+		})
+	}
+
+	// Group modifier groups by menu item ID
+	groupsByItem := make(map[uuid.UUID][]ModifierGroup)
+	for _, grp := range modGroups {
+		opts := optionsByGroup[grp.ID]
+		if opts == nil {
+			opts = []Option{}
+		}
+		groupsByItem[grp.MenuItemID] = append(groupsByItem[grp.MenuItemID], ModifierGroup{
+			ID:            grp.ID.String(),
+			Name:          grp.Name.String(),
+			Description:   grp.Description,
+			MinSelections: grp.MinSelections,
+			MaxSelections: grp.MaxSelections,
+			Available:     grp.Available,
+			Rank:          grp.Rank,
+			Options:       opts,
+		})
+	}
+
+	// Fetch addons for this restaurant
+	addons, err := a.addonBus.QueryAll(ctx, addonbus.QueryFilter{RestaurantID: &restaurantID}, addonbus.DefaultOrderBy)
+	if err != nil {
+		return fmt.Errorf("query addons: restaurantID[%s]: %w", restaurantID, err)
+	}
+
+	// Group addons by menu item ID
+	addonsByItem := make(map[uuid.UUID][]Addon)
+	for _, addn := range addons {
+		addonsByItem[addn.MenuItemID] = append(addonsByItem[addn.MenuItemID], Addon{
+			ID:          addn.ID.String(),
+			Name:        addn.Name.String(),
+			Description: addn.Description,
+			Price:       addn.Price.Value(),
+			Available:   addn.Available,
+			MaxQuantity: addn.MaxQuantity,
+			Rank:        addn.Rank,
+		})
+	}
+
+	// Group menu items by category ID
+	itemsByCategory := make(map[uuid.UUID][]MenuItem)
+	for _, item := range menuItems {
+		itemGroups := groupsByItem[item.ID]
+		if itemGroups == nil {
+			itemGroups = []ModifierGroup{}
+		}
+
+		appAddons := addonsByItem[item.ID]
+		if appAddons == nil {
+			appAddons = []Addon{}
+		}
+
+		// Calculate orderable
+		isOrderable := item.Available
+		if isOrderable {
+			for _, grp := range itemGroups {
+				if grp.Available && grp.MinSelections > 0 {
+					hasAvailOpt := false
+					for _, opt := range grp.Options {
+						if opt.Available {
+							hasAvailOpt = true
+							break
+						}
+					}
+					if !hasAvailOpt {
+						isOrderable = false
+						break
+					}
+				}
+			}
+		}
+
+		appMenuItem := MenuItem{
+			ID:             item.ID.String(),
+			Name:           item.Name.String(),
+			Description:    item.Description,
+			Price:          item.Price.Value(),
+			ImageURL:       item.ImageURL,
+			Available:      item.Available,
+			Orderable:      isOrderable,
+			Rank:           item.Rank,
+			ModifierGroups: itemGroups,
+			Addons:         appAddons,
+		}
+
+		itemsByCategory[item.CategoryID] = append(itemsByCategory[item.CategoryID], appMenuItem)
+	}
+
+	// Build the response with enabled categories only
+	appCategories := make([]Category, 0, len(categories))
+	for _, cat := range categories {
+		if !cat.Enabled {
+			continue
+		}
+
+		catItems := itemsByCategory[cat.ID]
+		if catItems == nil {
+			catItems = []MenuItem{}
+		}
+
+		appCategories = append(appCategories, Category{
+			ID:          cat.ID.String(),
+			Name:        cat.Name.String(),
+			Description: cat.Description,
+			Enabled:     cat.Enabled,
+			Rank:        cat.Rank,
+			MenuItems:   catItems,
+		})
+	}
+
 	appRestaurant := RestaurantWithMenuCategories{
 		ID:                    res.ID.String(),
 		Name:                  res.Name.String(),
@@ -159,93 +311,9 @@ func (a *app) queryByIDWithDetails(ctx context.Context, w http.ResponseWriter, r
 		MaxDeliveryDistanceKm: res.MaxDeliveryDistanceKm,
 		MinSpend:              res.MinSpend,
 		TaxRate:               res.TaxRate,
+		Categories:            appCategories,
 		DateCreated:           res.DateCreated.Format("2006-01-02T15:04:05Z07:00"),
 		DateUpdated:           res.DateUpdated.Format("2006-01-02T15:04:05Z07:00"),
-		Categories:            make([]Category, 0, len(categories)),
-	}
-
-	// For each category, fetch its menu items
-	for _, cat := range categories {
-		appCategory := Category{
-			ID:          cat.ID.String(),
-			Name:        cat.Name.String(),
-			Description: cat.Description,
-			Enabled:     cat.Enabled,
-			MenuItems:   make([]MenuItem, 0),
-		}
-
-		// Fetch menu items for this category
-		menuItemFilter := menuitembus.QueryFilter{
-			CategoryID: &cat.ID,
-		}
-		// Sort menu items by display rank (ranked items first, then unranked) so the frontend
-		// can render storefront ordering without client-side sorting.
-		menuItemOrderBy := order.NewBy(menuitembus.OrderByRank, order.ASC)
-		menuItems, err := a.menuItemBus.Query(ctx, menuItemFilter, menuItemOrderBy, pg)
-		if err != nil {
-			return fmt.Errorf("query menu items: categoryID[%s]: %w", cat.ID, err)
-		}
-
-		// Fetch addons for this category (shared across menu items).
-		addons, err := a.addonBus.QueryByCategoryID(ctx, cat.ID)
-		if err != nil {
-			return fmt.Errorf("query addons: categoryID[%s]: %w", cat.ID, err)
-		}
-
-		// Convert addons to app layer (always return a non-nil slice in JSON).
-		appAddons := []Addon{}
-		for _, addon := range addons {
-			if addon.Available {
-				appAddons = append(appAddons, Addon{
-					ID:          addon.ID.String(),
-					Name:        addon.Name.String(),
-					Description: addon.Description,
-					Price:       addon.Price.Value(),
-					Available:   addon.Available,
-					MaxQuantity: addon.MaxQuantity,
-					Rank:        addon.Rank,
-				})
-			}
-		}
-
-		// Convert menu items and attach category addons.
-		for _, item := range menuItems {
-			appMenuItem := MenuItem{
-				ID:          item.ID.String(),
-				Name:        item.Name.String(),
-				Description: item.Description,
-				Price:       item.Price.Value(),
-				ImageURL:    item.ImageURL,
-				Available:   item.Available,
-				Rank:        item.Rank,
-				Addons:      appAddons,
-			}
-			appCategory.MenuItems = append(appCategory.MenuItems, appMenuItem)
-		}
-
-		// Make ordering deterministic (rank asc with non-nil first, then price asc, name asc, id asc).
-		sort.SliceStable(appCategory.MenuItems, func(i, j int) bool {
-			r1 := appCategory.MenuItems[i].Rank
-			r2 := appCategory.MenuItems[j].Rank
-			if r1 != nil && r2 == nil {
-				return true
-			}
-			if r1 == nil && r2 != nil {
-				return false
-			}
-			if r1 != nil && r2 != nil && *r1 != *r2 {
-				return *r1 < *r2
-			}
-			if appCategory.MenuItems[i].Price != appCategory.MenuItems[j].Price {
-				return appCategory.MenuItems[i].Price < appCategory.MenuItems[j].Price
-			}
-			if appCategory.MenuItems[i].Name != appCategory.MenuItems[j].Name {
-				return appCategory.MenuItems[i].Name < appCategory.MenuItems[j].Name
-			}
-			return appCategory.MenuItems[i].ID < appCategory.MenuItems[j].ID
-		})
-
-		appRestaurant.Categories = append(appRestaurant.Categories, appCategory)
 	}
 
 	return web.Respond(ctx, w, appRestaurant, http.StatusOK)

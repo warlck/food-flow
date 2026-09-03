@@ -15,6 +15,10 @@ import (
 	"github.com/warlck/food-flow/business/domain/imagebus/stores/imagedb"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/menuitembus/stores/menuitemdb"
+	"github.com/warlck/food-flow/business/domain/modifiergroupbus"
+	"github.com/warlck/food-flow/business/domain/modifiergroupbus/stores/modifiergroupdb"
+	"github.com/warlck/food-flow/business/domain/modifieroptionbus"
+	"github.com/warlck/food-flow/business/domain/modifieroptionbus/stores/modifieroptiondb"
 	"github.com/warlck/food-flow/business/domain/orderbus"
 	"github.com/warlck/food-flow/business/domain/orderbus/stores/orderdb"
 	"github.com/warlck/food-flow/business/domain/organizationbus"
@@ -36,6 +40,8 @@ type BusDomain struct {
 	Restaurant      *restaurantbus.Business
 	Category        *categorybus.Business
 	MenuItem        *menuitembus.Business
+	ModifierGroup   *modifiergroupbus.Business
+	ModifierOption  *modifieroptionbus.Business
 	Order           *orderbus.Business
 	Addon           *addonbus.Business
 	Promo           *promobus.Business
@@ -58,7 +64,13 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) (BusDomain, error) {
 	categoryBus := categorybus.NewBusiness(log, categoryStorage)
 
 	menuItemStorage := menuitemdb.NewStore(log, db)
-	menuItemBus := menuitembus.NewBusiness(log, menuItemStorage)
+	menuItemBus := menuitembus.NewBusiness(log, menuItemStorage, categoryBus)
+
+	modifierGroupStorage := modifiergroupdb.NewStore(log, db)
+	modifierOptionStorage := modifieroptiondb.NewStore(log, db)
+
+	modifierGroupBus := modifiergroupbus.NewBusiness(log, modifierGroupStorage, modifierOptionStorage)
+	modifierOptionBus := modifieroptionbus.NewBusiness(log, modifierOptionStorage, modifierGroupStorage)
 
 	addonStorage := addondb.NewStore(log, db)
 	addonBus := addonbus.NewBusiness(log, addonStorage)
@@ -67,7 +79,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) (BusDomain, error) {
 	promoBus := promobus.NewBusiness(log, promoStorage)
 
 	orderStorage := orderdb.NewStore(log, db)
-	orderBus := orderbus.NewBusiness(log, orderStorage, menuItemBus, restaurantBus, addonBus, promoBus)
+	orderBus := orderbus.NewBusiness(log, orderStorage, menuItemBus, restaurantBus, addonBus, promoBus, categoryBus, modifierGroupBus, modifierOptionBus)
 
 	imageStorage := imagedb.NewStore(log, db)
 	imageDir, err := os.MkdirTemp("", "ff-image-test-*")
@@ -93,6 +105,8 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) (BusDomain, error) {
 		Restaurant:      restaurantBus,
 		Category:        categoryBus,
 		MenuItem:        menuItemBus,
+		ModifierGroup:   modifierGroupBus,
+		ModifierOption:  modifierOptionBus,
 		Order:           orderBus,
 		Addon:           addonBus,
 		Promo:           promoBus,

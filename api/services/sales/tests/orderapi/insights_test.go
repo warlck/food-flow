@@ -243,4 +243,3 @@ func insights404(sd apitest.SeedData) []apitest.Table {
 
 	return table
 }
-

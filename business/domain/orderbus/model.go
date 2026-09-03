@@ -2,10 +2,37 @@
 package orderbus
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/business/types/money"
+)
+
+// Set of error variables for order business logic.
+var (
+	ErrNotFound                   = errors.New("order not found")
+	ErrEmptyItems                 = errors.New("order must have at least one item")
+	ErrInvalidDeliveryAddress     = errors.New("delivery address is required for delivery orders")
+	ErrRestaurantNotFound         = errors.New("restaurant not found")
+	ErrPromoNotFound              = errors.New("promo code not found")
+	ErrPromoExpired               = errors.New("promo code is expired")
+	ErrPromoMinSubtotalNotMet     = errors.New("promo code minimum subtotal not met")
+	ErrPromoUsageLimitExceeded    = errors.New("promo code usage limit exceeded")
+	ErrMenuItemUnavailable        = errors.New("menu item is unavailable")
+	ErrModifierGroupNotFound      = errors.New("modifier group not found")
+	ErrModifierOptionNotFound     = errors.New("modifier option not found")
+	ErrModifierOptionForeign      = errors.New("modifier option is not valid for this item")
+	ErrModifierRequired           = errors.New("modifier selection required")
+	ErrModifierOptionUnavailable  = errors.New("modifier option is unavailable")
+	ErrModifierGroupUnavailable   = errors.New("modifier group is unavailable")
+	ErrModifierSelectionLimit     = errors.New("modifier selection limit exceeded")
+	ErrAddonNotAssigned           = errors.New("addon is not assigned to menu item")
+	ErrAddonUnavailable           = errors.New("addon is unavailable")
+	ErrAddonQuantityOutOfRange    = errors.New("addon quantity out of range")
+	ErrDuplicateAddon             = errors.New("duplicate addon ID")
+	ErrMenuItemRestaurantMismatch = errors.New("menu item does not belong to restaurant")
+	ErrAddonRestaurantMismatch    = errors.New("addon does not belong to restaurant")
 )
 
 // Order statuses - lifecycle of an order
@@ -68,15 +95,30 @@ type Order struct {
 
 // OrderItem represents a menu item within an order
 type OrderItem struct {
-	ID                  uuid.UUID        // Unique order item identifier
-	OrderID             uuid.UUID        // Parent order ID
-	MenuItemID          uuid.UUID        // Reference to menu item
-	MenuItemName        string           // Snapshot of item name
-	MenuItemPrice       money.Money      // Snapshot of item price
-	Quantity            int              // Quantity ordered
-	SpecialInstructions string           // Item-specific instructions
-	Addons              []OrderItemAddon // Addons applied to this item
-	DateCreated         time.Time        // When item was added
+	ID                  uuid.UUID           // Unique order item identifier
+	OrderID             uuid.UUID           // Parent order ID
+	CategoryID          uuid.UUID           // Snapshot of category ID
+	CategoryName        string              // Snapshot of category name
+	MenuItemID          uuid.UUID           // Reference to menu item
+	MenuItemName        string              // Snapshot of item name
+	MenuItemPrice       money.Money         // Snapshot of item price
+	Quantity            int                 // Quantity ordered
+	SpecialInstructions string              // Item-specific instructions
+	Modifiers           []OrderItemModifier // Modifiers applied to this item
+	Addons              []OrderItemAddon    // Addons applied to this item
+	DateCreated         time.Time           // When item was added
+}
+
+// OrderItemModifier represents a modifier option selected on an order item
+type OrderItemModifier struct {
+	ID                 uuid.UUID   // Unique order item modifier identifier
+	OrderItemID        uuid.UUID   // Parent order item ID
+	ModifierGroupID    uuid.UUID   // Reference to modifier group
+	ModifierGroupName  string      // Snapshot of modifier group name
+	ModifierOptionID   uuid.UUID   // Reference to modifier option
+	ModifierOptionName string      // Snapshot of modifier option name
+	PriceDelta         money.Money // Snapshot of modifier option price delta
+	DateCreated        time.Time   // When modifier was added
 }
 
 // OrderItemAddon represents an addon applied to an order item
@@ -125,7 +167,14 @@ type NewOrderItem struct {
 	MenuItemID          string
 	Quantity            int
 	SpecialInstructions string
+	Modifiers           []NewOrderItemModifier
 	Addons              []NewOrderItemAddon
+}
+
+// NewOrderItemModifier contains data for adding a modifier option to an order item
+type NewOrderItemModifier struct {
+	ModifierGroupID  string
+	ModifierOptionID string
 }
 
 // NewOrderItemAddon contains data for adding an addon to an order item

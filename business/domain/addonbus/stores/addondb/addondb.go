@@ -34,9 +34,9 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 func (s *Store) Create(ctx context.Context, addon addonbus.Addon) error {
 	const q = `
 	INSERT INTO addons
-		(addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated, rank)
+		(addon_id, menu_item_id, restaurant_id, name, description, price, available, max_quantity, rank, date_created, date_updated)
 	VALUES
-		(:addon_id, :category_id, :restaurant_id, :name, :description, :price, :available, :max_quantity, :date_created, :date_updated, :rank)`
+		(:addon_id, :menu_item_id, :restaurant_id, :name, :description, :price, :available, :max_quantity, :rank, :date_created, :date_updated)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAddon(addon)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -92,7 +92,7 @@ func (s *Store) Query(ctx context.Context, filter addonbus.QueryFilter, orderBy 
 
 	const q = `
 	SELECT
-		addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated, rank
+		addon_id, menu_item_id, restaurant_id, name, description, price, available, max_quantity, rank, date_created, date_updated
 	FROM
 		addons`
 
@@ -106,6 +106,34 @@ func (s *Store) Query(ctx context.Context, filter addonbus.QueryFilter, orderBy 
 
 	buf.WriteString(orderByClause)
 	buf.WriteString(" OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY")
+
+	var dbAddons []dbAddon
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbAddons); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusAddons(dbAddons)
+}
+
+// QueryAll retrieves all addons matching the filter without pagination.
+func (s *Store) QueryAll(ctx context.Context, filter addonbus.QueryFilter, orderBy order.By) ([]addonbus.Addon, error) {
+	data := map[string]any{}
+
+	const q = `
+	SELECT
+		addon_id, menu_item_id, restaurant_id, name, description, price, available, max_quantity, rank, date_created, date_updated
+	FROM
+		addons`
+
+	buf := bytes.NewBufferString(q)
+	applyFilter(filter, data, buf)
+
+	orderByClause, err := orderByClause(orderBy)
+	if err != nil {
+		return nil, err
+	}
+
+	buf.WriteString(orderByClause)
 
 	var dbAddons []dbAddon
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbAddons); err != nil {
@@ -148,7 +176,7 @@ func (s *Store) QueryByID(ctx context.Context, addonID uuid.UUID) (addonbus.Addo
 
 	const q = `
 	SELECT
-		addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated, rank
+		addon_id, menu_item_id, restaurant_id, name, description, price, available, max_quantity, rank, date_created, date_updated
 	FROM
 		addons
 	WHERE 
@@ -165,66 +193,41 @@ func (s *Store) QueryByID(ctx context.Context, addonID uuid.UUID) (addonbus.Addo
 	return toBusAddon(dbAddn)
 }
 
-// QueryByCategoryID gets all addons for a specific category from the database.
-func (s *Store) QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]addonbus.Addon, error) {
-	data := struct {
-		CategoryID uuid.UUID `db:"category_id"`
-	}{
-		CategoryID: categoryID,
-	}
-
-	const q = `
-	SELECT
-		addon_id, category_id, restaurant_id, name, description, price, available, max_quantity, date_created, date_updated, rank
-	FROM
-		addons
-	WHERE 
-		category_id = :category_id
-	ORDER BY
-		rank ASC, name ASC, addon_id ASC`
-
-	var dbAddons []dbAddon
-	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbAddons); err != nil {
-		return nil, fmt.Errorf("namedqueryslice: %w", err)
-	}
-
-	return toBusAddons(dbAddons)
-}
-
-// Reorder updates the rank of addons in a category transactionally in steps of 10.
-func (s *Store) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []uuid.UUID) error {
+// Reorder updates the ranks of addons for a menu item in a transaction.
+func (s *Store) Reorder(ctx context.Context, menuItemID uuid.UUID, addonIDs []uuid.UUID) error {
 	tx, err := s.db.(*sqlx.DB).BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
+	now := time.Now().UTC()
+
 	const q = `
 	UPDATE
 		addons
 	SET
-		"rank" = :rank,
-		"date_updated" = :date_updated
+		rank = :rank,
+		date_updated = :date_updated
 	WHERE
-		addon_id = :addon_id AND category_id = :category_id`
+		addon_id = :addon_id AND menu_item_id = :menu_item_id`
 
-	now := time.Now().UTC()
-	for i, id := range orderedIDs {
-		rank := (i + 1) * 10
+	for i, id := range addonIDs {
+		rankVal := (i + 1) * 10
 		data := struct {
+			AddonID     uuid.UUID `db:"addon_id"`
+			MenuItemID  uuid.UUID `db:"menu_item_id"`
 			Rank        int       `db:"rank"`
 			DateUpdated time.Time `db:"date_updated"`
-			AddonID     uuid.UUID `db:"addon_id"`
-			CategoryID  uuid.UUID `db:"category_id"`
 		}{
-			Rank:        rank,
-			DateUpdated: now,
 			AddonID:     id,
-			CategoryID:  categoryID,
+			MenuItemID:  menuItemID,
+			Rank:        rankVal,
+			DateUpdated: now,
 		}
 
 		if err := sqldb.NamedExecContext(ctx, s.log, tx, q, data); err != nil {
-			return fmt.Errorf("namedexeccontext: %w", err)
+			return fmt.Errorf("update addon rank: %w", err)
 		}
 	}
 
@@ -233,15 +236,4 @@ func (s *Store) Reorder(ctx context.Context, categoryID uuid.UUID, orderedIDs []
 	}
 
 	return nil
-}
-
-// orderByClause validates the order by clause and returns the SQL string.
-func orderByClause(orderBy order.By) (string, error) {
-	const orderByFields = "addon_id, name, price, rank, date_created"
-
-	by, exists := orderByFields, true
-	_ = by
-	_ = exists
-
-	return fmt.Sprintf(" ORDER BY %s %s", orderBy.Field, orderBy.Direction), nil
 }

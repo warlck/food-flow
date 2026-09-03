@@ -30,6 +30,7 @@ func Routes(app *web.App, cfg Config) {
 
 	api := newApp(cfg.CategoryBus, cfg.RestaurantBus)
 	app.HandleFunc(http.MethodGet, version, "/categories", api.query, authen)
+	app.HandleFunc(http.MethodPut, version, "/categories/order", api.reorder, authen, ruleAdmin)
 	app.HandleFunc(http.MethodGet, version, "/categories/{category_id}", api.queryByID, authen)
 	app.HandleFunc(http.MethodPost, version, "/categories", api.create, authen, ruleAdmin)
 	app.HandleFunc(http.MethodPut, version, "/categories/{category_id}", api.update, authen, ruleAdmin)

@@ -53,7 +53,7 @@ The API response is transformed to match the frontend's expected data structure:
     {
       "id": "...",
       "name": "Kebab Roll",
-      "mentuItems": [
+      "menuItems": [
         {
           "id": "...",
           "name": "Chicken Kebab Roll",

@@ -11,12 +11,17 @@ var orderByFields = map[string]string{
 	categorybus.OrderByID:      "category_id",
 	categorybus.OrderByName:    "name",
 	categorybus.OrderByEnabled: "enabled",
+	categorybus.OrderByRank:    "rank",
 }
 
 func orderByClause(orderBy order.By) (string, error) {
 	by, exists := orderByFields[orderBy.Field]
 	if !exists {
 		return "", fmt.Errorf("field %q does not exist", orderBy.Field)
+	}
+
+	if orderBy.Field == categorybus.OrderByRank {
+		return fmt.Sprintf(" ORDER BY rank %s NULLS LAST, name ASC, category_id ASC", orderBy.Direction), nil
 	}
 
 	return " ORDER BY " + by + " " + orderBy.Direction, nil

@@ -34,9 +34,9 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 func (s *Store) Create(ctx context.Context, cat categorybus.Category) error {
 	const q = `
 	INSERT INTO categories
-		(category_id, name, description, restaurant_id, enabled, date_created, date_updated)
+		(category_id, name, description, restaurant_id, enabled, rank, date_created, date_updated)
 	VALUES
-		(:category_id, :name, :description, :restaurant_id, :enabled, :date_created, :date_updated)`
+		(:category_id, :name, :description, :restaurant_id, :enabled, :rank, :date_created, :date_updated)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBCategory(cat)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -54,12 +54,43 @@ func (s *Store) Update(ctx context.Context, cat categorybus.Category) error {
 		"name" = :name,
 		"description" = :description,
 		"enabled" = :enabled,
+		"rank" = :rank,
 		"date_updated" = :date_updated
 	WHERE
 		category_id = :category_id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBCategory(cat)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}
+
+// Reorder updates the rank of a list of categories atomically in a transaction.
+func (s *Store) Reorder(ctx context.Context, categories []categorybus.Category) error {
+	tx, err := s.db.(*sqlx.DB).BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	const q = `
+	UPDATE
+		categories
+	SET
+		"rank" = :rank,
+		"date_updated" = :date_updated
+	WHERE
+		category_id = :category_id`
+
+	for _, cat := range categories {
+		if err := sqldb.NamedExecContext(ctx, s.log, tx, q, toDBCategory(cat)); err != nil {
+			return fmt.Errorf("namedexeccontext: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
 	}
 
 	return nil
@@ -95,7 +126,7 @@ func (s *Store) Query(ctx context.Context, filter categorybus.QueryFilter, order
 
 	const q = `
 	SELECT
-		category_id, name, description, restaurant_id, enabled, date_created, date_updated
+		category_id, name, description, restaurant_id, enabled, rank, date_created, date_updated
 	FROM
 		categories`
 
@@ -124,7 +155,7 @@ func (s *Store) QueryAll(ctx context.Context, filter categorybus.QueryFilter, or
 
 	const q = `
 	SELECT
-		category_id, name, description, restaurant_id, enabled, date_created, date_updated
+		category_id, name, description, restaurant_id, enabled, rank, date_created, date_updated
 	FROM
 		categories`
 
@@ -179,7 +210,7 @@ func (s *Store) QueryByID(ctx context.Context, categoryID uuid.UUID) (categorybu
 
 	const q = `
 	SELECT
-		category_id, name, description, restaurant_id, enabled, date_created, date_updated
+		category_id, name, description, restaurant_id, enabled, rank, date_created, date_updated
 	FROM
 		categories
 	WHERE 

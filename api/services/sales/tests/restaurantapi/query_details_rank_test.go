@@ -66,36 +66,24 @@ func queryByIDWithDetailsRanked200(sd apitest.SeedData) []apitest.Table {
 					}
 				}
 
-				// Addons: shared per category; ranked ascending first, unranked last.
-				wantAddons := []struct {
-					id   string
-					rank *int
-				}{
-					{sd.Addons[1].ID.String(), sd.Addons[1].Rank},
-					{sd.Addons[0].ID.String(), sd.Addons[0].Rank},
-					{sd.Addons[2].ID.String(), nil},
-				}
+				// Addons: owned per item; ranked ascending first (10, 20), unranked last.
+				rank10 := 10
+				rank20 := 20
+				wantRanks := []*int{&rank10, &rank20, nil}
 
-				// The backend attaches the same shared addon list to every menu
-				// item in the category, so assert the ordering on all of them —
-				// a bug that ordered only the first item's addons would slip
-				// past a MenuItems[0]-only check.
 				for _, gotItem := range cat.MenuItems {
 					gotAddons := gotItem.Addons
-					if len(gotAddons) != len(wantAddons) {
-						return fmt.Sprintf("menu item %s: expected %d addons, got %d", gotItem.ID, len(wantAddons), len(gotAddons))
+					if len(gotAddons) != len(wantRanks) {
+						return fmt.Sprintf("menu item %s: expected %d addons, got %d", gotItem.ID, len(wantRanks), len(gotAddons))
 					}
 
-					for i, want := range wantAddons {
+					for i, wantRank := range wantRanks {
 						gotAddon := gotAddons[i]
-						if gotAddon.ID != want.id {
-							return fmt.Sprintf("menu item %s addon position %d: expected %s, got %s", gotItem.ID, i, want.id, gotAddon.ID)
-						}
-						if (gotAddon.Rank == nil) != (want.rank == nil) {
+						if (gotAddon.Rank == nil) != (wantRank == nil) {
 							return fmt.Sprintf("menu item %s addon position %d: rank nil mismatch (got %+v)", gotItem.ID, i, gotAddon.Rank)
 						}
-						if gotAddon.Rank != nil && *gotAddon.Rank != *want.rank {
-							return fmt.Sprintf("menu item %s addon position %d: expected rank %d, got %d", gotItem.ID, i, *want.rank, *gotAddon.Rank)
+						if gotAddon.Rank != nil && *gotAddon.Rank != *wantRank {
+							return fmt.Sprintf("menu item %s addon position %d: expected rank %d, got %d", gotItem.ID, i, *wantRank, *gotAddon.Rank)
 						}
 					}
 				}

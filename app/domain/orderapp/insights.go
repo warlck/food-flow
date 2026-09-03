@@ -12,12 +12,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/app/sdk/mid"
-	"github.com/warlck/food-flow/business/domain/categorybus"
-	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/orderbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
-	"github.com/warlck/food-flow/business/sdk/order"
 	"github.com/warlck/food-flow/business/sdk/page"
+	"github.com/warlck/food-flow/business/types/money"
 	"github.com/warlck/food-flow/foundation/web"
 )
 
@@ -188,68 +186,20 @@ func (a *app) queryInsights(ctx context.Context, w http.ResponseWriter, r *http.
 	// 1. Query pure order domain metrics
 	metrics, err := a.orderBus.QueryOrderMetrics(ctx, filter)
 	if err != nil {
+		// Never clamp aggregate money values: surface them as a client error
+		// rather than failing with an opaque 500.
+		if errors.Is(err, money.ErrOverflow) {
+			return errs.New(errs.InvalidArgument, fmt.Errorf("aggregated sales total exceeds the maximum supported amount"))
+		}
 		return fmt.Errorf("query order metrics: %w", err)
 	}
 
-	// 2. Query catalog metadata for category mapping across authorized restaurants
-	var menuItems []menuitembus.MenuItem
-	var categories []categorybus.Category
-
-	if len(authorizedRestaurantIDs) == 1 {
-		restID := authorizedRestaurantIDs[0]
-		menuItems, err = a.menuItemBus.QueryAll(ctx, menuitembus.QueryFilter{
-			RestaurantID: &restID,
-		}, order.By{Field: menuitembus.OrderByID, Direction: order.ASC})
-		if err != nil {
-			return fmt.Errorf("query menu items: %w", err)
-		}
-
-		categories, err = a.categoryBus.QueryAll(ctx, categorybus.QueryFilter{
-			RestaurantID: &restID,
-		}, order.By{Field: categorybus.OrderByID, Direction: order.ASC})
-		if err != nil {
-			return fmt.Errorf("query categories: %w", err)
-		}
-	} else {
-		for _, restID := range authorizedRestaurantIDs {
-			rID := restID
-			mis, err := a.menuItemBus.QueryAll(ctx, menuitembus.QueryFilter{
-				RestaurantID: &rID,
-			}, order.By{Field: menuitembus.OrderByID, Direction: order.ASC})
-			if err != nil {
-				return fmt.Errorf("query menu items for rest %s: %w", rID, err)
-			}
-			menuItems = append(menuItems, mis...)
-
-			cats, err := a.categoryBus.QueryAll(ctx, categorybus.QueryFilter{
-				RestaurantID: &rID,
-			}, order.By{Field: categorybus.OrderByID, Direction: order.ASC})
-			if err != nil {
-				return fmt.Errorf("query categories for rest %s: %w", rID, err)
-			}
-			categories = append(categories, cats...)
-		}
-	}
-
-	// 3. Build in-memory lookup maps
-	itemCategoryMap := make(map[uuid.UUID]uuid.UUID, len(menuItems))
-	for _, mi := range menuItems {
-		itemCategoryMap[mi.ID] = mi.CategoryID
-	}
-
-	categoryNameMap := make(map[uuid.UUID]string, len(categories))
-	for _, c := range categories {
-		categoryNameMap[c.ID] = c.Name.String()
-	}
-
-	// 4. Enrich Top Items with Category Name
+	// 2. Build Top Items with Category Name from snapshots
 	appTopItems := make([]AppTopItemMetric, len(metrics.TopItems))
 	for i, item := range metrics.TopItems {
-		catName := "General"
-		if catID, exists := itemCategoryMap[item.MenuItemID]; exists {
-			if name, found := categoryNameMap[catID]; found && name != "" {
-				catName = name
-			}
+		catName := item.CategoryName
+		if catName == "" {
+			catName = "General"
 		}
 
 		appTopItems[i] = AppTopItemMetric{
@@ -261,7 +211,7 @@ func (a *app) queryInsights(ctx context.Context, w http.ResponseWriter, r *http.
 		}
 	}
 
-	// 5. In-Memory Category Aggregation from All Item Sales
+	// 3. Category Aggregation from All Item Sales snapshots
 	type catAccumulator struct {
 		id       uuid.UUID
 		name     string
@@ -273,14 +223,10 @@ func (a *app) queryInsights(ctx context.Context, w http.ResponseWriter, r *http.
 	var totalCategoryRevenue float64
 
 	for _, sale := range metrics.AllItemSales {
-		catID := uuid.Nil
-		catName := "General"
-
-		if mappedID, exists := itemCategoryMap[sale.MenuItemID]; exists {
-			catID = mappedID
-			if name, found := categoryNameMap[mappedID]; found && name != "" {
-				catName = name
-			}
+		catID := sale.CategoryID
+		catName := sale.CategoryName
+		if catName == "" {
+			catName = "General"
 		}
 
 		rev := sale.TotalRevenue.Value()

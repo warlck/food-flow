@@ -1,12 +1,14 @@
 package addonapp
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/warlck/food-flow/app/sdk/errs"
 	"github.com/warlck/food-flow/business/domain/addonbus"
+	"github.com/warlck/food-flow/business/types/name"
 )
 
 type queryParams struct {
@@ -14,7 +16,7 @@ type queryParams struct {
 	Rows         string
 	OrderBy      string
 	ID           string
-	CategoryID   string
+	MenuItemID   string
 	RestaurantID string
 	Name         string
 	Available    string
@@ -28,7 +30,7 @@ func parseQueryParams(r *http.Request) (queryParams, error) {
 		Rows:         values.Get("rows"),
 		OrderBy:      values.Get("orderBy"),
 		ID:           values.Get("addon_id"),
-		CategoryID:   values.Get("category_id"),
+		MenuItemID:   values.Get("menu_item_id"),
 		RestaurantID: values.Get("restaurant_id"),
 		Name:         values.Get("name"),
 		Available:    values.Get("available"),
@@ -38,55 +40,46 @@ func parseQueryParams(r *http.Request) (queryParams, error) {
 }
 
 func parseFilter(qp queryParams) (addonbus.QueryFilter, error) {
-	var fieldErrors errs.FieldErrors
 	var filter addonbus.QueryFilter
 
 	if qp.ID != "" {
 		id, err := uuid.Parse(qp.ID)
-		switch err {
-		case nil:
-			filter.ID = &id
-		default:
-			fieldErrors.Add("addon_id", err)
+		if err != nil {
+			return addonbus.QueryFilter{}, errs.NewFieldErrors("addon_id", err)
 		}
+		filter.ID = &id
 	}
 
-	if qp.CategoryID != "" {
-		categoryID, err := uuid.Parse(qp.CategoryID)
-		switch err {
-		case nil:
-			filter.CategoryID = &categoryID
-		default:
-			fieldErrors.Add("category_id", err)
+	if qp.MenuItemID != "" {
+		menuItemID, err := uuid.Parse(qp.MenuItemID)
+		if err != nil {
+			return addonbus.QueryFilter{}, errs.NewFieldErrors("menu_item_id", err)
 		}
+		filter.MenuItemID = &menuItemID
 	}
 
 	if qp.RestaurantID != "" {
 		restaurantID, err := uuid.Parse(qp.RestaurantID)
-		switch err {
-		case nil:
-			filter.RestaurantID = &restaurantID
-		default:
-			fieldErrors.Add("restaurant_id", err)
+		if err != nil {
+			return addonbus.QueryFilter{}, errs.NewFieldErrors("restaurant_id", err)
 		}
+		filter.RestaurantID = &restaurantID
 	}
 
 	if qp.Name != "" {
-		filter.Name = &qp.Name
+		nme, err := name.Parse(qp.Name)
+		if err != nil {
+			return addonbus.QueryFilter{}, errs.NewFieldErrors("name", err)
+		}
+		filter.Name = &nme
 	}
 
 	if qp.Available != "" {
 		available, err := strconv.ParseBool(qp.Available)
-		switch err {
-		case nil:
-			filter.Available = &available
-		default:
-			fieldErrors.Add("available", err)
+		if err != nil {
+			return addonbus.QueryFilter{}, errs.NewFieldErrors("available", fmt.Errorf("invalid bool: %w", err))
 		}
-	}
-
-	if fieldErrors != nil {
-		return addonbus.QueryFilter{}, fieldErrors
+		filter.Available = &available
 	}
 
 	return filter, nil

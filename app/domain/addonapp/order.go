@@ -8,8 +8,10 @@ var defaultOrderBy = addonbus.DefaultOrderBy
 
 var orderByFields = map[string]string{
 	"addon_id":     addonbus.OrderByID,
+	"menu_item_id": addonbus.OrderByMenuItemID,
 	"name":         addonbus.OrderByName,
 	"price":        addonbus.OrderByPrice,
-	"date_created": addonbus.OrderByCreated,
 	"rank":         addonbus.OrderByRank,
+	"dateCreated":  addonbus.OrderByDateCreated,
+	"dateUpdated":  addonbus.OrderByDateUpdated,
 }

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useCart } from '@/context/CartContext';
 import { useRestaurantDetails } from '@/hooks/useRestaurantDetails';
-import { transformApiRestaurant, transformApiMenuItems, cheapestAvailablePrice } from '@/lib/transformers';
+import { transformApiRestaurant, transformApiMenuItems, minOrderablePrice } from '@/lib/transformers';
 import { MenuItem as MenuItemType } from '@/types';
 import { Plus, ShoppingCart, Clock, Star, ArrowUp, Loader2, AlertCircle } from 'lucide-react';
 import MenuItemDialog from '@/components/MenuItemDialog';
@@ -60,27 +60,14 @@ const MobileMenu: React.FC = () => {
     return map;
   }, [menuItems]);
 
-  // One card per category. We keep the rank-first item as the card's featured
-  // image/identity, but the quoted price is the category's cheapest *available*
-  // item so the card and the dialog header agree.
+  // Spec §10.2: every menu item is an individual card. `menuItems` arrives in
+  // backend order (categories in order, then rank/price within a category).
   const displayedItems = useMemo(() => {
     if (selectedCategory === 'All') {
-      // Preserve backend category order.
-      return categories
-        .map((category) => itemsByCategory.get(category)?.[0])
-        .filter(Boolean) as MenuItemType[];
+      return menuItems;
     }
-
-    const categoryItems = itemsByCategory.get(selectedCategory);
-    return categoryItems && categoryItems.length > 0 ? [categoryItems[0]] : [];
-  }, [categories, itemsByCategory, selectedCategory]);
-
-  // Base price shown on each category card: cheapest available item in that
-  // category (falls back to the featured item's price when none are available).
-  const cardPrice = (item: MenuItemType): number => {
-    const cheapest = cheapestAvailablePrice(itemsByCategory.get(item.category) ?? []);
-    return cheapest ?? item.price;
-  };
+    return itemsByCategory.get(selectedCategory) ?? [];
+  }, [menuItems, itemsByCategory, selectedCategory]);
 
   // Check if restaurant ID is missing
   if (!restaurantId) {
@@ -249,7 +236,7 @@ const MobileMenu: React.FC = () => {
                     <div className="p-4">
                       <div className="mb-3">
                         <h3 className="font-bold text-gray-900 text-lg leading-tight mb-2">
-                          {item.category}
+                          {item.name}
                         </h3>
                         <p className="text-gray-600 text-sm leading-relaxed">
                           {item.description}
@@ -259,7 +246,10 @@ const MobileMenu: React.FC = () => {
                       {/* Price and Controls */}
                       <div className="flex items-center justify-between">
                         <div className="text-food-primary font-bold text-xl">
-                          ${cardPrice(item).toFixed(2)}
+                          {(() => {
+                            const price = minOrderablePrice(item);
+                            return `${price.fromPrefix ? 'From ' : ''}$${price.amount.toFixed(2)}`;
+                          })()}
                         </div>
 
                         <div className="flex items-center">
@@ -311,7 +301,6 @@ const MobileMenu: React.FC = () => {
       {/* Menu Item Dialog */}
       <MenuItemDialog
         item={selectedItem}
-        categoryItems={selectedItem ? itemsByCategory.get(selectedItem.category) : undefined}
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
       />

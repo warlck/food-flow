@@ -8,6 +8,7 @@ import (
 	"github.com/warlck/food-flow/app/sdk/auth"
 	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/categorybus"
+	"github.com/warlck/food-flow/business/domain/menuitembus"
 	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/domain/userbus"
@@ -35,8 +36,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	// -------------------------------------------------------------------------
 
-	// Seed organizations; the second org's resources are used for
-	// cross-organization authorization tests (admins are NOT members of it).
+	// Seed organizations
 	orgs, err := organizationbus.TestSeedOrganizations(ctx, 2, busDomain.Organization)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding organizations: %w", err)
@@ -70,21 +70,20 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding categories : %w", err)
 	}
 
+	items1, err := menuitembus.TestSeedMenuItems(ctx, 2, cats[0].ID, rests[0].ID, busDomain.MenuItem)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding menu items : %w", err)
+	}
+
 	// -------------------------------------------------------------------------
 
-	// Seed addons for category 0
-	addons1, err := addonbus.TestSeedAddons(ctx, 2, cats[0].ID, rests[0].ID, busDomain.Addon)
+	// Seed addons for menu item 0
+	addons1, err := addonbus.TestSeedAddons(ctx, 4, items1[0].ID, rests[0].ID, busDomain.Addon)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
 	}
 
-	// Seed addons for category 1
-	addons2, err := addonbus.TestSeedAddons(ctx, 2, cats[1].ID, rests[0].ID, busDomain.Addon)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
-	}
-
-	// Seed a restaurant, category, and addons in the second organization,
+	// Seed a restaurant, category, menu item, and addons in the second organization,
 	// which the admin users are not members of.
 	otherRests, err := restaurantbus.TestSeedRestaurants(ctx, 1, busDomain.Restaurant, orgs[1].ID)
 	if err != nil {
@@ -96,16 +95,26 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding other org category : %w", err)
 	}
 
-	otherAddons, err := addonbus.TestSeedAddons(ctx, 2, otherCats[0].ID, otherRests[0].ID, busDomain.Addon)
+	otherItems, err := menuitembus.TestSeedMenuItems(ctx, 1, otherCats[0].ID, otherRests[0].ID, busDomain.MenuItem)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding other org menu items : %w", err)
+	}
+
+	otherAddons, err := addonbus.TestSeedAddons(ctx, 2, otherItems[0].ID, otherRests[0].ID, busDomain.Addon)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding other org addons : %w", err)
 	}
 
-	allAddons := append(addons1, addons2...)
-	allAddons = append(allAddons, otherAddons...)
+	allAddons := append(addons1, otherAddons...)
 	appAddons := make([]apitest.Addon, len(allAddons))
 	for i, a := range allAddons {
 		appAddons[i] = apitest.Addon{Addon: a}
+	}
+
+	allItems := append(items1, otherItems...)
+	appItems := make([]apitest.MenuItem, len(allItems))
+	for i, m := range allItems {
+		appItems[i] = apitest.MenuItem{MenuItem: m}
 	}
 
 	tu1 := apitest.User{
@@ -146,7 +155,8 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 			{Category: cats[1]},
 			{Category: otherCats[0]},
 		},
-		Addons: appAddons,
+		MenuItems: appItems,
+		Addons:    appAddons,
 	}
 
 	return sd, nil

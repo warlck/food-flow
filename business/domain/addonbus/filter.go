@@ -1,12 +1,15 @@
 package addonbus
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+	"github.com/warlck/food-flow/business/types/name"
+)
 
 // QueryFilter holds the available fields for filtering addons.
 type QueryFilter struct {
 	ID           *uuid.UUID
-	CategoryID   *uuid.UUID
+	MenuItemID   *uuid.UUID
 	RestaurantID *uuid.UUID
-	Name         *string
+	Name         *name.Name
 	Available    *bool
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"sort"
 	"testing"
 	"time"
@@ -14,13 +13,21 @@ import (
 	"github.com/warlck/food-flow/business/domain/addonbus"
 	"github.com/warlck/food-flow/business/domain/categorybus"
 	"github.com/warlck/food-flow/business/domain/menuitembus"
+	"github.com/warlck/food-flow/business/domain/organizationbus"
 	"github.com/warlck/food-flow/business/domain/restaurantbus"
 	"github.com/warlck/food-flow/business/sdk/dbtest"
 	"github.com/warlck/food-flow/business/sdk/page"
 	"github.com/warlck/food-flow/business/sdk/unittest"
 	"github.com/warlck/food-flow/business/types/money"
 	"github.com/warlck/food-flow/business/types/name"
+	"github.com/warlck/food-flow/business/types/opt"
 )
+
+type seedData struct {
+	RestaurantID uuid.UUID
+	MenuItemID   uuid.UUID
+	Addons       []addonbus.Addon
+}
 
 func Test_Addon(t *testing.T) {
 	t.Parallel()
@@ -32,87 +39,47 @@ func Test_Addon(t *testing.T) {
 		t.Fatalf("Seeding error: %s", err)
 	}
 
-	// -------------------------------------------------------------------------
-
 	unittest.Run(t, query(db.BusDomain, sd), "query")
 	unittest.Run(t, create(db.BusDomain, sd), "create")
 	unittest.Run(t, update(db.BusDomain, sd), "update")
-	unittest.Run(t, delete(db.BusDomain, sd), "delete")
 	unittest.Run(t, reorder(db.BusDomain, sd), "reorder")
+	unittest.Run(t, delete(db.BusDomain, sd), "delete")
 }
 
-// =============================================================================
-
-func insertSeedData(busDomain dbtest.BusDomain) (unittest.SeedData, error) {
+func insertSeedData(busDomain dbtest.BusDomain) (seedData, error) {
 	ctx := context.Background()
 
-	// Seed restaurants first
 	orgs, err := organizationbus.TestSeedOrganizations(ctx, 1, busDomain.Organization)
 	if err != nil {
-		return unittest.SeedData{}, fmt.Errorf("seeding organizations: %w", err)
+		return seedData{}, fmt.Errorf("seeding organizations: %w", err)
 	}
 	rests, err := restaurantbus.TestSeedRestaurants(ctx, 1, busDomain.Restaurant, orgs[0].ID)
 	if err != nil {
-		return unittest.SeedData{}, fmt.Errorf("seeding restaurants : %w", err)
+		return seedData{}, fmt.Errorf("seeding restaurants: %w", err)
 	}
-
-	// Seed categories for restaurant
-	cats, err := categorybus.TestSeedCategories(ctx, 2, rests[0].ID, busDomain.Category)
+	cats, err := categorybus.TestSeedCategories(ctx, 1, rests[0].ID, busDomain.Category)
 	if err != nil {
-		return unittest.SeedData{}, fmt.Errorf("seeding categories : %w", err)
+		return seedData{}, fmt.Errorf("seeding categories: %w", err)
 	}
-
-	// Seed menu items for category
-	items, err := menuitembus.TestSeedMenuItems(ctx, 2, cats[0].ID, rests[0].ID, busDomain.MenuItem)
+	items, err := menuitembus.TestSeedMenuItems(ctx, 1, cats[0].ID, rests[0].ID, busDomain.MenuItem)
 	if err != nil {
-		return unittest.SeedData{}, fmt.Errorf("seeding menu items : %w", err)
+		return seedData{}, fmt.Errorf("seeding menu items: %w", err)
 	}
-
-	// Seed addons for category 0
-	addons1, err := addonbus.TestSeedAddons(ctx, 2, cats[0].ID, rests[0].ID, busDomain.Addon)
+	addons, err := addonbus.TestSeedAddons(ctx, 4, items[0].ID, rests[0].ID, busDomain.Addon)
 	if err != nil {
-		return unittest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
+		return seedData{}, fmt.Errorf("seeding addons: %w", err)
 	}
 
-	// Seed addons for category 1
-	addons2, err := addonbus.TestSeedAddons(ctx, 2, cats[1].ID, rests[0].ID, busDomain.Addon)
-	if err != nil {
-		return unittest.SeedData{}, fmt.Errorf("seeding addons : %w", err)
-	}
-
-	// -------------------------------------------------------------------------
-
-	sd := unittest.SeedData{
-		Restaurants: []unittest.Restaurant{
-			{Restaurant: rests[0]},
-		},
-		Categories: []unittest.Category{
-			{Category: cats[0]},
-			{Category: cats[1]},
-		},
-		MenuItems: []unittest.MenuItem{
-			{MenuItem: items[0]},
-			{MenuItem: items[1]},
-		},
-		Addons: []unittest.Addon{
-			{Addon: addons1[0]},
-			{Addon: addons1[1]},
-			{Addon: addons2[0]},
-			{Addon: addons2[1]},
-		},
-	}
-
-	return sd, nil
+	return seedData{
+		RestaurantID: rests[0].ID,
+		MenuItemID:   items[0].ID,
+		Addons:       addons,
+	}, nil
 }
 
-// =============================================================================
-
-func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
-	addons := make([]addonbus.Addon, 0, len(sd.Addons))
-
-	for _, addon := range sd.Addons {
-		addons = append(addons, addon.Addon)
-	}
+func query(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
+	addons := make([]addonbus.Addon, len(sd.Addons))
+	copy(addons, sd.Addons)
 
 	sort.Slice(addons, func(i, j int) bool {
 		return addons[i].ID.String() <= addons[j].ID.String()
@@ -124,22 +91,20 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 			ExpResp: addons,
 			ExcFunc: func(ctx context.Context) any {
 				filter := addonbus.QueryFilter{
-					RestaurantID: &sd.Restaurants[0].ID,
+					MenuItemID:   &sd.MenuItemID,
+					RestaurantID: &sd.RestaurantID,
 				}
-
 				resp, err := busDomain.Addon.Query(ctx, filter, addonbus.DefaultOrderBy, page.MustParse("1", "10"))
 				if err != nil {
 					return err
 				}
-
 				return resp
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.([]addonbus.Addon)
-				if !exists {
-					return "error occurred"
+				gotResp, ok := got.([]addonbus.Addon)
+				if !ok {
+					return "expected []addonbus.Addon"
 				}
-
 				expResp := exp.([]addonbus.Addon)
 
 				sort.Slice(gotResp, func(i, j int) bool {
@@ -150,85 +115,31 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 					if gotResp[i].DateCreated.Format(time.RFC3339) == expResp[i].DateCreated.Format(time.RFC3339) {
 						expResp[i].DateCreated = gotResp[i].DateCreated
 					}
-
 					if gotResp[i].DateUpdated.Format(time.RFC3339) == expResp[i].DateUpdated.Format(time.RFC3339) {
 						expResp[i].DateUpdated = gotResp[i].DateUpdated
 					}
 				}
-
 				return cmp.Diff(gotResp, expResp)
 			},
 		},
 		{
-			Name:    "byid",
-			ExpResp: sd.Addons[0].Addon,
+			Name:    "by-id",
+			ExpResp: sd.Addons[0],
 			ExcFunc: func(ctx context.Context) any {
 				resp, err := busDomain.Addon.QueryByID(ctx, sd.Addons[0].ID)
 				if err != nil {
 					return err
 				}
-
 				return resp
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(addonbus.Addon)
-				if !exists {
-					return "error occurred"
+				gotResp, ok := got.(addonbus.Addon)
+				if !ok {
+					return "expected addonbus.Addon"
 				}
-
 				expResp := exp.(addonbus.Addon)
-
-				if gotResp.DateCreated.Format(time.RFC3339) == expResp.DateCreated.Format(time.RFC3339) {
-					expResp.DateCreated = gotResp.DateCreated
-				}
-
-				if gotResp.DateUpdated.Format(time.RFC3339) == expResp.DateUpdated.Format(time.RFC3339) {
-					expResp.DateUpdated = gotResp.DateUpdated
-				}
-
-				return cmp.Diff(gotResp, expResp)
-			},
-		},
-		{
-			Name: "bycategoryid",
-			ExpResp: []addonbus.Addon{
-				sd.Addons[0].Addon,
-				sd.Addons[1].Addon,
-			},
-			ExcFunc: func(ctx context.Context) any {
-				resp, err := busDomain.Addon.QueryByCategoryID(ctx, sd.Categories[0].ID)
-				if err != nil {
-					return err
-				}
-
-				return resp
-			},
-			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.([]addonbus.Addon)
-				if !exists {
-					return "error occurred"
-				}
-
-				expResp := exp.([]addonbus.Addon)
-
-				sort.Slice(gotResp, func(i, j int) bool {
-					return gotResp[i].ID.String() <= gotResp[j].ID.String()
-				})
-
-				sort.Slice(expResp, func(i, j int) bool {
-					return expResp[i].ID.String() <= expResp[j].ID.String()
-				})
-
-				for i := range gotResp {
-					if gotResp[i].DateCreated.Format(time.RFC3339) == expResp[i].DateCreated.Format(time.RFC3339) {
-						expResp[i].DateCreated = gotResp[i].DateCreated
-					}
-
-					if gotResp[i].DateUpdated.Format(time.RFC3339) == expResp[i].DateUpdated.Format(time.RFC3339) {
-						expResp[i].DateUpdated = gotResp[i].DateUpdated
-					}
-				}
-
+				expResp.DateCreated = gotResp.DateCreated
+				expResp.DateUpdated = gotResp.DateUpdated
 				return cmp.Diff(gotResp, expResp)
 			},
 		},
@@ -237,269 +148,127 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 	return table
 }
 
-func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
+func create(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
+	avail := true
+	r10 := 10
 	table := []unittest.Table{
 		{
 			Name: "basic",
 			ExpResp: addonbus.Addon{
-				CategoryID:   sd.Categories[0].ID,
-				RestaurantID: sd.Restaurants[0].ID,
-				Name:         name.MustParse("Extra Bacon"),
-				Description:  "Crispy bacon strips",
-				Price:        money.MustParse(3.50),
+				MenuItemID:   sd.MenuItemID,
+				RestaurantID: sd.RestaurantID,
+				Name:         name.MustParse("French Fries"),
+				Description:  "Crispy golden fries",
+				Price:        money.MustParse(4.50),
 				Available:    true,
-				MaxQuantity:  2,
-			},
-			ExcFunc: func(ctx context.Context) any {
-				na := addonbus.NewAddon{
-					CategoryID:   sd.Categories[0].ID,
-					RestaurantID: sd.Restaurants[0].ID,
-					Name:         name.MustParse("Extra Bacon"),
-					Description:  "Crispy bacon strips",
-					Price:        money.MustParse(3.50),
-					MaxQuantity:  2,
-				}
-
-				resp, err := busDomain.Addon.Create(ctx, na)
-				if err != nil {
-					return err
-				}
-
-				return resp
-			},
-			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(addonbus.Addon)
-				if !exists {
-					return "error occurred"
-				}
-
-				expResp := exp.(addonbus.Addon)
-
-				expResp.ID = gotResp.ID
-				expResp.DateCreated = gotResp.DateCreated
-				expResp.DateUpdated = gotResp.DateUpdated
-
-				return cmp.Diff(gotResp, expResp)
-			},
-		},
-		{
-			Name: "default_max_quantity",
-			ExpResp: addonbus.Addon{
-				CategoryID:   sd.Categories[0].ID,
-				RestaurantID: sd.Restaurants[0].ID,
-				Name:         name.MustParse("Extra Sauce"),
-				Description:  "Additional sauce portion",
-				Price:        money.MustParse(1.00),
-				Available:    true,
-				MaxQuantity:  10,
-			},
-			ExcFunc: func(ctx context.Context) any {
-				na := addonbus.NewAddon{
-					CategoryID:   sd.Categories[0].ID,
-					RestaurantID: sd.Restaurants[0].ID,
-					Name:         name.MustParse("Extra Sauce"),
-					Description:  "Additional sauce portion",
-					Price:        money.MustParse(1.00),
-					MaxQuantity:  0,
-				}
-
-				resp, err := busDomain.Addon.Create(ctx, na)
-				if err != nil {
-					return err
-				}
-
-				return resp
-			},
-			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(addonbus.Addon)
-				if !exists {
-					return "error occurred"
-				}
-
-				expResp := exp.(addonbus.Addon)
-
-				expResp.ID = gotResp.ID
-				expResp.DateCreated = gotResp.DateCreated
-				expResp.DateUpdated = gotResp.DateUpdated
-
-				return cmp.Diff(gotResp, expResp)
-			},
-		},
-		{
-			Name: "with_rank",
-			ExpResp: addonbus.Addon{
-				CategoryID:   sd.Categories[0].ID,
-				RestaurantID: sd.Restaurants[0].ID,
-				Name:         name.MustParse("Extra Jalapenos"),
-				Description:  "Spicy sliced jalapenos",
-				Price:        money.MustParse(1.50),
-				Available:    true,
-				MaxQuantity:  3,
-				Rank:         dbtest.IntPointer(10),
-			},
-			ExcFunc: func(ctx context.Context) any {
-				na := addonbus.NewAddon{
-					CategoryID:   sd.Categories[0].ID,
-					RestaurantID: sd.Restaurants[0].ID,
-					Name:         name.MustParse("Extra Jalapenos"),
-					Description:  "Spicy sliced jalapenos",
-					Price:        money.MustParse(1.50),
-					MaxQuantity:  3,
-					Rank:         dbtest.IntPointer(10),
-				}
-
-				resp, err := busDomain.Addon.Create(ctx, na)
-				if err != nil {
-					return err
-				}
-
-				return resp
-			},
-			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(addonbus.Addon)
-				if !exists {
-					return "error occurred"
-				}
-
-				expResp := exp.(addonbus.Addon)
-
-				expResp.ID = gotResp.ID
-				expResp.DateCreated = gotResp.DateCreated
-				expResp.DateUpdated = gotResp.DateUpdated
-
-				return cmp.Diff(gotResp, expResp)
-			},
-		},
-	}
-
-	return table
-}
-
-func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
-	table := []unittest.Table{
-		{
-			Name: "basic",
-			ExpResp: addonbus.Addon{
-				ID:           sd.Addons[0].ID,
-				CategoryID:   sd.Addons[0].CategoryID,
-				RestaurantID: sd.Addons[0].RestaurantID,
-				Name:         name.MustParse("Updated Addon"),
-				Description:  "Updated description for this addon",
-				Price:        money.MustParse(5.99),
-				Available:    false,
 				MaxQuantity:  5,
-				DateCreated:  sd.Addons[0].DateCreated,
+				Rank:         &r10,
 			},
 			ExcFunc: func(ctx context.Context) any {
-				newName := name.MustParse("Updated Addon")
-				newPrice := money.MustParse(5.99)
-				newDesc := "Updated description for this addon"
-				newAvailable := false
-				newMaxQty := 5
-
-				ua := addonbus.UpdateAddon{
-					Name:        &newName,
-					Description: &newDesc,
-					Price:       &newPrice,
-					Available:   &newAvailable,
-					MaxQuantity: &newMaxQty,
+				na := addonbus.NewAddon{
+					MenuItemID:   sd.MenuItemID,
+					RestaurantID: sd.RestaurantID,
+					Name:         name.MustParse("French Fries"),
+					Description:  "Crispy golden fries",
+					Price:        money.MustParse(4.50),
+					Available:    &avail,
+					MaxQuantity:  5,
+					Rank:         &r10,
 				}
-
-				resp, err := busDomain.Addon.Update(ctx, sd.Addons[0].Addon, ua)
+				resp, err := busDomain.Addon.Create(ctx, na)
 				if err != nil {
 					return err
 				}
-
 				return resp
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(addonbus.Addon)
-				if !exists {
-					return "error occurred"
+				gotResp, ok := got.(addonbus.Addon)
+				if !ok {
+					return "expected addonbus.Addon"
 				}
-
 				expResp := exp.(addonbus.Addon)
-
+				expResp.ID = gotResp.ID
+				expResp.DateCreated = gotResp.DateCreated
 				expResp.DateUpdated = gotResp.DateUpdated
-
 				return cmp.Diff(gotResp, expResp)
 			},
 		},
 		{
-			Name: "partial_update",
-			ExpResp: addonbus.Addon{
-				ID:           sd.Addons[1].ID,
-				CategoryID:   sd.Addons[1].CategoryID,
-				RestaurantID: sd.Addons[1].RestaurantID,
-				Name:         sd.Addons[1].Name,
-				Description:  sd.Addons[1].Description,
-				Price:        money.MustParse(7.99),
-				Available:    sd.Addons[1].Available,
-				MaxQuantity:  sd.Addons[1].MaxQuantity,
-				DateCreated:  sd.Addons[1].DateCreated,
-			},
+			Name:    "duplicate-name",
+			ExpResp: addonbus.ErrDuplicateName,
 			ExcFunc: func(ctx context.Context) any {
-				newPrice := money.MustParse(7.99)
-
-				ua := addonbus.UpdateAddon{
-					Price: &newPrice,
+				na := addonbus.NewAddon{
+					MenuItemID:   sd.MenuItemID,
+					RestaurantID: sd.RestaurantID,
+					Name:         name.MustParse("French Fries"),
+					Description:  "Another fries",
+					Price:        money.MustParse(5.00),
+					Available:    &avail,
+					MaxQuantity:  5,
 				}
-
-				resp, err := busDomain.Addon.Update(ctx, sd.Addons[1].Addon, ua)
-				if err != nil {
-					return err
-				}
-
-				return resp
+				_, err := busDomain.Addon.Create(ctx, na)
+				return err
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(addonbus.Addon)
-				if !exists {
-					return "error occurred"
+				gotErr, ok := got.(error)
+				if !ok {
+					return "expected error response"
 				}
-
-				expResp := exp.(addonbus.Addon)
-
-				expResp.DateUpdated = gotResp.DateUpdated
-
-				return cmp.Diff(gotResp, expResp)
+				if !errors.Is(gotErr, addonbus.ErrDuplicateName) {
+					return fmt.Sprintf("expected ErrDuplicateName, got %v", gotErr)
+				}
+				return ""
 			},
 		},
+	}
+
+	return table
+}
+
+func update(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
+	newPrice := money.MustParse(6.00)
+	newMax := 8
+	table := []unittest.Table{
 		{
-			Name: "update_rank",
+			Name: "basic",
 			ExpResp: addonbus.Addon{
 				ID:           sd.Addons[0].ID,
-				CategoryID:   sd.Addons[0].CategoryID,
+				MenuItemID:   sd.Addons[0].MenuItemID,
 				RestaurantID: sd.Addons[0].RestaurantID,
-				Name:         sd.Addons[0].Name,
-				Description:  sd.Addons[0].Description,
-				Price:        sd.Addons[0].Price,
+				Name:         name.MustParse("Updated Addon Name"),
+				Description:  "Updated description",
+				Price:        newPrice,
 				Available:    sd.Addons[0].Available,
-				MaxQuantity:  sd.Addons[0].MaxQuantity,
-				Rank:         dbtest.IntPointer(42),
+				MaxQuantity:  newMax,
+				Rank:         nil,
 				DateCreated:  sd.Addons[0].DateCreated,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				ua := addonbus.UpdateAddon{
-					Rank: dbtest.IntPointer(42),
+					Name:        dbtest.NamePointer("Updated Addon Name"),
+					Description: dbtest.StringPointer("Updated description"),
+					Price:       &newPrice,
+					MaxQuantity: &newMax,
+					Rank:        opt.NewNullIntNull(), // test unsetting rank
 				}
-
-				resp, err := busDomain.Addon.Update(ctx, sd.Addons[0].Addon, ua)
+				current, err := busDomain.Addon.QueryByID(ctx, sd.Addons[0].ID)
 				if err != nil {
 					return err
 				}
-
+				resp, err := busDomain.Addon.Update(ctx, current, ua)
+				if err != nil {
+					return err
+				}
 				return resp
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(addonbus.Addon)
-				if !exists {
-					return "error occurred"
+				gotResp, ok := got.(addonbus.Addon)
+				if !ok {
+					return "expected addonbus.Addon"
 				}
-
 				expResp := exp.(addonbus.Addon)
+				expResp.DateCreated = gotResp.DateCreated
 				expResp.DateUpdated = gotResp.DateUpdated
-
 				return cmp.Diff(gotResp, expResp)
 			},
 		},
@@ -508,107 +277,73 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 	return table
 }
 
-func delete(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
+func reorder(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
+	table := []unittest.Table{
+		{
+			Name:    "reorder-success",
+			ExpResp: 5,
+			ExcFunc: func(ctx context.Context) any {
+				current, err := busDomain.Addon.QueryAll(ctx, addonbus.QueryFilter{
+					MenuItemID: &sd.MenuItemID,
+				}, addonbus.DefaultOrderBy)
+				if err != nil {
+					return err
+				}
+
+				orderIDs := make([]uuid.UUID, len(current))
+				for i := range current {
+					orderIDs[i] = current[len(current)-1-i].ID
+				}
+
+				reordered, err := busDomain.Addon.Reorder(ctx, sd.MenuItemID, orderIDs)
+				if err != nil {
+					return err
+				}
+				return len(reordered)
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotLen, ok := got.(int)
+				if !ok {
+					return fmt.Sprintf("expected int, got %T: %v", got, got)
+				}
+				return cmp.Diff(gotLen, exp.(int))
+			},
+		},
+		{
+			Name:    "reorder-mismatch-error",
+			ExpResp: addonbus.ErrInvalidReorder,
+			ExcFunc: func(ctx context.Context) any {
+				// Pass fewer addons than exist
+				_, err := busDomain.Addon.Reorder(ctx, sd.MenuItemID, []uuid.UUID{sd.Addons[0].ID})
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return "expected error response"
+				}
+				if !errors.Is(gotErr, addonbus.ErrInvalidReorder) {
+					return fmt.Sprintf("expected ErrInvalidReorder, got %v", gotErr)
+				}
+				return ""
+			},
+		},
+	}
+
+	return table
+}
+
+func delete(busDomain dbtest.BusDomain, sd seedData) []unittest.Table {
 	table := []unittest.Table{
 		{
 			Name:    "basic",
 			ExpResp: nil,
 			ExcFunc: func(ctx context.Context) any {
-				if err := busDomain.Addon.Delete(ctx, sd.Addons[0].Addon); err != nil {
-					return err
-				}
-
-				return nil
-			},
-			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
-	}
-
-	return table
-}
-
-func reorder(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
-	categoryID := sd.Categories[1].ID
-	addon1 := sd.Addons[2]
-	addon2 := sd.Addons[3]
-
-	table := []unittest.Table{
-		{
-			Name:    "mismatch_length",
-			ExpResp: "invalid addon order: orderedIds must contain all addons in the category exactly once",
-			ExcFunc: func(ctx context.Context) any {
-				err := busDomain.Addon.Reorder(ctx, categoryID, []uuid.UUID{addon1.ID})
-				if err != nil {
-					return err.Error()
-				}
-				return nil
-			},
-			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
-		{
-			Name:    "invalid_id",
-			ExpResp: "invalid addon order: orderedIds contains invalid or duplicate addon id",
-			ExcFunc: func(ctx context.Context) any {
-				err := busDomain.Addon.Reorder(ctx, categoryID, []uuid.UUID{addon1.ID, uuid.New()})
-				if err != nil {
-					return err.Error()
-				}
-				return nil
-			},
-			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
-		{
-			Name:    "invalid_order_sentinel",
-			ExpResp: true,
-			ExcFunc: func(ctx context.Context) any {
-				// Validation failures must wrap ErrInvalidOrder so the API
-				// layer can map them to 400 instead of 500.
-				mismatchErr := busDomain.Addon.Reorder(ctx, categoryID, []uuid.UUID{addon1.ID})
-				if !errors.Is(mismatchErr, addonbus.ErrInvalidOrder) {
-					return fmt.Sprintf("mismatch length: error %v does not match ErrInvalidOrder", mismatchErr)
-				}
-
-				unknownErr := busDomain.Addon.Reorder(ctx, categoryID, []uuid.UUID{addon1.ID, uuid.New()})
-				if !errors.Is(unknownErr, addonbus.ErrInvalidOrder) {
-					return fmt.Sprintf("invalid id: error %v does not match ErrInvalidOrder", unknownErr)
-				}
-
-				return true
-			},
-			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
-		{
-			Name:    "success",
-			ExpResp: []int{10, 20},
-			ExcFunc: func(ctx context.Context) any {
-				// Reverse order: addon2 first, then addon1
-				err := busDomain.Addon.Reorder(ctx, categoryID, []uuid.UUID{addon2.ID, addon1.ID})
+				current, err := busDomain.Addon.QueryByID(ctx, sd.Addons[3].ID)
 				if err != nil {
 					return err
 				}
-
-				a2Updated, err := busDomain.Addon.QueryByID(ctx, addon2.ID)
-				if err != nil {
-					return err
-				}
-				a1Updated, err := busDomain.Addon.QueryByID(ctx, addon1.ID)
-				if err != nil {
-					return err
-				}
-
-				if a2Updated.Rank == nil || a1Updated.Rank == nil {
-					return "ranks are nil"
-				}
-
-				return []int{*a2Updated.Rank, *a1Updated.Rank}
+				return busDomain.Addon.Delete(ctx, current)
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
