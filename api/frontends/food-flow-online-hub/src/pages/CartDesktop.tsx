@@ -123,7 +123,7 @@ const CartDesktop: React.FC = () => {
                 <CardContent className="p-0">
                   <div className="divide-y divide-gray-200">
                     {items.map((item) => (
-                      <div key={item.menuItem.id} className="p-6">
+                      <div key={item.cartItemId} className="p-6">
                         <CartItemComponent item={item} />
                       </div>
                     ))}
