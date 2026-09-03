@@ -104,7 +104,7 @@ const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
                 <div key={mod.modifierOptionId} className="flex justify-between">
                   <span>+ {mod.modifierOptionName} <span className="text-gray-400">({mod.modifierGroupName})</span></span>
                   <span className="text-food-primary">
-                    {mod.priceDelta === 0 ? 'Free' : `+${formatCurrency(mod.priceDelta)}`}
+                    {mod.priceDelta === 0 ? 'Free' : `+${formatCurrency(mod.priceDelta * quantity)}`}
                   </span>
                 </div>
               ))}
@@ -117,7 +117,7 @@ const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
               {selectedAddons.map(({ addon, quantity: addonQty }) => (
                 <div key={addon.id} className="flex justify-between">
                   <span>+ {addon.name} x{addonQty}</span>
-                  <span className="text-food-primary">+{formatCurrency(addon.price * addonQty)}</span>
+                  <span className="text-food-primary">+{formatCurrency(addon.price * addonQty * quantity)}</span>
                 </div>
               ))}
             </div>
