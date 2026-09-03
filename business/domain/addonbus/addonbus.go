@@ -16,7 +16,6 @@ import (
 // Set of error variables for CRUD operations.
 var (
 	ErrNotFound       = errors.New("addon not found")
-	ErrInvalidOrder   = errors.New("invalid addon order")
 	ErrInvalidReorder = errors.New("invalid reorder set")
 	ErrDuplicateName  = errors.New("addon name already exists for this menu item")
 )
