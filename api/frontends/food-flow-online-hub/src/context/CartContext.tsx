@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, MenuItem, OrderType, SelectedAddon, SelectedModifier } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 import { ValidatePromoResponse, orderService } from '@/services/orderService';
+import { parsePersistedCart, serializePersistedCart } from './cartStorage';
 
 // Generate a unique ID for cart items
 const generateCartItemId = () => `cart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -88,6 +89,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [orderType, setOrderType] = useState<OrderType>('delivery');
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [appliedPromo, setAppliedPromo] = useState<ValidatePromoResponse | null>(null);
+  const [cartStorageLoaded, setCartStorageLoaded] = useState(false);
 
   // Load cart from localStorage on initial render
   useEffect(() => {
@@ -101,19 +103,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (savedCart) {
       try {
-        const parsedCart = JSON.parse(savedCart);
-        // Ensure all items have cartItemId & unitPrice
-        const cartWithIds = parsedCart.map((item: CartItem) => ({
-          ...item,
-          cartItemId: item.cartItemId || generateCartItemId(),
-          unitPrice: item.unitPrice ?? calculateItemUnitPrice(item.menuItem, item.selectedModifiers, item.selectedAddons),
-        }));
-        setItems(cartWithIds);
+        setItems(parsePersistedCart(savedCart));
       } catch (error) {
         console.error('Failed to parse saved cart:', error);
         localStorage.removeItem('foodFlowCart');
+        toast({
+          description: 'Your cart was refreshed because the menu changed',
+          variant: 'default',
+        });
       }
     }
+
+    setCartStorageLoaded(true);
     
     if (savedOrderType) {
       try {
@@ -143,8 +144,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Save cart and order type to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('foodFlowCart', JSON.stringify(items));
-  }, [items]);
+    if (!cartStorageLoaded) return;
+    localStorage.setItem('foodFlowCart', serializePersistedCart(items));
+  }, [cartStorageLoaded, items]);
   
   useEffect(() => {
     localStorage.setItem('foodFlowOrderType', orderType);
