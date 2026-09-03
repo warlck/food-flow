@@ -45,8 +45,8 @@ type OrderItem struct {
 	MenuItemPrice       float64             `json:"menuItemPrice"`
 	Quantity            int                 `json:"quantity"`
 	SpecialInstructions string              `json:"specialInstructions,omitempty"`
-	Modifiers           []OrderItemModifier `json:"modifiers,omitempty"`
-	Addons              []OrderItemAddon    `json:"addons,omitempty"`
+	Modifiers           []OrderItemModifier `json:"modifiers"`
+	Addons              []OrderItemAddon    `json:"addons"`
 	DateCreated         string              `json:"dateCreated"`
 }
 
@@ -92,27 +92,27 @@ func (app Order) Encode() ([]byte, string, error) {
 func ToAppOrder(bus orderbus.Order) Order {
 	items := make([]OrderItem, len(bus.Items))
 	for i, item := range bus.Items {
-		var modifiers []OrderItemModifier
-		for _, mod := range item.Modifiers {
-			modifiers = append(modifiers, OrderItemModifier{
+		modifiers := make([]OrderItemModifier, len(item.Modifiers))
+		for j, mod := range item.Modifiers {
+			modifiers[j] = OrderItemModifier{
 				ID:                 mod.ID.String(),
 				ModifierGroupID:    mod.ModifierGroupID.String(),
 				ModifierGroupName:  mod.ModifierGroupName,
 				ModifierOptionID:   mod.ModifierOptionID.String(),
 				ModifierOptionName: mod.ModifierOptionName,
 				PriceDelta:         mod.PriceDelta.Value(),
-			})
+			}
 		}
 
-		var addons []OrderItemAddon
-		for _, addon := range item.Addons {
-			addons = append(addons, OrderItemAddon{
+		addons := make([]OrderItemAddon, len(item.Addons))
+		for j, addon := range item.Addons {
+			addons[j] = OrderItemAddon{
 				ID:         addon.ID.String(),
 				AddonID:    addon.AddonID.String(),
 				AddonName:  addon.AddonName,
 				AddonPrice: addon.AddonPrice.Value(),
 				Quantity:   addon.Quantity,
-			})
+			}
 		}
 
 		items[i] = OrderItem{
