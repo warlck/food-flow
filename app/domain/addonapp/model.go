@@ -193,7 +193,7 @@ func toBusUpdateAddon(app UpdateAddon) (addonbus.UpdateAddon, error) {
 // ReorderAddons defines the payload for reordering addons on a menu item.
 type ReorderAddons struct {
 	MenuItemID string   `json:"menuItemId" validate:"required,uuid"`
-	AddonIDs   []string `json:"addonIds" validate:"required,min=1,dive,uuid"`
+	OrderedIDs []string `json:"orderedIds" validate:"required,min=1,dive,uuid"`
 }
 
 // Decode implements the web.Decoder interface.

@@ -412,7 +412,7 @@ export function MenuItemEditorDialog({
 
     const orderedIds = reordered.map((a) => a.id);
     try {
-      const updated = await adminApi.reorderAddons({ menuItemId: currentItem.id, addonIds: orderedIds });
+      const updated = await adminApi.reorderAddons({ menuItemId: currentItem.id, orderedIds });
       setAddons(updated);
       toast.success('Add-ons reordered');
       await onRefreshWorkspace();

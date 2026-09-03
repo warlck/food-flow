@@ -351,7 +351,7 @@ describe('MenuItemEditorDialog', () => {
     await waitFor(() => {
       expect(apiMocks.reorderAddons).toHaveBeenCalledWith({
         menuItemId: item.id,
-        addonIds: [addons[1].id, addons[0].id],
+        orderedIds: [addons[1].id, addons[0].id],
       });
       expect(apiMocks.listAddons).toHaveBeenCalledTimes(2);
       expect(toastMocks.error).toHaveBeenCalledWith('stale reorder');

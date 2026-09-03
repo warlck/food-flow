@@ -444,7 +444,7 @@ class AdminApi {
     return this.request<void>(`/v1/addons/${id}`, { method: 'DELETE' });
   }
 
-  reorderAddons(input: { menuItemId: string; addonIds: string[] }) {
+  reorderAddons(input: { menuItemId: string; orderedIds: string[] }) {
     return this.request<AdminAddon[]>('/v1/addons/reorder', { method: 'POST', body: JSON.stringify(input) });
   }
 

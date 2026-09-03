@@ -286,11 +286,11 @@ func (a *app) reorder(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errs.Newf(errs.PermissionDenied, "user not in organization %s", rest.OrganizationID)
 	}
 
-	orderedIDs := make([]uuid.UUID, len(app.AddonIDs))
-	for i, idStr := range app.AddonIDs {
+	orderedIDs := make([]uuid.UUID, len(app.OrderedIDs))
+	for i, idStr := range app.OrderedIDs {
 		id, err := uuid.Parse(idStr)
 		if err != nil {
-			return errs.NewFieldErrors(fmt.Sprintf("addonIds[%d]", i), err)
+			return errs.NewFieldErrors(fmt.Sprintf("orderedIds[%d]", i), err)
 		}
 		orderedIDs[i] = id
 	}

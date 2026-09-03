@@ -22,7 +22,7 @@ func reorder200(sd apitest.SeedData) []apitest.Table {
 			// which runs later and asserts the seeded rank, is unaffected.
 			Input: &addonapp.ReorderAddons{
 				MenuItemID: sd.MenuItems[0].ID.String(),
-				AddonIDs: []string{
+				OrderedIDs: []string{
 					sd.Addons[0].ID.String(),
 					sd.Addons[2].ID.String(),
 					sd.Addons[1].ID.String(),
@@ -78,7 +78,7 @@ func reorder400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &addonapp.ReorderAddons{
 				MenuItemID: sd.MenuItems[0].ID.String(),
-				AddonIDs: []string{
+				OrderedIDs: []string{
 					sd.Addons[0].ID.String(),
 				},
 			},
@@ -102,7 +102,7 @@ func reorder400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &addonapp.ReorderAddons{
 				MenuItemID: sd.MenuItems[0].ID.String(),
-				AddonIDs: []string{
+				OrderedIDs: []string{
 					sd.Addons[3].ID.String(),
 					sd.Addons[2].ID.String(),
 					sd.Addons[1].ID.String(),
@@ -129,7 +129,7 @@ func reorder400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &addonapp.ReorderAddons{
 				MenuItemID: sd.MenuItems[0].ID.String(),
-				AddonIDs: []string{
+				OrderedIDs: []string{
 					sd.Addons[3].ID.String(),
 					sd.Addons[2].ID.String(),
 					sd.Addons[1].ID.String(),
@@ -156,7 +156,7 @@ func reorder400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &addonapp.ReorderAddons{
 				MenuItemID: sd.MenuItems[0].ID.String(),
-				AddonIDs: []string{
+				OrderedIDs: []string{
 					sd.Addons[3].ID.String(),
 					sd.Addons[2].ID.String(),
 					sd.Addons[1].ID.String(),
@@ -184,7 +184,7 @@ func reorder400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &addonapp.ReorderAddons{
 				MenuItemID: uuid.New().String(),
-				AddonIDs: []string{
+				OrderedIDs: []string{
 					sd.Addons[0].ID.String(),
 				},
 			},
@@ -238,7 +238,7 @@ func reorder401(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusForbidden,
 			Input: &addonapp.ReorderAddons{
 				MenuItemID: sd.MenuItems[0].ID.String(),
-				AddonIDs: []string{
+				OrderedIDs: []string{
 					sd.Addons[0].ID.String(),
 					sd.Addons[1].ID.String(),
 					sd.Addons[2].ID.String(),
@@ -270,7 +270,7 @@ func reorder401(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusForbidden,
 			Input: &addonapp.ReorderAddons{
 				MenuItemID: sd.MenuItems[2].ID.String(),
-				AddonIDs: []string{
+				OrderedIDs: []string{
 					sd.Addons[4].ID.String(),
 					sd.Addons[5].ID.String(),
 				},
