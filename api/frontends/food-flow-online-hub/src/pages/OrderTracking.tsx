@@ -474,7 +474,7 @@ const OrderTracking: React.FC = () => {
                                 <div key={mod.id} className="flex justify-between text-xs text-gray-400">
                                   <span>+ {mod.modifierOptionName} ({mod.modifierGroupName})</span>
                                   <span className="text-food-primary">
-                                    {mod.priceDelta === 0 ? '+$0.00' : `+${(mod.priceDelta * item.quantity).toFixed(2)}`}
+                                    {mod.priceDelta === 0 ? '+$0.00' : `+$${(mod.priceDelta * item.quantity).toFixed(2)}`}
                                   </span>
                                 </div>
                               ))}
