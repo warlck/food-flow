@@ -216,7 +216,7 @@ func (s *Store) QueryByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]
 	WHERE
 		category_id = :category_id
 	ORDER BY
-		rank ASC NULLS LAST, name ASC, menu_item_id ASC`
+		rank ASC NULLS LAST, price ASC, name ASC, menu_item_id ASC`
 
 	var dbItems []menuItem
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbItems); err != nil {

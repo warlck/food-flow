@@ -197,6 +197,45 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				return cmp.Diff(gotResp, expResp)
 			},
 		},
+		{
+			Name:    "by-category-rank-then-price",
+			ExpResp: []uuid.UUID{sd.MenuItems[0].ID, sd.MenuItems[1].ID},
+			ExcFunc: func(ctx context.Context) any {
+				lowPrice := money.MustParse(1.00)
+				lowPriceName := name.MustParse("Zulu Price")
+				if _, err := busDomain.MenuItem.Update(ctx, sd.MenuItems[0].MenuItem, menuitembus.UpdateMenuItem{
+					Name:  &lowPriceName,
+					Price: &lowPrice,
+					Rank:  opt.NewNullInt(10),
+				}); err != nil {
+					return err
+				}
+
+				highPrice := money.MustParse(2.00)
+				highPriceName := name.MustParse("Alpha Price")
+				if _, err := busDomain.MenuItem.Update(ctx, sd.MenuItems[1].MenuItem, menuitembus.UpdateMenuItem{
+					Name:  &highPriceName,
+					Price: &highPrice,
+					Rank:  opt.NewNullInt(10),
+				}); err != nil {
+					return err
+				}
+
+				items, err := busDomain.MenuItem.QueryByCategoryID(ctx, sd.Categories[0].ID)
+				if err != nil {
+					return err
+				}
+
+				ids := make([]uuid.UUID, len(items))
+				for i, item := range items {
+					ids[i] = item.ID
+				}
+				return ids
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
 	}
 
 	return table
