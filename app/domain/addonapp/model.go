@@ -131,12 +131,12 @@ func toBusNewAddon(app NewAddon) (addonbus.NewAddon, error) {
 
 // UpdateAddon defines the data needed to update an addon.
 type UpdateAddon struct {
-	Name        *string      `json:"name"`
-	Description *string      `json:"description"`
-	Price       *float64     `json:"price" validate:"omitempty,gte=0"`
-	Available   *bool        `json:"available"`
-	MaxQuantity *int         `json:"maxQuantity" validate:"omitempty,gte=1"`
-	Rank        *opt.NullInt `json:"rank"`
+	Name        *string     `json:"name"`
+	Description *string     `json:"description"`
+	Price       *float64    `json:"price" validate:"omitempty,gte=0"`
+	Available   *bool       `json:"available"`
+	MaxQuantity *int        `json:"maxQuantity" validate:"omitempty,gte=1"`
+	Rank        opt.NullInt `json:"rank"`
 }
 
 // Decode implements the web.Decoder interface.
@@ -149,6 +149,11 @@ func (app UpdateAddon) Validate() error {
 	if err := errs.Check(app); err != nil {
 		return fmt.Errorf("validate: %w", err)
 	}
+
+	if app.Rank.Present && app.Rank.Value != nil && *app.Rank.Value < 1 {
+		return errs.NewFieldErrors("rank", fmt.Errorf("rank must be >= 1"))
+	}
+
 	return nil
 }
 
@@ -171,18 +176,13 @@ func toBusUpdateAddon(app UpdateAddon) (addonbus.UpdateAddon, error) {
 		price = &p
 	}
 
-	var rankOpt opt.NullInt
-	if app.Rank != nil {
-		rankOpt = *app.Rank
-	}
-
 	bus := addonbus.UpdateAddon{
 		Name:        nme,
 		Description: app.Description,
 		Price:       price,
 		Available:   app.Available,
 		MaxQuantity: app.MaxQuantity,
-		Rank:        rankOpt,
+		Rank:        app.Rank,
 	}
 
 	return bus, nil
