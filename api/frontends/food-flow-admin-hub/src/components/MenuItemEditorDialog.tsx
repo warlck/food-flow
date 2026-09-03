@@ -1069,12 +1069,12 @@ export function MenuItemEditorDialog({
                         name="minSelections"
                         type="number"
                         min="0"
-                        max="10"
+                        max="1"
                         defaultValue={editingGroup?.minSelections ?? 1}
                         required
                         className="admin-input"
                       />
-                      <span className="text-[10px] text-[#6B7280]">0 = optional, 1+ = required</span>
+                      <span className="text-[10px] text-[#6B7280]">0 = optional, 1 = required</span>
                     </div>
 
                     <div className="space-y-1.5">
@@ -1084,11 +1084,13 @@ export function MenuItemEditorDialog({
                         name="maxSelections"
                         type="number"
                         min="1"
-                        max="10"
-                        defaultValue={editingGroup?.maxSelections ?? 1}
+                        max="1"
+                        defaultValue={1}
+                        readOnly
                         required
-                        className="admin-input"
+                        className="admin-input bg-gray-50 cursor-not-allowed text-gray-500"
                       />
+                      <span className="text-[10px] text-[#6B7280]">Fixed to 1 in v1</span>
                     </div>
                   </div>
 
