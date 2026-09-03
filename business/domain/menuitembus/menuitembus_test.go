@@ -124,6 +124,9 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 		if r1 == nil && r2 != nil {
 			return false
 		}
+		if items[i].Price.Value() != items[j].Price.Value() {
+			return items[i].Price.Value() < items[j].Price.Value()
+		}
 		if items[i].Name.String() != items[j].Name.String() {
 			return items[i].Name.String() < items[j].Name.String()
 		}
@@ -222,6 +225,27 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				}
 
 				items, err := busDomain.MenuItem.QueryByCategoryID(ctx, sd.Categories[0].ID)
+				if err != nil {
+					return err
+				}
+
+				ids := make([]uuid.UUID, len(items))
+				for i, item := range items {
+					ids[i] = item.ID
+				}
+				return ids
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:    "list-rank-then-price",
+			ExpResp: []uuid.UUID{sd.MenuItems[0].ID, sd.MenuItems[1].ID},
+			ExcFunc: func(ctx context.Context) any {
+				items, err := busDomain.MenuItem.QueryAll(ctx, menuitembus.QueryFilter{
+					CategoryID: &sd.Categories[0].ID,
+				}, menuitembus.DefaultOrderBy)
 				if err != nil {
 					return err
 				}
