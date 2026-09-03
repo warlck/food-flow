@@ -299,6 +299,9 @@ describe('MenuItemEditorDialog', () => {
     await waitFor(() => expect(screen.getByText('Spice Level')).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: 'Add Modifier Group' }));
+    expect(screen.queryByLabelText('Group Available')).not.toBeInTheDocument();
+    expect(screen.getByText(/New modifier groups are disabled by default/)).toBeInTheDocument();
+
     fireEvent.change(screen.getByLabelText('Group Name *'), { target: { value: 'Sauce Choice' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save Group' }));
     await waitFor(() => {
@@ -307,7 +310,7 @@ describe('MenuItemEditorDialog', () => {
         description: '',
         minSelections: 1,
         maxSelections: 1,
-        available: true,
+        available: false,
         menuItemId: item.id,
         restaurantId: restaurant.id,
       });
@@ -335,6 +338,31 @@ describe('MenuItemEditorDialog', () => {
     await waitFor(() => expect(apiMocks.deleteModifierOption).toHaveBeenCalledWith(option.id));
     fireEvent.click(screen.getByRole('button', { name: 'Delete Spice Level' }));
     await waitFor(() => expect(apiMocks.deleteModifierGroup).toHaveBeenCalledWith(group.id));
+  });
+
+  it('disables availability toggle and displays No Options badge for groups with no options', async () => {
+    const emptyGroup: AdminModifierGroup = {
+      ...group,
+      id: 'empty-group',
+      name: 'Empty Group',
+      available: false,
+      options: [],
+    };
+    apiMocks.listModifierGroups.mockResolvedValue(page([emptyGroup]));
+    apiMocks.listModifierOptions.mockResolvedValue(page([]));
+    renderEditor();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Modifiers (0)' }));
+    await waitFor(() => expect(screen.getByText('Empty Group')).toBeInTheDocument());
+
+    expect(screen.getByText('No Options')).toBeInTheDocument();
+    const switchBtn = screen.getByRole('switch', { name: 'Toggle Empty Group availability' });
+    expect(switchBtn).toBeDisabled();
+
+    // Clicking edit on an empty group does not provide an enable selector
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Empty Group' }));
+    expect(screen.queryByLabelText('Group Available')).not.toBeInTheDocument();
+    expect(screen.getByText(/This group has no options and must remain disabled/)).toBeInTheDocument();
   });
 
   it('covers add-on create, update, delete, and reorder rollback controls', async () => {

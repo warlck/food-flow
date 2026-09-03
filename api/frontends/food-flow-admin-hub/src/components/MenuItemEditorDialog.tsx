@@ -223,11 +223,18 @@ export function MenuItemEditorDialog({
 
   const handleToggleGroupAvailable = async (group: AdminModifierGroup, available: boolean) => {
     if (!currentItem?.id) return;
-    if (available && group.minSelections > 0) {
-      const hasAvailableOption = (group.options ?? []).some((o) => o.available);
-      if (!hasAvailableOption) {
-        toast.error('Cannot enable a required group without at least one available option');
+    if (available) {
+      const options = group.options ?? [];
+      if (options.length === 0) {
+        toast.error('Cannot enable a modifier group without options. Please add options first.');
         return;
+      }
+      if (group.minSelections > 0) {
+        const hasAvailableOption = options.some((o) => o.available);
+        if (!hasAvailableOption) {
+          toast.error('Cannot enable a required group without at least one available option');
+          return;
+        }
       }
     }
 
@@ -712,11 +719,15 @@ export function MenuItemEditorDialog({
                                 >
                                   {isRequired ? `Required (Min ${group.minSelections}, Max ${group.maxSelections})` : `Optional (Max ${group.maxSelections})`}
                                 </span>
-                                {!group.available && (
+                                {(group.options ?? []).length === 0 ? (
+                                  <span className="rounded-full bg-[#FFF7ED] px-2 py-0.5 text-[10px] font-bold uppercase text-[#C2410C]">
+                                    No Options
+                                  </span>
+                                ) : !group.available ? (
                                   <span className="rounded-full bg-[#FFEBEE] px-2 py-0.5 text-[10px] font-bold uppercase text-[#C62828]">
                                     Disabled
                                   </span>
-                                )}
+                                ) : null}
                               </div>
                               {group.description && (
                                 <p className="text-xs text-[#6B7280]">{group.description}</p>
@@ -725,10 +736,14 @@ export function MenuItemEditorDialog({
                           </div>
 
                           <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-1.5">
-                              <Label className="text-[11px] text-[#6B7280]">Available</Label>
+                            <div
+                              className="flex items-center gap-1.5"
+                              title={(group.options ?? []).length === 0 ? 'Add at least one option before enabling this group' : undefined}
+                            >
+                              <Label className={`text-[11px] ${(group.options ?? []).length === 0 ? 'text-[#9CA3AF]' : 'text-[#6B7280]'}`}>Available</Label>
                               <Switch
                                 checked={group.available}
+                                disabled={(group.options ?? []).length === 0}
                                 onCheckedChange={(val) => handleToggleGroupAvailable(group, val)}
                                 aria-label={`Toggle ${group.name} availability`}
                               />
@@ -1018,13 +1033,18 @@ export function MenuItemEditorDialog({
                 onSubmit={(e) => {
                   e.preventDefault();
                   const form = new FormData(e.currentTarget);
+                  const availableValue = editingGroup
+                    ? (editingGroup.options ?? []).length > 0
+                      ? form.get('available') === 'true'
+                      : false
+                    : false;
                   handleSaveGroup(
                     {
                       name: String(form.get('name')),
                       description: String(form.get('description')),
                       minSelections: Number(form.get('minSelections')),
                       maxSelections: Number(form.get('maxSelections')),
-                      available: form.get('available') === 'true',
+                      available: availableValue,
                     },
                     editingGroup?.id
                   );
@@ -1033,7 +1053,9 @@ export function MenuItemEditorDialog({
                 <DialogHeader>
                   <DialogTitle>{editingGroup ? 'Edit Modifier Group' : 'Add Modifier Group'}</DialogTitle>
                   <DialogDescription>
-                    Configure group name, min/max selection bounds, and availability.
+                    {editingGroup
+                      ? 'Configure group name, min/max selection bounds, and availability.'
+                      : 'Configure group name and min/max selection bounds. Options can be added after saving.'}
                   </DialogDescription>
                 </DialogHeader>
 
@@ -1094,20 +1116,32 @@ export function MenuItemEditorDialog({
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between rounded-xl bg-[#F9FAFB] p-3 border border-[#F3F4F6]">
-                    <div>
-                      <Label className="text-xs font-semibold">Group Available</Label>
-                      <p className="text-[11px] text-[#6B7280]">Allow selection on customer storefront</p>
+                  {!editingGroup ? (
+                    <div className="rounded-xl bg-[#F9FAFB] p-3 border border-[#F3F4F6] text-xs text-[#6B7280]">
+                      <span className="font-semibold text-[#374151]">Availability: </span>
+                      New modifier groups are disabled by default. You can enable this group in the Modifier Groups list after adding options.
                     </div>
-                    <select
-                      name="available"
-                      defaultValue={String(editingGroup?.available ?? true)}
-                      className="h-8 rounded-lg border border-[#E5E7EB] bg-white px-2 text-xs font-semibold"
-                    >
-                      <option value="true">Yes (Enabled)</option>
-                      <option value="false">No (Disabled)</option>
-                    </select>
-                  </div>
+                  ) : (editingGroup.options ?? []).length > 0 ? (
+                    <div className="flex items-center justify-between rounded-xl bg-[#F9FAFB] p-3 border border-[#F3F4F6]">
+                      <div>
+                        <Label className="text-xs font-semibold">Group Available</Label>
+                        <p className="text-[11px] text-[#6B7280]">Allow selection on customer storefront</p>
+                      </div>
+                      <select
+                        name="available"
+                        defaultValue={String(editingGroup.available)}
+                        className="h-8 rounded-lg border border-[#E5E7EB] bg-white px-2 text-xs font-semibold"
+                      >
+                        <option value="true">Yes (Enabled)</option>
+                        <option value="false">No (Disabled)</option>
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl bg-[#FFF7ED] p-3 border border-[#FED7AA] text-xs text-[#C2410C]">
+                      <span className="font-semibold">Availability: </span>
+                      This group has no options and must remain disabled. Add options from the list before enabling it.
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end gap-2">
