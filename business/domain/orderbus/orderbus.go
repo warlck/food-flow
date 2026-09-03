@@ -592,29 +592,3 @@ func (b *Business) QueryByID(ctx context.Context, orderID uuid.UUID) (Order, err
 func roundToTwoDecimals(val float64) float64 {
 	return math.Round(val*100) / 100
 }
-
-// Helper function to validate status transitions.
-func isValidStatusTransition(from, to string) bool {
-	validTransitions := map[string][]string{
-		OrderStatusPending:        {OrderStatusConfirmed, OrderStatusCancelled},
-		OrderStatusConfirmed:      {OrderStatusPreparing, OrderStatusCancelled},
-		OrderStatusPreparing:      {OrderStatusReady, OrderStatusCancelled},
-		OrderStatusReady:          {OrderStatusOutForDelivery, OrderStatusCompleted, OrderStatusCancelled},
-		OrderStatusOutForDelivery: {OrderStatusCompleted, OrderStatusCancelled},
-		OrderStatusCompleted:      {}, // Terminal state
-		OrderStatusCancelled:      {}, // Terminal state
-	}
-
-	allowed, exists := validTransitions[from]
-	if !exists {
-		return false
-	}
-
-	for _, s := range allowed {
-		if s == to {
-			return true
-		}
-	}
-
-	return false
-}

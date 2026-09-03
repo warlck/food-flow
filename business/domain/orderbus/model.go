@@ -30,7 +30,6 @@ var (
 	ErrAddonNotAssigned          = errors.New("addon is not assigned to menu item")
 	ErrAddonUnavailable          = errors.New("addon is unavailable")
 	ErrAddonQuantityOutOfRange   = errors.New("addon quantity out of range")
-	ErrInvalidStatusTransition   = errors.New("invalid order status transition")
 )
 
 // Order statuses - lifecycle of an order
