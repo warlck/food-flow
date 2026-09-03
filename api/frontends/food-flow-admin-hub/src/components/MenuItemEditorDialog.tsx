@@ -1,4 +1,4 @@
-import React, { FormEvent, useEffect, useState } from 'react';
+import React, { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ChevronDown,
   ChevronUp,
@@ -77,23 +77,26 @@ export function MenuItemEditorDialog({
   const [loadingAddons, setLoadingAddons] = useState(false);
   const [editingAddon, setEditingAddon] = useState<AdminAddon | null>(null);
   const [isAddingAddon, setIsAddingAddon] = useState(false);
+  const editorGeneration = useRef(0);
 
   useEffect(() => {
+    editorGeneration.current += 1;
     setCurrentItem(item);
     setActiveTab('details');
     setDetailsError('');
+    setModifierGroups([]);
+    setLoadingGroups(false);
+    setEditingGroup(null);
+    setIsAddingGroup(false);
+    setEditingOption(null);
+    setAddons([]);
+    setLoadingAddons(false);
+    setEditingAddon(null);
+    setIsAddingAddon(false);
   }, [item, open]);
 
-  // Load modifier groups and options when switching to modifiers tab
-  useEffect(() => {
-    if (activeTab === 'modifiers' && currentItem?.id) {
-      loadModifierGroups(currentItem.id);
-    } else if (activeTab === 'addons' && currentItem?.id) {
-      loadAddons(currentItem.id);
-    }
-  }, [activeTab, currentItem?.id]);
-
-  const loadModifierGroups = async (itemId: string) => {
+  const loadModifierGroups = useCallback(async (itemId: string) => {
+    const generation = editorGeneration.current;
     setLoadingGroups(true);
     try {
       const groupPage = await adminApi.listModifierGroups(itemId);
@@ -103,25 +106,47 @@ export function MenuItemEditorDialog({
           return { ...group, options: optPage.items };
         })
       );
-      setModifierGroups(groupsWithOptions);
+      if (generation === editorGeneration.current) {
+        setModifierGroups(groupsWithOptions);
+      }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to load modifier groups');
+      if (generation === editorGeneration.current) {
+        toast.error(err instanceof Error ? err.message : 'Failed to load modifier groups');
+      }
     } finally {
-      setLoadingGroups(false);
+      if (generation === editorGeneration.current) {
+        setLoadingGroups(false);
+      }
     }
-  };
+  }, []);
 
-  const loadAddons = async (itemId: string) => {
+  const loadAddons = useCallback(async (itemId: string) => {
+    const generation = editorGeneration.current;
     setLoadingAddons(true);
     try {
       const page = await adminApi.listAddons(workspace.restaurant.id, itemId);
-      setAddons(page.items);
+      if (generation === editorGeneration.current) {
+        setAddons(page.items);
+      }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to load add-ons');
+      if (generation === editorGeneration.current) {
+        toast.error(err instanceof Error ? err.message : 'Failed to load add-ons');
+      }
     } finally {
-      setLoadingAddons(false);
+      if (generation === editorGeneration.current) {
+        setLoadingAddons(false);
+      }
     }
-  };
+  }, [workspace.restaurant.id]);
+
+  // Load modifier groups and options when switching to nested tabs.
+  useEffect(() => {
+    if (activeTab === 'modifiers' && currentItem?.id) {
+      loadModifierGroups(currentItem.id);
+    } else if (activeTab === 'addons' && currentItem?.id) {
+      loadAddons(currentItem.id);
+    }
+  }, [activeTab, currentItem?.id, loadAddons, loadModifierGroups]);
 
   const handleSaveDetails = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();

@@ -208,7 +208,7 @@ function renderEditor({
   onSaveItem?: (input: MenuItemInput, existingId?: string) => Promise<AdminMenuItem>;
   onRefreshWorkspace?: () => Promise<void>;
 } = {}) {
-  render(
+  const view = render(
     <MenuItemEditorDialog
       item={currentItem ?? undefined}
       workspace={workspace}
@@ -218,7 +218,7 @@ function renderEditor({
       onRefreshWorkspace={onRefreshWorkspace}
     />,
   );
-  return { onSaveItem, onRefreshWorkspace };
+  return { ...view, onSaveItem, onRefreshWorkspace };
 }
 
 describe('MenuItemEditorDialog', () => {
@@ -377,5 +377,81 @@ describe('MenuItemEditorDialog', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Delete First Addon' }));
     await waitFor(() => expect(apiMocks.deleteAddon).toHaveBeenCalledWith(addons[0].id));
+  });
+
+  it('clears nested editor state and ignores stale loads when the item changes', async () => {
+    const nextItem = {
+      ...item,
+      id: 'item-2',
+      name: 'Second Item',
+      categoryId: categories[1].id,
+    };
+    let resolveFirstLoad: ((value: ReturnType<typeof page<AdminAddon>>) => void) | undefined;
+    apiMocks.listAddons
+      .mockImplementationOnce(() => new Promise((resolve) => {
+        resolveFirstLoad = resolve;
+      }))
+      .mockResolvedValueOnce(page([{ ...addons[1], menuItemId: nextItem.id }]));
+
+    const onSaveItem = vi.fn(async () => item);
+    const onRefreshWorkspace = vi.fn(async () => undefined);
+    const editor = (currentItem: AdminMenuItem) => (
+      <MenuItemEditorDialog
+        item={currentItem}
+        workspace={workspaceFor(currentItem)}
+        open
+        onClose={vi.fn()}
+        onSaveItem={onSaveItem}
+        onRefreshWorkspace={onRefreshWorkspace}
+      />
+    );
+
+    const { rerender } = render(editor(item));
+    fireEvent.click(screen.getByRole('button', { name: 'Add-ons (0)' }));
+    await waitFor(() => expect(apiMocks.listAddons).toHaveBeenCalledWith(restaurant.id, item.id));
+    fireEvent.click(screen.getByRole('button', { name: 'Add Add-on' }));
+    expect(screen.getByRole('heading', { name: 'Add Menu Item Add-on' })).toBeInTheDocument();
+
+    rerender(editor(nextItem));
+    expect(screen.queryByRole('heading', { name: 'Add Menu Item Add-on' })).not.toBeInTheDocument();
+    expect(screen.queryByText('First Addon')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add-ons (0)' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add-ons (0)' }));
+    await waitFor(() => expect(screen.getByText('Second Addon')).toBeInTheDocument());
+
+    resolveFirstLoad?.(page(addons));
+    await waitFor(() => expect(screen.queryByText('First Addon')).not.toBeInTheDocument());
+    expect(screen.getByText('Second Addon')).toBeInTheDocument();
+  });
+
+  it('closes modifier editors and clears loaded groups when the item changes', async () => {
+    const nextItem = { ...item, id: 'item-2', name: 'Second Item' };
+    apiMocks.listModifierGroups.mockResolvedValue(page([group]));
+    apiMocks.listModifierOptions.mockResolvedValue(page([option]));
+    const onSaveItem = vi.fn(async () => item);
+    const onRefreshWorkspace = vi.fn(async () => undefined);
+    const editor = (currentItem: AdminMenuItem) => (
+      <MenuItemEditorDialog
+        item={currentItem}
+        workspace={workspaceFor(currentItem)}
+        open
+        onClose={vi.fn()}
+        onSaveItem={onSaveItem}
+        onRefreshWorkspace={onRefreshWorkspace}
+      />
+    );
+
+    const { rerender } = render(editor(item));
+    fireEvent.click(screen.getByRole('button', { name: 'Modifiers (0)' }));
+    await waitFor(() => expect(screen.getByText('Spice Level')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Add Option' }));
+    expect(screen.getByRole('heading', { name: 'Add Option to Spice Level' })).toBeInTheDocument();
+
+    rerender(editor(nextItem));
+
+    expect(screen.queryByRole('heading', { name: 'Add Option to Spice Level' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Spice Level')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Modifiers (0)' })).toBeInTheDocument();
   });
 });
