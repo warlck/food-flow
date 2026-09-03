@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -200,24 +201,29 @@ func (s *Store) Reorder(ctx context.Context, menuItemID uuid.UUID, addonIDs []uu
 	}
 	defer tx.Rollback()
 
+	now := time.Now().UTC()
+
 	const q = `
 	UPDATE
 		addons
 	SET
-		rank = :rank
+		rank = :rank,
+		date_updated = :date_updated
 	WHERE
 		addon_id = :addon_id AND menu_item_id = :menu_item_id`
 
 	for i, id := range addonIDs {
 		rankVal := (i + 1) * 10
 		data := struct {
-			AddonID    uuid.UUID `db:"addon_id"`
-			MenuItemID uuid.UUID `db:"menu_item_id"`
-			Rank       int       `db:"rank"`
+			AddonID     uuid.UUID `db:"addon_id"`
+			MenuItemID  uuid.UUID `db:"menu_item_id"`
+			Rank        int       `db:"rank"`
+			DateUpdated time.Time `db:"date_updated"`
 		}{
-			AddonID:    id,
-			MenuItemID: menuItemID,
-			Rank:       rankVal,
+			AddonID:     id,
+			MenuItemID:  menuItemID,
+			Rank:        rankVal,
+			DateUpdated: now,
 		}
 
 		if err := sqldb.NamedExecContext(ctx, s.log, tx, q, data); err != nil {
