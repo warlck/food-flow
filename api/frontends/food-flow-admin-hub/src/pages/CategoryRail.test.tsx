@@ -81,4 +81,49 @@ describe('CategoryRail Component', () => {
     fireEvent.click(cat2Button);
     expect(onSelect).toHaveBeenCalledWith('cat-2');
   });
+
+  it('renders category rank badges when rank is present', () => {
+    render(
+      <CategoryRail
+        categories={sampleCategories}
+        counts={new Map([['cat-1', 5], ['cat-2', 3]])}
+        total={8}
+        selected="all"
+        onSelect={vi.fn()}
+        onAdd={vi.fn()}
+        onAddItem={vi.fn()}
+        onEdit={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('#10')).toBeInTheDocument();
+    expect(screen.getByText('#20')).toBeInTheDocument();
+  });
+
+  it('triggers onMove when Move up / Move down buttons are clicked', () => {
+    const onMove = vi.fn();
+
+    render(
+      <CategoryRail
+        categories={sampleCategories}
+        counts={new Map([['cat-1', 5], ['cat-2', 3]])}
+        total={8}
+        selected="all"
+        onSelect={vi.fn()}
+        onAdd={vi.fn()}
+        onAddItem={vi.fn()}
+        onEdit={vi.fn()}
+        onMove={onMove}
+      />
+    );
+
+    const moveDownButtons = screen.getAllByTitle('Move down');
+    fireEvent.click(moveDownButtons[0]);
+    expect(onMove).toHaveBeenCalledWith(0, 'down');
+
+    const moveUpButtons = screen.getAllByTitle('Move up');
+    fireEvent.click(moveUpButtons[1]);
+    expect(onMove).toHaveBeenCalledWith(1, 'up');
+  });
 });
+

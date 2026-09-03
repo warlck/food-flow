@@ -306,6 +306,18 @@ export default function Admin() {
     return counts;
   }, [workspace]);
 
+  const sortedCategories = useMemo(() => {
+    if (!workspace) return [];
+    return [...workspace.categories].sort((a, b) => {
+      const rA = a.rank != null ? a.rank : undefined;
+      const rB = b.rank != null ? b.rank : undefined;
+      if (rA !== undefined && rB === undefined) return -1;
+      if (rA === undefined && rB !== undefined) return 1;
+      if (rA !== undefined && rB !== undefined && rA !== rB) return rA - rB;
+      return a.name.localeCompare(b.name);
+    });
+  }, [workspace]);
+
   const filteredItems = useMemo(() => {
     if (!workspace) return [];
     const normalizedQuery = query.trim().toLowerCase();
@@ -337,7 +349,8 @@ export default function Admin() {
       await operation();
       toast.success(successMessage);
       setEditor(null);
-      if (selectedId) await loadWorkspace(selectedId, true);
+      const restId = selectedId || workspace?.restaurant.id;
+      if (restId) await loadWorkspace(restId, true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Something went wrong');
       throw error;
@@ -374,7 +387,7 @@ export default function Admin() {
 
   const handleReorderCategories = async (draggedId: string, targetId: string) => {
     if (!workspace || draggedId === targetId || isReorderingRef.current) return;
-    const categories = [...workspace.categories];
+    const categories = [...sortedCategories];
     const fromIndex = categories.findIndex((c) => c.id === draggedId);
     const toIndex = categories.findIndex((c) => c.id === targetId);
     if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
@@ -390,32 +403,32 @@ export default function Admin() {
     });
 
     const previousCategories = workspace.categories;
+    const reorderedWithRanks = reordered.map((cat) => ({
+      ...cat,
+      rank: updatedRanks.get(cat.id)!,
+    }));
+
     setWorkspace((current) => {
       if (!current) return current;
       return {
         ...current,
-        categories: current.categories.map((cat) => {
-          if (updatedRanks.has(cat.id)) {
-            return { ...cat, rank: updatedRanks.get(cat.id)! };
-          }
-          return cat;
-        }),
+        categories: reorderedWithRanks,
       };
     });
 
     isReorderingRef.current = true;
     try {
       const updated = await adminApi.reorderCategories({ restaurantId: workspace.restaurant.id, orderedIds });
-      const byId = new Map(updated.map((cat) => [cat.id, cat]));
       setWorkspace((current) => current ? {
         ...current,
-        categories: current.categories.map((cat) => byId.get(cat.id) ?? cat),
+        categories: updated,
       } : current);
       toast.success('Categories reordered');
     } catch (error) {
       setWorkspace((current) => current ? { ...current, categories: previousCategories } : current);
       toast.error(error instanceof Error ? error.message : 'Failed to reorder categories');
-      void loadWorkspace(selectedId, true);
+      const restId = selectedId || workspace.restaurant.id;
+      if (restId) void loadWorkspace(restId, true);
     } finally {
       isReorderingRef.current = false;
     }
@@ -424,8 +437,8 @@ export default function Admin() {
   const handleMoveCategory = (index: number, direction: 'up' | 'down') => {
     if (!workspace) return;
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= workspace.categories.length) return;
-    handleReorderCategories(workspace.categories[index].id, workspace.categories[targetIndex].id);
+    if (targetIndex < 0 || targetIndex >= sortedCategories.length) return;
+    handleReorderCategories(sortedCategories[index].id, sortedCategories[targetIndex].id);
   };
 
   const handleReorderItems = async (categoryId: string, draggedId: string, targetId: string) => {
@@ -791,7 +804,7 @@ export default function Admin() {
                   <section className="admin-panel mt-6 overflow-hidden rounded-2xl">
                     <div className="flex flex-col border-b border-[#E5E7EB] lg:flex-row">
                       <CategoryRail
-                        categories={workspace.categories}
+                        categories={sortedCategories}
                         counts={categoryCounts}
                         total={workspace.menuItems.length}
                         selected={selectedCategory}
@@ -1119,6 +1132,11 @@ export function CategoryRail({
             <button onClick={() => onSelect(category.id)} className={`admin-category-button flex min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] font-medium ${selected === category.id ? 'active !bg-transparent !shadow-none' : ''}`}>
               <span className={`h-2 w-2 shrink-0 rounded-full ${category.enabled ? 'bg-[#FFB72B]' : 'bg-[#9CA3AF]'}`} />
               <span className="max-w-[95px] truncate">{category.name}</span>
+              {category.rank != null && (
+                <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${selected === category.id ? 'bg-white/20 text-white' : 'bg-[#FFF1EB] text-[#FF4500]'}`}>
+                  #{category.rank}
+                </span>
+              )}
               <span className="ml-auto rounded bg-black/[.04] px-1.5 py-0.5 text-[9px]">{counts.get(category.id) ?? 0}</span>
             </button>
             <div className="mr-1 hidden items-center gap-0.5 lg:group-hover:flex">
@@ -1713,7 +1731,7 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
       }
       if (kind === 'category' && workspace) {
         const rankStr = String(data.get('rank') ?? '').trim();
-        const rankVal = rankStr !== '' ? Number(rankStr) : undefined;
+        const rankVal = rankStr !== '' ? Number(rankStr) : null;
         await onSave(kind, { name: String(data.get('name')), description: String(data.get('description')), restaurantId: workspace.restaurant.id, rank: rankVal }, existing?.id);
       }
       if (kind === 'promotion' && workspace) {
@@ -2137,7 +2155,7 @@ function EditorDialog({ editor, workspace, onClose, onSave }: { editor: EditorSt
   return (
     <Dialog open={Boolean(editor)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[92vh] overflow-y-auto border-[#E5E7EB] p-0 sm:max-w-[560px]">
-        {kind && <form onSubmit={submit}>
+        {kind && <form key={`${kind}-${existing?.id ?? 'new'}`} onSubmit={submit}>
           <DialogHeader className="border-b border-[#E5E7EB] px-6 py-5 text-left"><div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF1EB] text-[#FF4500]">{kind === 'category' ? <Boxes size={18} /> : <Tag size={18} />}</div><DialogTitle className="text-xl tracking-[-.025em]">{titles[kind]}</DialogTitle><DialogDescription className="text-xs">{descriptions[kind]}</DialogDescription></DialogHeader>
           <div className="space-y-4 px-6 py-5">
             {kind === 'category' && <Field label="Category name" htmlFor="name" required hint="3–100 characters"><Input id="name" name="name" defaultValue={existing?.name ?? ''} required minLength={3} maxLength={100} placeholder="e.g. Seasonal plates" className="admin-input" /></Field>}
