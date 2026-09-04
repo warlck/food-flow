@@ -76,6 +76,58 @@ func create201(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
+			Name:       "pickup-below-min-spend",
+			URL:        "/v1/orders",
+			Token:      sd.Users[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusCreated,
+			Input: &orderapp.NewOrder{
+				RestaurantID:  sd.Restaurants[1].ID.String(),
+				CustomerName:  "Pickup User Below Min",
+				CustomerEmail: "pickupbelow@example.com",
+				CustomerPhone: "555-4321",
+				OrderType:     "pickup",
+				PaymentMethod: "creditCard",
+				Items: []orderapp.NewOrderItem{
+					{
+						MenuItemID: sd.MenuItems[2].ID.String(),
+						Quantity:   1,
+					},
+				},
+			},
+			GotResp: &orderapp.Order{},
+			ExpResp: &orderapp.Order{
+				RestaurantID:  sd.Restaurants[1].ID.String(),
+				CustomerName:  "Pickup User Below Min",
+				CustomerEmail: "pickupbelow@example.com",
+				CustomerPhone: "555-4321",
+				OrderType:     "pickup",
+				OrderStatus:   "pending",
+				PaymentStatus: "pending",
+				PaymentMethod: "creditCard",
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*orderapp.Order)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(*orderapp.Order)
+
+				// Copy dynamic fields from got to exp
+				expResp.ID = gotResp.ID
+				expResp.Subtotal = gotResp.Subtotal
+				expResp.DeliveryFee = gotResp.DeliveryFee
+				expResp.Tax = gotResp.Tax
+				expResp.Total = gotResp.Total
+				expResp.Items = gotResp.Items
+				expResp.DateCreated = gotResp.DateCreated
+				expResp.DateUpdated = gotResp.DateUpdated
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+		{
 			Name:       "delivery-order",
 			URL:        "/v1/orders",
 			Token:      sd.Users[0].Token,
@@ -461,7 +513,15 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				CustomerName:  "Min Spend Customer",
 				CustomerEmail: "minspend@example.com",
 				CustomerPhone: "555-9999",
-				OrderType:     "pickup",
+				OrderType:     "delivery",
+				DeliveryAddress: &orderapp.NewDeliveryAddress{
+					Street:     "123 Delivery St",
+					City:       "Food City",
+					State:      "FC",
+					PostalCode: "12345",
+					Latitude:   ptr(1.29305),
+					Longitude:  ptr(103.86020),
+				},
 				PaymentMethod: "creditCard",
 				Items: []orderapp.NewOrderItem{
 					{

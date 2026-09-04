@@ -739,7 +739,13 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 					CustomerName:  "Min Spend Tester",
 					CustomerEmail: "minspend@example.com",
 					CustomerPhone: "555-0099",
-					OrderType:     orderbus.OrderTypePickup,
+					OrderType:     orderbus.OrderTypeDelivery,
+					DeliveryAddress: &orderbus.NewDeliveryAddress{
+						Street:     "123 Delivery St",
+						City:       "Food City",
+						State:      "FC",
+						PostalCode: "12345",
+					},
 					PaymentMethod: orderbus.PaymentMethodCreditCard,
 					Items: []orderbus.NewOrderItem{
 						{
@@ -765,6 +771,60 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				expMsg := fmt.Sprintf("subtotal does not meet restaurant minimum spend: subtotal %.2f is less than minimum spend 100.00", sd.MenuItems[3].Price.Value())
 				if gotErr.Error() != expMsg {
 					return fmt.Sprintf("got error %q, want %q", gotErr.Error(), expMsg)
+				}
+				return ""
+			},
+		},
+		{
+			Name: "pickup-exempt-from-min-spend",
+			ExpResp: orderbus.Order{
+				RestaurantID:  sd.Restaurants[1].ID,
+				CustomerName:  "Min Spend Pickup Tester",
+				CustomerEmail: "pickupminspend@example.com",
+				CustomerPhone: "555-0098",
+				OrderType:     orderbus.OrderTypePickup,
+				OrderStatus:   orderbus.OrderStatusPending,
+				PaymentStatus: orderbus.PaymentStatusPending,
+				PaymentMethod: orderbus.PaymentMethodCreditCard,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				// sd.Restaurants[1] has MinSpend = 100.00, item price < 100.00
+				no := orderbus.NewOrder{
+					RestaurantID:  sd.Restaurants[1].ID.String(),
+					CustomerName:  "Min Spend Pickup Tester",
+					CustomerEmail: "pickupminspend@example.com",
+					CustomerPhone: "555-0098",
+					OrderType:     orderbus.OrderTypePickup,
+					PaymentMethod: orderbus.PaymentMethodCreditCard,
+					Items: []orderbus.NewOrderItem{
+						{
+							MenuItemID: sd.MenuItems[3].ID.String(),
+							Quantity:   1, // item price is < 100.00
+						},
+					},
+				}
+
+				order, err := busDomain.Order.Create(ctx, no)
+				if err != nil {
+					return err
+				}
+				return order
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotOrder, ok := got.(orderbus.Order)
+				if !ok {
+					return fmt.Sprintf("got %T, want orderbus.Order", got)
+				}
+				expOrder := exp.(orderbus.Order)
+
+				if gotOrder.RestaurantID != expOrder.RestaurantID {
+					return fmt.Sprintf("got RestaurantID %v, want %v", gotOrder.RestaurantID, expOrder.RestaurantID)
+				}
+				if gotOrder.OrderType != expOrder.OrderType {
+					return fmt.Sprintf("got OrderType %v, want %v", gotOrder.OrderType, expOrder.OrderType)
+				}
+				if gotOrder.Subtotal.Value() >= 100.00 {
+					return fmt.Sprintf("expected subtotal < 100.00, got %.2f", gotOrder.Subtotal.Value())
 				}
 				return ""
 			},

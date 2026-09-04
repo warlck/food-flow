@@ -23,7 +23,7 @@ import (
 
 // Set of error variables for addon/order validation.
 var (
-	// ErrMinSpendNotMet is returned when the order subtotal is below the restaurant's minimum spend requirement.
+	// ErrMinSpendNotMet is returned when the delivery order subtotal is below the restaurant's minimum spend requirement.
 	ErrMinSpendNotMet = errorsNew("subtotal does not meet restaurant minimum spend")
 )
 
@@ -303,8 +303,8 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 	// Round subtotal to 2 decimal places to avoid precision errors
 	subtotal = roundToTwoDecimals(subtotal)
 
-	// Validate restaurant minimum spend
-	if restaurant.MinSpend > 0 && subtotal < restaurant.MinSpend {
+	// Validate restaurant minimum spend (applies to delivery orders only; pickup orders are exempt)
+	if no.OrderType == OrderTypeDelivery && restaurant.MinSpend > 0 && subtotal < restaurant.MinSpend {
 		return Order{}, fmt.Errorf("%w: subtotal %.2f is less than minimum spend %.2f", ErrMinSpendNotMet, subtotal, restaurant.MinSpend)
 	}
 
