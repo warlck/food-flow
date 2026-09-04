@@ -44,7 +44,7 @@ const CartMobile: React.FC = () => {
   };
 
   const handleCheckout = () => {
-    if (minSpend > 0 && subtotal < minSpend) {
+    if (orderType === 'delivery' && minSpend > 0 && subtotal < minSpend) {
       toast({
         title: "Minimum order not met",
         description: `Please add more items to meet the minimum order amount of $${minSpend.toFixed(2)}`,
@@ -281,7 +281,7 @@ const CartMobile: React.FC = () => {
                   </div>
                 </div>
                 
-                {minSpend > 0 && subtotal < minSpend && (
+                {orderType === 'delivery' && minSpend > 0 && subtotal < minSpend && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-4">
                     <div className="flex items-start gap-3">
                       <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -325,7 +325,7 @@ const CartMobile: React.FC = () => {
               className="w-full bg-gradient-to-r from-food-primary to-food-accent text-white py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all disabled:from-gray-300 disabled:to-gray-400"
               size="lg"
               onClick={handleCheckout}
-              disabled={minSpend > 0 && subtotal < minSpend}
+              disabled={orderType === 'delivery' && minSpend > 0 && subtotal < minSpend}
             >
               <div className="flex items-center justify-between w-full">
                 <span>Proceed to Checkout</span>
